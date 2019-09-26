@@ -1,0 +1,129 @@
+Parameters:
+    Stack:
+        Description: Stack name
+        Type: String
+        Default: dev
+    awsaccountid:
+        Description: AWS Account ID
+        Type: String
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+        BucketName:
+          Fn::Join:
+          - ""
+          - - 'cn-rem-'
+            - !Ref Stack
+        BucketEncryption:
+            ServerSideEncryptionConfiguration:
+                - ServerSideEncryptionByDefault:
+                    SSEAlgorithm: AES256
+        LifecycleConfiguration:
+            Rules:
+            - Id: Delete-ct-logs
+              Prefix: cn-ctlogs/
+              Status: Enabled
+              ExpirationInDays: 2
+              NoncurrentVersionExpirationInDays: 1
+            - Id: Transition-policyconfig
+              Prefix: policy_config/
+              Status: Enabled
+              ExpirationInDays: 365
+              NoncurrentVersionExpirationInDays: 60
+        VersioningConfiguration:
+            Status: Enabled
+        Tags: 
+          -
+            Key: "ServiceName"
+            Value: "auto-remediation-deployment-bucket"
+          -
+            Key: "Description"
+            Value: "Cloudneeti automatic remediation solution for making cloud resource compliant"
+  CTBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties: 
+      Bucket:
+        Fn::Join:
+        - ""
+        - - 'cn-rem-'
+          - !Ref Stack
+      PolicyDocument:
+        Statement:
+          - Sid: CTBucketPolicy1
+            Action:
+              - "s3:GetBucketAcl"
+            Effect: "Allow"
+            Principal:
+              Service:
+                - cloudtrail.amazonaws.com
+            Resource:
+              Fn::Join:
+              - ""
+              - - 'arn:aws:s3:::cn-rem-'
+                - !Ref Stack
+          - Sid: CTBucketPolicy2
+            Action:
+              - "s3:PutObject"
+            Effect: "Allow"
+            Principal:
+              Service:
+                - cloudtrail.amazonaws.com
+            Resource:
+              Fn::Join:
+              - ""
+              - - 'arn:aws:s3:::cn-rem-'
+                - !Ref Stack
+                - '/cn-ctlogs/AWSLogs/'
+                - !Ref awsaccountid
+                - '/*'
+            Condition:
+              StringLike: 
+                s3:x-amz-acl: 
+                  - "bucket-owner-full-control"
+  CNLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: cn-log-group
+  CNCloudwatchRole: 
+    Type: AWS::IAM::Role
+    DependsOn: CNLogGroup 
+    Properties:
+      RoleName: CN-CloudwatchRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - cloudtrail.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: cn-cloudwatch-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Sid: CTCWPolicy1
+              Effect: Allow
+              Action:
+              - "logs:CreateLogStream"
+              Resource: 
+                Fn::Join:
+                - ""
+                - - 'arn:aws:logs:us-east-1:'
+                  - !Ref awsaccountid
+                  - ':log-group:cn-log-group:*'
+            - Sid: CTCWPolicy2
+              Effect: Allow
+              Action:
+              - "logs:PutLogEvents"
+              Resource: 
+                Fn::Join:
+                - ""
+                - - 'arn:aws:logs:us-east-1:'
+                  - !Ref awsaccountid
+                  - ':log-group:cn-log-group:*'
+
+
+
+
