@@ -57,10 +57,13 @@ fi
 acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
 env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
 
-stack_detail="$(aws cloudformation describe-stacks --stack-name cn-aws-remediate-$env-$acc_sha 2>/dev/null)"
-stack_staus=$?
+echo "Validating environment prefix..."
+sleep 5
 
-if [[ $stack_staus -ne 0 ]]; then
+stack_detail="$(aws cloudformation describe-stacks --stack-name cn-aws-remediate-$env-$acc_sha 2>/dev/null)"
+stack_status=$?
+
+if [[ $stack_status -ne 0 ]]; then
     echo "Invaild environment prefix. No relevant stack found. Please enter current environment prefix and try to re-run the script again."
     exit 1
 fi
