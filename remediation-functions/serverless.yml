@@ -1,0 +1,231 @@
+service: cn-aws-remediate
+
+provider:
+  name: aws
+  runtime: python3.7
+  stage: ${opt:env, 'cn-remediation'}
+  region: ${opt:region, 'us-east-1'}
+  memorySize: 512
+  deploymentBucket:
+    name: cn-rem-${self:provider.stage}
+
+functions:   
+  orchestrator:
+    handler: orchestrator.lambda_handler
+    name: cn-aws-remediate-orchestrator
+    timeout: 30
+    role: CNLambdaRole
+    events:
+      - cloudwatchLog: 
+          logGroup: 'cn-log-group'
+          filter: '{$.eventName="CreateTrail" || $.eventName="UpdateTrail" || $.eventName="UpdateAccountPasswordPolicy" || $.eventName="DeleteAccountPasswordPolicy" || $.eventName="CreateStream" || $.eventName="StopStreamEncryption" || $.eventName="CreateKey" || $.eventName="DisableKeyRotation" || $.eventName="CreateCluster" || $.eventName="ModifyCluster" || $.eventName="CreateBucket" || $.eventName="PutBucketVersioning" || $.eventName="PutEncryptionConfiguration" || $.eventName="PutBucketAcl"}' 
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+
+  cloudtrail:
+    handler: cloudtrail/cloudtrail_suborchestrator.lambda_handler
+    name: cn-aws-remediate-cloudtrail
+    timeout: 30
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+
+  iam:
+    handler: iam/iam_suborchestrator.lambda_handler
+    name: cn-aws-remediate-iam
+    timeout: 30
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+
+  kinesis:
+    handler: kinesis/kinesis_suborchestrator.lambda_handler
+    name: cn-aws-remediate-kinesis
+    timeout: 30
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+
+  kms:
+    handler: kms/kms_suborchestrator.lambda_handler
+    name: cn-aws-remediate-kms
+    timeout: 30
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+
+  rds_cluster:
+    handler: rds_cluster/rdsCluster_suborchestrator.lambda_handler
+    name: cn-aws-remediate-rdsCluster
+    timeout: 30
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+
+  rds_instance:
+    handler: rds_instance/rdsInstance_suborchestrator.lambda_handler
+    name: cn-aws-remediate-rdsInstance
+    timeout: 30
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+
+  redshift:
+    handler: redshift/redshift_suborchestrator.lambda_handler
+    name: cn-aws-remediate-redshift
+    timeout: 30
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+
+  s3_suborchestrator:
+    handler: s3/s3_suborchestrator.lambda_handler
+    name: cn-aws-remediate-s3-bucket
+    timeout: 30
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+      
+resources:
+  Resources:
+    CNCloudTrail:
+      Type: AWS::CloudTrail::Trail
+      Properties: 
+        CloudWatchLogsLogGroupArn: "arn:aws:logs:us-east-1:${opt:aws-account-id}:log-group:cn-log-group:*"
+        CloudWatchLogsRoleArn: "arn:aws:iam::${opt:aws-account-id}:role/CN-CloudwatchRole"
+        IncludeGlobalServiceEvents: true
+        IsLogging: true
+        IsMultiRegionTrail: true
+        S3BucketName: cn-rem-${self:provider.stage}
+        S3KeyPrefix: cn-ctlogs
+        TrailName: cn-remediation-trail
+        Tags: 
+          -
+            Key: "ServiceName"
+            Value: "auto-remediation-trail"
+          -
+            Key: "Version"
+            Value: "${opt:version, '1.0'}"
+          -
+            Key: "Description"
+            Value: "Cloudneeti automatic remediation solution for making cloud resource compliant"
+          -
+            Key: "Environment"
+            Value: "${opt:env, 'cn-remediation'}"
+    CloudneetiRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: CN-Auto-Remediation-Role
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                AWS:
+                  - "arn:aws:iam::${opt:aws-account-id}:root" 
+              Action: sts:AssumeRole
+        ManagedPolicyArns:
+          - "arn:aws:iam::aws:policy/SecurityAudit"
+        Policies:
+        - PolicyName: cn-lambda-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Sid: AllowIAMForLambdaPolicy
+              Effect: Allow
+              Action:
+              - lambda:InvokeFunction
+              - cloudtrail:UpdateTrail
+              - iam:UpdateAccountPasswordPolicy
+              - kinesis:StartStreamEncryption
+              - kms:EnableKeyRotation
+              - redshift:ModifyCluster
+              - s3:PutBucketVersioning
+              - s3:PutEncryptionConfiguration
+              - s3:PutBucketAcl
+              Resource: "*"
+    CNOrchestratorRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: CN-Remediation-Invocation-Role
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                AWS:
+                  - "arn:aws:iam::079042248639:root"   # Add the Cloudneeti AWS Account ID
+              Action: sts:AssumeRole
+        Policies:
+          - PolicyName: cn-lambda-policy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+              - Sid: InvokeLambdaPolicy
+                Effect: Allow
+                Action:
+                - lambda:InvokeFunction
+                Resource: "*"
+    CNLambdaRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: CN-OrchesLambdaRole-${self:provider.stage}
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action: sts:AssumeRole
+        Policies:
+          - PolicyName: cn-lambda-policy
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+              - Sid: AllowIAMForLambdaPolicy
+                Effect: Allow
+                Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+                - cloudtrail:DescribeTrails
+                - cloudtrail:GetTrailStatus
+                - s3:ListAllMyBuckets
+                - s3:GetObject
+                - s3:PutObject
+                - lambda:InvokeFunction
+                Resource: "*"
+              - Sid: AllowAssumeRoleForLambdaPolicy
+                Effect: Allow
+                Action:
+                - sts:AssumeRole
+                Resource: 
+                - "arn:aws:iam::*:role/CN-Auto-Remediation-Role"
