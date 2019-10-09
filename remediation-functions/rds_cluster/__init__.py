@@ -1,1 +1,0 @@
-__all__ = ["redCluster_delete_protection"]
