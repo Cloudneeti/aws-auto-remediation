@@ -16,8 +16,6 @@ def lambda_handler(event, context):
     redshift_list = ["RedShiftNotPublic", "RedShiftVersionUpgrade", "RedShiftAutomatedSnapshot"]
     kms_list = ["KMSKeyRotation"]
     cloudtrail_list = ["CTMultiRegionTrail", "CTLogFileValidation"]
-    rdsInstance_list = ["RDSInstanceDeleteProtection", "RDSPrivateInstance", "RDSBackupTerm", "RDSBackupRetentionPolicy"]
-    rdsCluster_list = ["RDSDeleteProtection"]
 
     try:
         policy_list = json.loads(event['body'])['RemediationPolicies']
@@ -75,9 +73,7 @@ def lambda_handler(event, context):
                          "IAMPasswordRequiredNumber", "IAMPasswordUpCaseLetter", "IAMPasswordRequiredSymbols", "IAMRequireLowercaseLetter", "IAMMinPasswordLength", "IAMExpirePasswords", "IAMPasswordReusePrevention",
                          "RedShiftNotPublic", "RedShiftVersionUpgrade", "RedShiftAutomatedSnapshot",
                          "KMSKeyRotation",
-                         "CTMultiRegionTrail", "CTLogFileValidation",
-                         "RDSInstanceDeleteProtection", "RDSPrivateInstance", "RDSBackupTerm", "RDSBackupRetentionPolicy",
-                         "SQLDeletionProtection", "MariadbDeletionProtection", "OracleDeletionProtection"]
+                         "CTMultiRegionTrail", "CTLogFileValidation"]
             
         try:
             if set(policy_list) <= set(available_list): 
