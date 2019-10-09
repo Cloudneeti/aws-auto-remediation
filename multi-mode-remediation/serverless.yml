@@ -18,7 +18,7 @@ functions:
     events:
       - cloudwatchLog: 
           logGroup: 'cn-log-group'
-          filter: '{$.eventName="CreateTrail" || $.eventName="UpdateTrail" || $.eventName="UpdateAccountPasswordPolicy" || $.eventName="DeleteAccountPasswordPolicy" || $.eventName="CreateStream" || $.eventName="StopStreamEncryption" || $.eventName="CreateKey" || $.eventName="DisableKeyRotation" || $.eventName="CreateCluster" || $.eventName="ModifyCluster" || $.eventName="CreateBucket" || $.eventName="PutBucketVersioning" || $.eventName="PutEncryptionConfiguration" || $.eventName="PutBucketAcl"}'  
+          filter: '{$.eventName="CreateTrail" || $.eventName="UpdateTrail" || $.eventName="UpdateAccountPasswordPolicy" || $.eventName="DeleteAccountPasswordPolicy" || $.eventName="CreateStream" || $.eventName="StopStreamEncryption" || $.eventName="CreateKey" || $.eventName="DisableKeyRotation" || $.eventName="CreateCluster" || $.eventName="ModifyCluster" || $.eventName="CreateBucket" || $.eventName="PutBucketVersioning" || $.eventName="DeleteBucketEncryption" || $.eventName="PutBucketAcl"}'  
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}

@@ -73,8 +73,7 @@ def lambda_handler(event, context):
                          "IAMPasswordRequiredNumber", "IAMPasswordUpCaseLetter", "IAMPasswordRequiredSymbols", "IAMRequireLowercaseLetter", "IAMMinPasswordLength", "IAMExpirePasswords", "IAMPasswordReusePrevention",
                          "RedShiftNotPublic", "RedShiftVersionUpgrade", "RedShiftAutomatedSnapshot",
                          "KMSKeyRotation",
-                         "CTMultiRegionTrail", "CTLogFileValidation",
-                         "SQLDeletionProtection", "MariadbDeletionProtection", "OracleDeletionProtection"]
+                         "CTMultiRegionTrail", "CTLogFileValidation"]
             
         try:
             if set(policy_list) <= set(available_list): 
@@ -346,7 +345,7 @@ def lambda_handler(event, context):
                 #endregion
 
                 #region S3 sub-orchestrator call
-                if EventName in ["CreateBucket", "PutBucketAcl", "PutEncryptionConfiguration", "PutBucketVersioning"]:
+                if EventName in ["CreateBucket", "PutBucketAcl", "DeleteBucketEncryption", "PutBucketVersioning"]:
                     try:
                         bucket = log_event["requestParameters"]["bucketName"]
                         Region = log_event["awsRegion"]
