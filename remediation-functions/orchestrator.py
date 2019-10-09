@@ -349,7 +349,7 @@ def lambda_handler(event, context):
                 #endregion
 
                 #region S3 sub-orchestrator call
-                if EventName in ["CreateBucket", "PutBucketAcl", "PutEncryptionConfiguration", "PutBucketVersioning"]:
+                if EventName in ["CreateBucket", "PutBucketAcl", "DeleteBucketEncryption", "PutBucketVersioning"]:
                     try:
                         bucket = log_event["requestParameters"]["bucketName"]
                         Region = log_event["awsRegion"]
