@@ -43,7 +43,6 @@ def getRoleArn(event):
 def getRoleArn_cwlogs(event):
     try:
         CustAccID = event["accountId"]
-        print(CustAccID)
         if len(CustAccID) < 12:
             return "", customException("Error when parsing the Post message body")
     except:

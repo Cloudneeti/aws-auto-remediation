@@ -1,1 +1,1 @@
-__all__ = ["kinesis_sse"]
+__all__ = ["kinesis_enhancedmonitoring", "kinesis_sse"]
