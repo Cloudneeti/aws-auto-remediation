@@ -7,10 +7,12 @@ from botocore.exceptions import ClientError
 def run_remediation(rds, RDSIdentifier):
     print('Executing RDS Cluster remediation')  
     response=''
+    DBenginemode=''
+    autopause=''
     try:
         response = rds.describe_db_clusters(DBClusterIdentifier=RDSIdentifier)['DBClusters']
         autopause=response[0]['ScalingConfigurationInfo']['AutoPause']
-        DBengine=response[0]['Engine']
+        DBenginemode=response[0]['EngineMode']
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
@@ -18,7 +20,7 @@ def run_remediation(rds, RDSIdentifier):
         responseCode = 400
         output = "Unexpected error: " + str(e)
 
-    if DBengine in ["aurora-postgresql", "aurora-postgresql"]:
+    if DBenginemode == 'serverless':
         if not autopause:                  
             try:
                 result = rds.modify_db_cluster(
