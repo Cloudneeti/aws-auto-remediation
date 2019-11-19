@@ -8,6 +8,13 @@ def run_remediation(elbv2, LoadBalancerArn):
     print("Executing load balancer remediation..")            
 
     deletion_protection=False
+    if 'arn:aws:' not in LoadBalancerArn:
+        try:
+            loadbalancer_detail=elbv2.describe_load_balancers(Names=[LoadBalancerArn])
+            LoadBalancerArn=loadbalancer_detail['LoadBalancers'][0]['LoadBalancerArn']
+        except:
+            deletion_protection=False
+
     try:
         response=elbv2.describe_load_balancer_attributes(LoadBalancerArn=LoadBalancerArn)['Attributes']
         for i in range(len(response)):
@@ -32,7 +39,7 @@ def run_remediation(elbv2, LoadBalancerArn):
             if responseCode >= 400:
                 output = "Unexpected error: %s \n" % str(result)
             else:
-                output = "Connection draining is enabled for: %s \n" % LoadBalancerArn
+                output = "Deletion Protection enabled for: %s \n" % LoadBalancerArn
                     
         except ClientError as e:
             responseCode = 400
@@ -44,7 +51,7 @@ def run_remediation(elbv2, LoadBalancerArn):
             print(output)
     else:
         responseCode=200
-        output="Connection draining is already enabled for: %s \n" % LoadBalancerArn
+        output="Deletion Protection is already enabled for: %s \n" % LoadBalancerArn
 
     print(str(responseCode)+'-'+output)
     return responseCode,output

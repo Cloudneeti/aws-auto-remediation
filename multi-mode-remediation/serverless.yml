@@ -5,7 +5,7 @@ provider:
   runtime: python3.7
   stage: ${opt:env, 'cn-remediation'}
   region: ${opt:region, 'us-east-1'}
-  memorySize: 512
+  memorySize: 3008
   deploymentBucket:
     name: cn-rem-${self:provider.stage}
 
@@ -13,7 +13,7 @@ functions:
   remediation-invoker:
     handler: remediation-invoker.lambda_handler
     name: cn-aws-remediate-relayfunction
-    timeout: 30
+    timeout: 900
     role: CNLambdaRole
     events:
       - cloudwatchLog: 

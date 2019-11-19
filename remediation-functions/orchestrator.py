@@ -246,9 +246,29 @@ def lambda_handler(event, context):
 
                 #region load-balancer sub-orchestrator call
                 if EventName in ["CreateLoadBalancer", "ModifyLoadBalancerAttributes"]:
-                    if log_event["requestParameters"]["type"] in ["application", "network"]:
+                    if EventName == "CreateLoadBalancer":
                         try:
-                            LoadBalancerArn = log_event["responseElements"]["loadBalancers"][0]["loadBalancerArn"]
+                            lb_detail=log_event["requestParameters"]["type"]
+                            if lb_detail in ["application", "network"]:
+                                lb_type='elbv2'
+                            else:
+                                lb_type='elb'
+                        except:
+                            lb_type='elb'
+                    else:
+                        try:
+                            lb_attributes=log_event["requestParameters"]["attributes"]
+                            lb_type='elbv2'
+                        except:
+                            lb_type='elb'
+
+                    if lb_type == 'elbv2':
+                        try:
+                            if EventName == "CreateLoadBalancer":
+                                LoadBalancerArn = log_event["responseElements"]["loadBalancers"][0]["loadBalancerArn"]
+                            else:
+                                LoadBalancerArn = log_event["requestParameters"]["loadBalancerArn"]
+                                
                             Region = log_event["awsRegion"]
 
                             remediationObj = {

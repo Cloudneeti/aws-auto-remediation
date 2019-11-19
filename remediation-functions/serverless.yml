@@ -5,7 +5,7 @@ provider:
   runtime: python3.7
   stage: ${opt:env, 'cn-remediation'}
   region: ${opt:region, 'us-east-1'}
-  memorySize: 512
+  memorySize: 3008
   deploymentBucket:
     name: cn-rem-${self:provider.stage}
 
@@ -13,7 +13,7 @@ functions:
   orchestrator:
     handler: orchestrator.lambda_handler
     name: cn-aws-remediate-orchestrator
-    timeout: 300
+    timeout: 900
     role: CNLambdaRole
     events:
       - cloudwatchLog: 
@@ -72,7 +72,7 @@ functions:
   kinesis:
     handler: kinesis/kinesis_suborchestrator.lambda_handler
     name: cn-aws-remediate-kinesis
-    timeout: 300
+    timeout: 900
     role: CNLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
@@ -94,7 +94,7 @@ functions:
   rds_cluster:
     handler: rds_cluster/rdscluster_suborchestrator.lambda_handler
     name: cn-aws-remediate-rdscluster
-    timeout: 300
+    timeout: 900
     role: CNLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
@@ -105,7 +105,7 @@ functions:
   rds_instance:
     handler: rds_instance/rdsinstance_suborchestrator.lambda_handler
     name: cn-aws-remediate-rdsinstance
-    timeout: 300
+    timeout: 900
     role: CNLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
@@ -116,7 +116,7 @@ functions:
   redshift:
     handler: redshift/redshift_suborchestrator.lambda_handler
     name: cn-aws-remediate-redshift
-    timeout: 300
+    timeout: 900
     role: CNLambdaRole
     tags:
       ServiceName: auto-remediation-lambda

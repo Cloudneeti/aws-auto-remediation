@@ -34,7 +34,7 @@ def run_remediation(rds, RDSInstanceName):
             result = rds.modify_db_instance(
                 DBInstanceIdentifier=RDSInstanceName,
                 ApplyImmediately=True,
-                CopyTagsToSnapshot=False
+                CopyTagsToSnapshot=True
             )
 
             responseCode = result['ResponseMetadata']['HTTPStatusCode']
