@@ -12,7 +12,7 @@ def run_remediation(rds, RDSInstanceName):
         multiaz=response[0]['MultiAZ']
         current_retention=response[0]['BackupRetentionPeriod']
         if not current_retention:
-            current_retention==7
+            current_retention=7
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
@@ -35,7 +35,7 @@ def run_remediation(rds, RDSInstanceName):
             result = rds.modify_db_instance(
                 DBInstanceIdentifier=RDSInstanceName,
                 BackupRetentionPeriod=current_retention,
-                ApplyImmediately=True,
+                ApplyImmediately=False,
                 MultiAZ=True
             )
 
