@@ -5,7 +5,7 @@ provider:
   runtime: python3.7
   stage: ${opt:env, 'cn-remediation'}
   region: ${opt:region, 'us-east-1'}
-  memorySize: 512
+  memorySize: 3008
   deploymentBucket:
     name: cn-rem-${self:provider.stage}
 
@@ -13,12 +13,12 @@ functions:
   remediation-invoker:
     handler: remediation-invoker.lambda_handler
     name: cn-aws-remediate-relayfunction
-    timeout: 30
+    timeout: 900
     role: CNLambdaRole
     events:
       - cloudwatchLog: 
           logGroup: 'cn-log-group'
-          filter: '{$.eventName="CreateTrail" || $.eventName="UpdateTrail" || $.eventName="UpdateAccountPasswordPolicy" || $.eventName="DeleteAccountPasswordPolicy" || $.eventName="CreateStream" || $.eventName="StopStreamEncryption" || $.eventName="CreateKey" || $.eventName="DisableKeyRotation" || $.eventName="CreateCluster" || $.eventName="ModifyCluster" || $.eventName="CreateBucket" || $.eventName="PutBucketVersioning" || $.eventName="DeleteBucketEncryption" || $.eventName="PutBucketAcl"}'  
+          filter: '{$.eventName="CreateTrail" || $.eventName="UpdateTrail" || $.eventName="CreateLoadBalancer" || $.eventName="ModifyLoadBalancerAttributes" || $.eventName="UpdateAccountPasswordPolicy" || $.eventName="DeleteAccountPasswordPolicy" || $.eventName="CreateStream" || $.eventName="StopStreamEncryption" || $.eventName="DisableEnhancedMonitoring" || $.eventName="CreateKey" || $.eventName="DisableKeyRotation" || $.eventName="CreateDBCluster" || $.eventName="ModifyDBCluster" || $.eventName="CreateDBInstance" || $.eventName="ModifyDBInstance" || $.eventName="CreateCluster" || $.eventName="ModifyCluster" || $.eventName="CreateBucket" || $.eventName="PutBucketVersioning" || $.eventName="DeleteBucketEncryption" || $.eventName="PutBucketAcl"}'
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}
@@ -75,9 +75,13 @@ resources:
               Action:              
               - lambda:InvokeFunction
               - cloudtrail:UpdateTrail
+              - elasticloadbalancing:ModifyLoadBalancerAttributes
               - iam:UpdateAccountPasswordPolicy
               - kinesis:StartStreamEncryption
+              - kinesis:EnableEnhancedMonitoring
               - kms:EnableKeyRotation
+              - rds:ModifyDBCluster
+              - rds:ModifyDBInstance
               - redshift:ModifyCluster
               - s3:PutBucketVersioning
               - s3:PutEncryptionConfiguration

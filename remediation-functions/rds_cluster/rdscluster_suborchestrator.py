@@ -1,15 +1,19 @@
 '''
-Kinesis sub-orchestrator function
+RDS-cluster sub-orchestrator function
 '''
 
 import json
 import boto3
 import common
 from botocore.exceptions import ClientError
-from kinesis import *
+from rds_cluster import *
 
 def lambda_handler(event, context):
     global aws_access_key_id, aws_secret_access_key, aws_session_token, CustAccID, Region
+    auto_pause=["AuroraServerlessScalingAutoPause", "AuroraPostgresServerlessScalingAutoPause"]
+    backup_retention=["AuroraBackup", "AuroraBackupTerm", "AuroraServerlessBackupTerm", "AuroraPostgresServerlessBackupTerm"]
+    copytagstosnapshots=["AuroraCopyTagsToSnapshot", "AuroraServerlessCopyTagsToSnapshot", "AuroraPostgresServerlessCopyTagsToSnapshot"]
+    deletion_protection=["AuroraDeleteProtection", "AuroraServerlessDeleteProtection", "AuroraPostgresServerlessDeleteProtection"]
     
     try:
         PolicyId = json.loads(event["body"])["PolicyId"]
@@ -17,13 +21,14 @@ def lambda_handler(event, context):
         PolicyId = ''
         pass
 
+    #region CW Call
     if not PolicyId:
         print("Executing auto-remediation")
         try:  # common code
             CustAccID, role_arn = common.getRoleArn_cwlogs(event)
             aws_access_key_id, aws_secret_access_key, aws_session_token = common.getCredentials(role_arn)
         except ClientError as e:
-            print(e)
+            print("assume-role"+str(e))
             return {  
                 'statusCode': 400,
                 'body': str(e)
@@ -37,17 +42,16 @@ def lambda_handler(event, context):
 
         try:
             Region = event["Region"]
-            kinesis_stream = event["kinesis_stream"]
+            RDSClusterName = event["RDSClusterName"]
             records_json = json.loads(event["policies"])
             records = records_json["RemediationPolicies"]
         except:
             Region = ""
 
         try:
-            # Establish a session with the portal
-            kinesis = boto3.client('kinesis', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)  
+            rds = boto3.client('rds',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)
         except ClientError as e:
-            print(e)
+            print("rds-client"+str(e))
             return {  
                 'statusCode': 400,
                 'body': str(e)
@@ -59,9 +63,41 @@ def lambda_handler(event, context):
                 'body': str(e)
             }
 
-        if "KinesisEnhancedMonitoring" in str(records):
+        if set(auto_pause).intersection(set(records)):
             try:
-                kinesis_enhancedmonitoring.run_remediation(kinesis,kinesis_stream)
+                rdscluster_autopause.run_remediation(rds,RDSClusterName)
+            except ClientError as e:
+                print(e)
+                return {  
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+            except Exception as e:
+                print(e)
+                return {
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+
+        if set(backup_retention).intersection(set(records)):
+            try:
+                rdscluster_backupretention.run_remediation(rds,RDSClusterName)
+            except ClientError as e:
+                print(e)
+                return {  
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+            except Exception as e:
+                print(e)
+                return {
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+
+        if set(copytagstosnapshots).intersection(set(records)):
+            try:
+                rdscluster_copytagstosnapshot.run_remediation(rds,RDSClusterName)
             except ClientError as e:
                 print(e)
                 return {  
@@ -75,9 +111,9 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
         
-        if "KinesisSSE" in str(records):
+        if set(deletion_protection).intersection(set(records)):
             try:
-                kinesis_sse.run_remediation(kinesis,kinesis_stream)
+                rdscluster_deletion_protection.run_remediation(rds,RDSClusterName)
             except ClientError as e:
                 print(e)
                 return {  
@@ -91,13 +127,15 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
         
-        print('remediated-' + kinesis_stream)
+        print('remediated-' + RDSClusterName)
         #returning the output Array in json format
         return {  
             'statusCode': 200,
-            'body': json.dumps('remediated-' + kinesis_stream)
+            'body': json.dumps('remediated-' + RDSClusterName)
         }
+    #endregion
 
+    #region Portal Call
     else:
         print("CN-portal triggered remediation")
         try:
@@ -119,13 +157,12 @@ def lambda_handler(event, context):
         try:
             Region_name = json.loads(event["body"])["Region"]
             Region = common.getRegionName(Region_name)
-            kinesis_stream = json.loads(event["body"])["ResourceName"]
+            RDSClusterName = json.loads(event["body"])["ResourceName"]
         except:
             Region = ""
 
         try:
-            # Establish a session with the portal
-            kinesis = boto3.client('kinesis', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)  
+            rds = boto3.client('rds',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)
         except ClientError as e:
             print(e)
             return {  
@@ -140,21 +177,29 @@ def lambda_handler(event, context):
             }
 
         try:
-            if PolicyId == "KinesisEnhancedMonitoring":  
-                responseCode,output = kinesis_enhancedmonitoring.run_remediation(kinesis,kinesis_stream)
+            if PolicyId in auto_pause:
+                responseCode,output = rdscluster_autopause.run_remediation(rds,RDSClusterName)
 
-            if PolicyId == "KinesisSSE":  
-                responseCode,output = kinesis_sse.run_remediation(kinesis,kinesis_stream)
+            if PolicyId in backup_retention:
+                responseCode,output = rdscluster_backupretention.run_remediation(rds,RDSClusterName)
+        
+            if PolicyId in copytagstosnapshots:
+                responseCode,output = rdscluster_copytagstosnapshot.run_remediation(rds,RDSClusterName)
+
+            if PolicyId in deletion_protection:
+                responseCode,output = rdscluster_deletion_protection.run_remediation(rds,RDSClusterName)
         
         except ClientError as e:
             responseCode = 400
-            output = "Unable to remediate kinesis stream: " + str(e)
+            output = "Unable to remediate RDS cluster: " + str(e)
         except Exception as e:
             responseCode = 400
-            output = "Unable to remediate kinesis stream: " + str(e)
+            output = "Unable to remediate RDS cluster: " + str(e)
 
             # returning the output Array in json format
+        
         return {  
             'statusCode': responseCode,
             'body': output
         }
+    #endregion

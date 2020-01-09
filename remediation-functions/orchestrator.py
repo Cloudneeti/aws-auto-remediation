@@ -11,11 +11,16 @@ import gzip
 import base64
 
 def lambda_handler(event, context):
-    s3_list = ["S3VersioningEnabled", "S3EncryptionEnabled", "S3bucketNoPublicAAUFull", "S3bucketNoPublicAAURead", "S3bucketNoPublicAAUReadACP", "S3bucketNoPublicAAUWrite", "S3bucketNoPublicAAUWriteACP", "S3notPublictoInternet", "S3notPublicRead", "S3notPublicReadACP", "S3notPublicWrite", "S3notPublicWriteACP"]
-    iam_list = ["IAMPasswordRequiredNumber", "IAMPasswordUpCaseLetter", "IAMPasswordRequiredSymbols", "IAMRequireLowercaseLetter", "IAMMinPasswordLength", "IAMExpirePasswords", "IAMPasswordReusePrevention"]
-    redshift_list = ["RedShiftNotPublic", "RedShiftVersionUpgrade", "RedShiftAutomatedSnapshot"]
-    kms_list = ["KMSKeyRotation"]
     cloudtrail_list = ["CTMultiRegionTrail", "CTLogFileValidation"]
+    elb_list = ["ClassicLBConnDraining"]
+    elbv2_list = ["AppLBDeletionProtection", "NetworkLBDeletionProtection"]
+    iam_list = ["IAMPasswordRequiredNumber", "IAMPasswordUpCaseLetter", "IAMPasswordRequiredSymbols", "IAMRequireLowercaseLetter", "IAMMinPasswordLength", "IAMExpirePasswords", "IAMPasswordReusePrevention"]
+    kinesis_list = ["KinesisEnhancedMonitoring", "KinesisSSE"]
+    kms_list = ["KMSKeyRotation"]
+    rds_cluster_list = ["AuroraDeleteProtection", "AuroraServerlessDeleteProtection", "AuroraPostgresServerlessDeleteProtection", "AuroraBackup", "AuroraBackupTerm", "AuroraServerlessBackupTerm", "AuroraPostgresServerlessBackupTerm", "AuroraCopyTagsToSnapshot", "AuroraServerlessCopyTagsToSnapshot", "AuroraPostgresServerlessCopyTagsToSnapshot", "AuroraServerlessScalingAutoPause", "AuroraPostgresServerlessScalingAutoPause"]
+    rds_instance_list = ["SQLBackup","SQLBackupTerm","MariadbBackup","MariadbBackupTerm","OracleBackup","OracleBackupTerm","SQLServerBackup","SQLServerBackupTerm","SQLCopyTagsToSnapshot","MariadbCopyTagsToSnapshot","OracleCopyTagsToSnapshot","SQLServerCopyTagsToSnapshot","SQLDeletionProtection", "MariadbDeletionProtection", "OracleDeletionProtection", "SQLServerDeletionProtection", "SQLPrivateInstance","MariadbPrivateInstance","OraclePrivateInstance","SQLServerPrivateInstance","AuroraInstancePrivateInstance","SQLVersionUpgrade","MariadbVersionUpgrade","OracleVersionUpgrade","SQLServerVersionUpgrade","AuroraInstanceVersionUpgrade", "SQLMultiAZEnabled","MariadbMultiAZEnabled","OracleMultiAZEnabled","SQLServerMultiAZEnabled","SQLPerformanceInsights","MariadbPerformanceInsights","OraclePerformanceInsights","SQLServerPerformanceInsights","AuroraInstancePerformanceInsights"]
+    redshift_list = ["RedShiftNotPublic", "RedShiftVersionUpgrade", "RedShiftAutomatedSnapshot"]
+    s3_list = ["S3VersioningEnabled", "S3EncryptionEnabled", "S3bucketNoPublicAAUFull", "S3bucketNoPublicAAURead", "S3bucketNoPublicAAUReadACP", "S3bucketNoPublicAAUWrite", "S3bucketNoPublicAAUWriteACP", "S3notPublictoInternet", "S3notPublicRead", "S3notPublicReadACP", "S3notPublicWrite", "S3notPublicWriteACP"]
 
     try:
         policy_list = json.loads(event['body'])['RemediationPolicies']
@@ -69,11 +74,7 @@ def lambda_handler(event, context):
                 'body': json.dumps(str(e))
             }  
         # rem_bucket = 'cn-rem-cust-rem-acc'
-        available_list = ["S3VersioningEnabled", "S3EncryptionEnabled", "S3bucketNoPublicAAUFull", "S3bucketNoPublicAAURead", "S3bucketNoPublicAAUReadACP", "S3bucketNoPublicAAUWrite", "S3bucketNoPublicAAUWriteACP", "S3notPublictoInternet", "S3notPublicRead", "S3notPublicReadACP", "S3notPublicWrite", "S3notPublicWriteACP",
-                         "IAMPasswordRequiredNumber", "IAMPasswordUpCaseLetter", "IAMPasswordRequiredSymbols", "IAMRequireLowercaseLetter", "IAMMinPasswordLength", "IAMExpirePasswords", "IAMPasswordReusePrevention",
-                         "RedShiftNotPublic", "RedShiftVersionUpgrade", "RedShiftAutomatedSnapshot",
-                         "KMSKeyRotation",
-                         "CTMultiRegionTrail", "CTLogFileValidation"]
+        available_list = cloudtrail_list + elb_list + elbv2_list + iam_list + kinesis_list + kms_list + rds_cluster_list + rds_instance_list + redshift_list + s3_list
             
         try:
             if set(policy_list) <= set(available_list): 
@@ -243,6 +244,75 @@ def lambda_handler(event, context):
                         print('Error during remediation, error:' + str(e))
                 #endregion
 
+                #region load-balancer sub-orchestrator call
+                if EventName in ["CreateLoadBalancer", "ModifyLoadBalancerAttributes"]:
+                    if EventName == "CreateLoadBalancer":
+                        try:
+                            lb_detail=log_event["requestParameters"]["type"]
+                            if lb_detail in ["application", "network"]:
+                                lb_type='elbv2'
+                            else:
+                                lb_type='elb'
+                        except:
+                            lb_type='elb'
+                    else:
+                        try:
+                            lb_attributes=log_event["requestParameters"]["attributes"]
+                            lb_type='elbv2'
+                        except:
+                            lb_type='elb'
+
+                    if lb_type == 'elbv2':
+                        try:
+                            if EventName == "CreateLoadBalancer":
+                                LoadBalancerArn = log_event["responseElements"]["loadBalancers"][0]["loadBalancerArn"]
+                            else:
+                                LoadBalancerArn = log_event["requestParameters"]["loadBalancerArn"]
+                                
+                            Region = log_event["awsRegion"]
+
+                            remediationObj = {
+                                "accountId": AWSAccId,
+                                "LoadBalancerArn": LoadBalancerArn,
+                                "Region" : Region,
+                                "policies": records
+                            }
+                            response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-elbv2', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
+                        except ClientError as e:
+                            print('Error during remediation, error:' + str(e))
+                        except Exception as e:
+                            print('Error during remediation, error:' + str(e))
+
+                    else:
+                        try:
+                            LoadBalancerName = log_event["requestParameters"]["loadBalancerName"]
+                            Region = log_event["awsRegion"]
+
+                            remediationObj = {
+                                "accountId": AWSAccId,
+                                "LoadBalancerName": LoadBalancerName,
+                                "Region" : Region,
+                                "policies": records
+                            }
+                            response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-elb', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
+                        except ClientError as e:
+                            print('Error during remediation, error:' + str(e))
+                        except Exception as e:
+                            print('Error during remediation, error:' + str(e))
+                #endregion
+
                 #region IAM sub-orchestrator call
                 if EventName in ["UpdateAccountPasswordPolicy", "DeleteAccountPasswordPolicy"]:
                     try:
@@ -265,9 +335,9 @@ def lambda_handler(event, context):
                 #endregion
 
                 #region Kinesis sub-orchestrator call
-                if EventName in ["CreateStream", "StopStreamEncryption"]:
+                if EventName in ["CreateStream", "StopStreamEncryption", "DisableEnhancedMonitoring"]:
                     try:
-                        kinesis_stream = log_event["requestParameters"]["StreamName"]
+                        kinesis_stream = log_event["requestParameters"]["streamName"]
                         Region = log_event["awsRegion"]
                         remediationObj = {
                             "accountId": AWSAccId,
@@ -307,6 +377,65 @@ def lambda_handler(event, context):
                         }
                         
                         response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-kms', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = json.loads(response['Payload'].read())
+                        print(response)
+                        return {
+                            'statusCode': 200,
+                            'body': json.dumps(response)
+                        }
+                    except ClientError as e:
+                        print('Error during remediation, error:' + str(e))
+                    except Exception as e:
+                        print('Error during remediation, error:' + str(e))
+                #endregion
+
+
+                #region rds cluster suborchestrator call
+                if EventName in ["CreateDBCluster", "ModifyDBCluster", "CreateDBInstance"]:
+                    try:
+                        DBEngine=log_event["responseElements"]["engine"]
+                    except:
+                        DBEngine=''
+
+                    if 'aurora' in str(DBEngine):
+                        try:
+                            RDSClusterName = log_event["responseElements"]["dBClusterIdentifier"]
+                            Region = log_event["awsRegion"]
+
+                            remediationObj = {
+                                "accountId": AWSAccId,
+                                "RDSClusterName": RDSClusterName,
+                                "Region" : Region,
+                                "policies": records
+                            }
+                            
+                            response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-rdscluster', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
+                        except ClientError as e:
+                            print('Error during remediation, error:' + str(e))
+                        except Exception as e:
+                            print('Error during remediation, error:' + str(e))
+                #endregion
+
+                #region rds instance suborchestrator call
+                if EventName in ["CreateDBInstance", "ModifyDBInstance"]:
+                    try:
+                        RDSInstanceName = log_event["responseElements"]["dBInstanceIdentifier"]
+                        Region = log_event["awsRegion"]
+
+                        remediationObj = {
+                            "accountId": AWSAccId,
+                            "RDSInstanceName": RDSInstanceName,
+                            "Region" : Region,
+                            "policies": records
+                        }
+                        
+                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-rdsinstance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                         response = json.loads(response['Payload'].read())
                         print(response)
                         return {
@@ -447,6 +576,30 @@ def lambda_handler(event, context):
                 print('Error during remediation, error:' + str(e))
         #endregion
 
+        #region elb suborchestrator call
+        if PolicyId in (elb_list):
+            try:            
+                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-elb', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = json.loads(response['Payload'].read())
+                print(response)
+            except ClientError as e:
+                print('Error during remediation, error:' + str(e))
+            except Exception as e:
+                print('Error during remediation, error:' + str(e))
+        #endregion
+
+        #region elb suborchestrator call
+        if PolicyId in (elbv2_list):
+            try:            
+                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-elbv2', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = json.loads(response['Payload'].read())
+                print(response)
+            except ClientError as e:
+                print('Error during remediation, error:' + str(e))
+            except Exception as e:
+                print('Error during remediation, error:' + str(e))
+        #endregion
+
         #region IAM sub-orchestrator call
         if PolicyId in (iam_list):
             try:            
@@ -468,7 +621,7 @@ def lambda_handler(event, context):
         #endregion
 
         #region Kinesis sub-orchestrator call
-        if PolicyId in (redshift_list):
+        if PolicyId in (kinesis_list):
             try:            
                 response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-kinesis', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
@@ -500,9 +653,9 @@ def lambda_handler(event, context):
         #endregion
 
         #region rds cluster suborchestrator call
-        if PolicyId in (rdsCluster_list):
+        if PolicyId in (rds_cluster_list):
             try:            
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-rdsCluster', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-rdscluster', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:
@@ -512,9 +665,9 @@ def lambda_handler(event, context):
         #endregion
 
         #region rds instance suborchestrator call
-        if PolicyId in (rdsInstance_list):
+        if PolicyId in (rds_instance_list):
             try:        
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-rdsInstance', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-rdsinstance', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:

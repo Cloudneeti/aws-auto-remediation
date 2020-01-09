@@ -1,12 +1,12 @@
 '''
-Kinesis sub-orchestrator function
+ELB sub-orchestrator function
 '''
 
 import json
 import boto3
 import common
 from botocore.exceptions import ClientError
-from kinesis import *
+from elb import *
 
 def lambda_handler(event, context):
     global aws_access_key_id, aws_secret_access_key, aws_session_token, CustAccID, Region
@@ -37,7 +37,7 @@ def lambda_handler(event, context):
 
         try:
             Region = event["Region"]
-            kinesis_stream = event["kinesis_stream"]
+            LoadBalancerName = event["LoadBalancerName"]
             records_json = json.loads(event["policies"])
             records = records_json["RemediationPolicies"]
         except:
@@ -45,7 +45,7 @@ def lambda_handler(event, context):
 
         try:
             # Establish a session with the portal
-            kinesis = boto3.client('kinesis', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)  
+            elb = boto3.client('elb', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)  
         except ClientError as e:
             print(e)
             return {  
@@ -58,10 +58,10 @@ def lambda_handler(event, context):
                 'statusCode': 400,
                 'body': str(e)
             }
-
-        if "KinesisEnhancedMonitoring" in str(records):
+        
+        if "ClassicLBConnDraining" in str(records):
             try:
-                kinesis_enhancedmonitoring.run_remediation(kinesis,kinesis_stream)
+                elb_connectiondraining.run_remediation(elb,LoadBalancerName)
             except ClientError as e:
                 print(e)
                 return {  
@@ -73,29 +73,13 @@ def lambda_handler(event, context):
                 return {
                     'statusCode': 400,
                     'body': str(e)
-                }
+                }   
         
-        if "KinesisSSE" in str(records):
-            try:
-                kinesis_sse.run_remediation(kinesis,kinesis_stream)
-            except ClientError as e:
-                print(e)
-                return {  
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-            except Exception as e:
-                print(e)
-                return {
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-        
-        print('remediated-' + kinesis_stream)
+        print('remediated-' + LoadBalancerName)
         #returning the output Array in json format
         return {  
             'statusCode': 200,
-            'body': json.dumps('remediated-' + kinesis_stream)
+            'body': json.dumps('remediated-' + LoadBalancerName)
         }
 
     else:
@@ -119,13 +103,13 @@ def lambda_handler(event, context):
         try:
             Region_name = json.loads(event["body"])["Region"]
             Region = common.getRegionName(Region_name)
-            kinesis_stream = json.loads(event["body"])["ResourceName"]
+            LoadBalancerName = json.loads(event["body"])["ResourceName"]
         except:
             Region = ""
 
         try:
             # Establish a session with the portal
-            kinesis = boto3.client('kinesis', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)  
+            elb = boto3.client('elb', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)  
         except ClientError as e:
             print(e)
             return {  
@@ -140,18 +124,15 @@ def lambda_handler(event, context):
             }
 
         try:
-            if PolicyId == "KinesisEnhancedMonitoring":  
-                responseCode,output = kinesis_enhancedmonitoring.run_remediation(kinesis,kinesis_stream)
-
-            if PolicyId == "KinesisSSE":  
-                responseCode,output = kinesis_sse.run_remediation(kinesis,kinesis_stream)
+            if PolicyId == "ClassicLBConnDraining":  
+                responseCode,output = elb_connectiondraining.run_remediation(elb,LoadBalancerName)
         
         except ClientError as e:
             responseCode = 400
-            output = "Unable to remediate kinesis stream: " + str(e)
+            output = "Unable to remediate classic load balancer: " + str(e)
         except Exception as e:
             responseCode = 400
-            output = "Unable to remediate kinesis stream: " + str(e)
+            output = "Unable to remediate classic load balancer: " + str(e)
 
             # returning the output Array in json format
         return {  
