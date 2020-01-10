@@ -14,6 +14,7 @@ def lambda_handler(event, context):
     backup_retention=["AuroraBackup", "AuroraBackupTerm", "AuroraServerlessBackupTerm", "AuroraPostgresServerlessBackupTerm"]
     copytagstosnapshots=["AuroraCopyTagsToSnapshot", "AuroraServerlessCopyTagsToSnapshot", "AuroraPostgresServerlessCopyTagsToSnapshot"]
     deletion_protection=["AuroraDeleteProtection", "AuroraServerlessDeleteProtection", "AuroraPostgresServerlessDeleteProtection"]
+    cluster_logexport=["AuroralogExport","CloudwatchLogsExports"]
     
     try:
         PolicyId = json.loads(event["body"])["PolicyId"]
@@ -127,6 +128,22 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
         
+        if set(cluster_logexport).intersection(set(records)):
+            try:
+                rdscluster_logsenabled.run_remediation(rds,RDSClusterName)
+            except ClientError as e:
+                print(e)
+                return {  
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+            except Exception as e:
+                print(e)
+                return {
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+        
         print('remediated-' + RDSClusterName)
         #returning the output Array in json format
         return {  
@@ -188,7 +205,10 @@ def lambda_handler(event, context):
 
             if PolicyId in deletion_protection:
                 responseCode,output = rdscluster_deletion_protection.run_remediation(rds,RDSClusterName)
-        
+
+            if PolicyId in deletion_protection:
+                responseCode,output = rdscluster_logsenabled.run_remediation(rds,RDSClusterName)
+                
         except ClientError as e:
             responseCode = 400
             output = "Unable to remediate RDS cluster: " + str(e)
