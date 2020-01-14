@@ -11,7 +11,7 @@ import gzip
 import base64
 
 def lambda_handler(event, context):
-    cloudtrail_list = ["CTMultiRegionTrail", "CTLogFileValidation","CTIsLogging"]
+    cloudtrail_list = ["CTMultiRegionTrail", "CTLogFileValidation"]
     elb_list = ["ClassicLBConnDraining"]
     elbv2_list = ["AppLBDeletionProtection", "NetworkLBDeletionProtection"]
     iam_list = ["IAMPasswordRequiredNumber", "IAMPasswordUpCaseLetter", "IAMPasswordRequiredSymbols", "IAMRequireLowercaseLetter", "IAMMinPasswordLength", "IAMExpirePasswords", "IAMPasswordReusePrevention"]
@@ -20,8 +20,7 @@ def lambda_handler(event, context):
     rds_cluster_list = ["AuroraDeleteProtection", "AuroraServerlessDeleteProtection", "AuroraPostgresServerlessDeleteProtection", "AuroraBackup", "AuroraBackupTerm", "AuroraServerlessBackupTerm", "AuroraPostgresServerlessBackupTerm", "AuroraCopyTagsToSnapshot", "AuroraServerlessCopyTagsToSnapshot", "AuroraPostgresServerlessCopyTagsToSnapshot", "AuroraServerlessScalingAutoPause", "AuroraPostgresServerlessScalingAutoPause","AuroralogExport","CloudwatchLogsExports"]
     rds_instance_list = ["SQLBackup","SQLBackupTerm","MariadbBackup","MariadbBackupTerm","OracleBackup","OracleBackupTerm","SQLServerBackup","SQLServerBackupTerm","SQLCopyTagsToSnapshot","MariadbCopyTagsToSnapshot","OracleCopyTagsToSnapshot","SQLServerCopyTagsToSnapshot","SQLDeletionProtection", "MariadbDeletionProtection", "OracleDeletionProtection", "SQLServerDeletionProtection", "SQLPrivateInstance","MariadbPrivateInstance","OraclePrivateInstance","SQLServerPrivateInstance","AuroraInstancePrivateInstance","SQLVersionUpgrade","MariadbVersionUpgrade","OracleVersionUpgrade","SQLServerVersionUpgrade","AuroraInstanceVersionUpgrade", "SQLMultiAZEnabled","MariadbMultiAZEnabled","OracleMultiAZEnabled","SQLServerMultiAZEnabled","SQLPerformanceInsights","MariadbPerformanceInsights","OraclePerformanceInsights","SQLServerPerformanceInsights","AuroraInstancePerformanceInsights","MySQLVersionUpgrade","MySQLBackup","MySQLBackupTerm","MySQLCopyTagsToSnapshot","MySQLDeletionProtection","MySQLPerformanceInsights","MySQLPrivateInstance","MySQLMultiAZEnabled","MySQLlogExport","MariadblogExport","OraclelogExport"]
     redshift_list = ["RedShiftNotPublic", "RedShiftVersionUpgrade", "RedShiftAutomatedSnapshot"]
-    s3_list = ["S3VersioningEnabled", "S3EncryptionEnabled", "S3bucketNoPublicAAUFull", "S3bucketNoPublicAAURead", "S3bucketNoPublicAAUReadACP", "S3bucketNoPublicAAUWrite", "S3bucketNoPublicAAUWriteACP", "S3notPublictoInternet", "S3notPublicRead", "S3notPublicReadACP", "S3notPublicWrite", "S3notPublicWriteACP","S3TransferAccelerateConfig","S3busketpublicaccess"]
-    dynamodb_list = ["DynamoDbContinuousBackup"]
+    s3_list = ["S3VersioningEnabled", "S3EncryptionEnabled", "S3bucketNoPublicAAUFull", "S3bucketNoPublicAAURead", "S3bucketNoPublicAAUReadACP", "S3bucketNoPublicAAUWrite", "S3bucketNoPublicAAUWriteACP", "S3notPublictoInternet", "S3notPublicRead", "S3notPublicReadACP", "S3notPublicWrite", "S3notPublicWriteACP"]
 
     try:
         policy_list = json.loads(event['body'])['RemediationPolicies']
@@ -75,7 +74,7 @@ def lambda_handler(event, context):
                 'body': json.dumps(str(e))
             }  
         # rem_bucket = 'cn-rem-cust-rem-acc'
-        available_list = cloudtrail_list + elb_list + elbv2_list + iam_list + kinesis_list + kms_list + rds_cluster_list + rds_instance_list + redshift_list + s3_list + dynamodb_list
+        available_list = cloudtrail_list + elb_list + elbv2_list + iam_list + kinesis_list + kms_list + rds_cluster_list + rds_instance_list + redshift_list + s3_list
             
         try:
             if set(policy_list) <= set(available_list): 
@@ -221,7 +220,7 @@ def lambda_handler(event, context):
                     }
 
                 #region cloudtrail sub-orchestrator call
-                if EventName in ["CreateTrail", "UpdateTrail", "StopLogging"]:
+                if EventName in ["CreateTrail", "UpdateTrail"]:
                     try:
                         Trail = log_event["responseElements"]["name"]
                         Region = log_event["awsRegion"]
@@ -475,7 +474,7 @@ def lambda_handler(event, context):
                 #endregion
 
                 #region S3 sub-orchestrator call
-                if EventName in ["CreateBucket", "PutBucketAcl", "DeleteBucketEncryption", "PutBucketVersioning", "PutBucketPublicAccessBlock", "PutAccelerateConfiguration"]:
+                if EventName in ["CreateBucket", "PutBucketAcl", "DeleteBucketEncryption", "PutBucketVersioning"]:
                     try:
                         bucket = log_event["requestParameters"]["bucketName"]
                         Region = log_event["awsRegion"]
@@ -488,32 +487,6 @@ def lambda_handler(event, context):
                         }
                         
                         response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-s3-bucket', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                        response = json.loads(response['Payload'].read())
-                        print(response)
-                        return {
-                            'statusCode': 200,
-                            'body': json.dumps(response)
-                        }
-                    except ClientError as e:
-                        print('Error during remediation, error:' + str(e))
-                    except Exception as e:
-                        print('Error during remediation, error:' + str(e))
-                #endregion
-                
-                #region rds instance suborchestrator call
-                if EventName in ["CreateTable", "CreateTableReplica", "RestoreTableFromBackup", "UpdateTable", "UpdateContinuousBackups"]:
-                    try:
-                        DynamodbTableName = log_event["responseElements"]["TableName"]
-                        Region = log_event["awsRegion"]
-
-                        remediationObj = {
-                            "accountId": AWSAccId,
-                            "DynamodbTableName": DynamodbTableName,
-                            "Region" : Region,
-                            "policies": records
-                        }
-                        
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-dynamodb', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                         response = json.loads(response['Payload'].read())
                         print(response)
                         return {
@@ -741,18 +714,6 @@ def lambda_handler(event, context):
                     'statusCode': 401,
                     'body': str(e)
                 }
-        #endregion
-        
-        #region rds cluster suborchestrator call
-        if PolicyId in (dynamodb_list):
-            try:            
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-dynamodb', InvocationType = 'RequestResponse', Payload = json.dumps(event))
-                response = json.loads(response['Payload'].read())
-                print(response)
-            except ClientError as e:
-                print('Error during remediation, error:' + str(e))
-            except Exception as e:
-                print('Error during remediation, error:' + str(e))
         #endregion
                                 
         return {

@@ -106,49 +106,15 @@ def lambda_handler(event, context):
                 return {
                     'statusCode': 400,
                     'body': str(e)
-                }
-
-        #enable Transfer Acceleration feature
-        if "S3TransferAccelerateConfig" in set(records): 
-            try:
-                s3_transfer_accelaration.run_remediation(s3_client,bucket_name)
-            except ClientError as e:
-                print(e)
-                return {  
-                    'statusCode': 400,
-                    'body': str(e)
-                }   
-            except Exception as e:
-                print(e)
-                return {
-                    'statusCode': 400,
-                    'body': str(e)
                 }      
         
-        #enable block public access feature
-        if "S3RestrictPublicBuckets" in set(records): 
-            try:
-                s3_restrict_public_access.run_remediation(s3_client,bucket_name)
-            except ClientError as e:
-                print(e)
-                return {  
-                    'statusCode': 400,
-                    'body': str(e)
-                }   
-            except Exception as e:
-                print(e)
-                return {
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-                
         print('remediated-' + bucket_name)
         #returning the output Array in json format
         return {  
             'statusCode': 200,
             'body': json.dumps('remediated-' + bucket_name)
         }
-        
+
     else:
         print("CN-portal triggered remediation")
         try:
@@ -199,14 +165,7 @@ def lambda_handler(event, context):
 
             if PolicyId in str(common_policies):              
                 responseCode,output = s3_put_bucket_acl.run_remediation(s3_client,bucket_name)
-            
-            #enable Transfer Acceleration feature
-            if PolicyId == "S3TransferAccelerateConfig":              
-                responseCode,output = s3_transfer_accelaration.run_remediation(s3_client,bucket_name)
         
-            if PolicyId == "S3EncryptionEnabled":  
-                responseCode,output = s3_restrict_public_access.run_remediation(s3_client,bucket_name)
-                
         except ClientError as e:
             responseCode = 400
             output = "Unable to remediate bucket: " + str(e)

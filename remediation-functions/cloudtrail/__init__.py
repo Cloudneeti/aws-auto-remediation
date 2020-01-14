@@ -1,1 +1,1 @@
-__all__ = ["cloudtrail_enable_log_file_validation","cloudtrail_enable_multi_region_trail","cloudtrail_enable_trail_logging"]
+__all__ = ["cloudtrail_enable_log_file_validation","cloudtrail_enable_multi_region_trail"]

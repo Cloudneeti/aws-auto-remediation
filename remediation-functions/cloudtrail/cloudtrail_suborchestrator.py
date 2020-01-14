@@ -89,22 +89,6 @@ def lambda_handler(event, context):
                 return {
                     'statusCode': 400,
                     'body': str(e)
-                }
-        
-        if "CTIsLogging" in str(records):
-            try:
-                cloudtrail_enable_trail_logging.run_remediation(cloudtrail_client,Trail)
-            except ClientError as e:
-                print(e)
-                return {  
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-            except Exception as e:
-                print(e)
-                return {
-                    'statusCode': 400,
-                    'body': str(e)
                 }   
         
         print('remediated-' + Trail)
@@ -169,17 +153,6 @@ def lambda_handler(event, context):
         try:
             if PolicyId == "CTLogFileValidation":
                 responseCode,output = cloudtrail_enable_log_file_validation.run_remediation(cloudtrail_client,Trail)
-        
-        except ClientError as e:
-            responseCode = 400
-            output = "Unable to remediate Cloudtrail: " + str(e)
-        except Exception as e:
-            responseCode = 400
-            output = "Unable to remediate Cloudtrail: " + str(e)
-        
-        try:
-            if PolicyId == "CTIsLogging":
-                responseCode,output = cloudtrail_enable_trail_logging.run_remediation(cloudtrail_client,Trail)
         
         except ClientError as e:
             responseCode = 400
