@@ -18,7 +18,7 @@ functions:
     events:
       - cloudwatchLog: 
           logGroup: 'cn-log-group'
-          filter: '{$.eventName="CreateTrail" || $.eventName="UpdateTrail" || $.eventName="CreateLoadBalancer" || $.eventName="ModifyLoadBalancerAttributes" || $.eventName="UpdateAccountPasswordPolicy" || $.eventName="DeleteAccountPasswordPolicy" || $.eventName="CreateStream" || $.eventName="StopStreamEncryption" || $.eventName="DisableEnhancedMonitoring" || $.eventName="CreateKey" || $.eventName="DisableKeyRotation" || $.eventName="CreateDBCluster" || $.eventName="ModifyDBCluster" || $.eventName="CreateDBInstance" || $.eventName="ModifyDBInstance" || $.eventName="CreateCluster" || $.eventName="ModifyCluster" || $.eventName="CreateBucket" || $.eventName="PutBucketVersioning" || $.eventName="DeleteBucketEncryption" || $.eventName="PutBucketAcl"}' 
+          filter: '{$.eventName="CreateTrail" || $.eventName="UpdateTrail" || $.eventName="StopLogging" || $.eventName="CreateLoadBalancer" || $.eventName="ModifyLoadBalancerAttributes" || $.eventName="UpdateAccountPasswordPolicy" || $.eventName="DeleteAccountPasswordPolicy" || $.eventName="CreateStream" || $.eventName="StopStreamEncryption" || $.eventName="DisableEnhancedMonitoring" || $.eventName="CreateKey" || $.eventName="DisableKeyRotation" || $.eventName="CreateDBCluster" || $.eventName="ModifyDBCluster" || $.eventName="CreateDBInstance" || $.eventName="ModifyDBInstance" || $.eventName="CreateCluster" || $.eventName="ModifyCluster" || $.eventName="CreateBucket" || $.eventName="PutBucketVersioning" || $.eventName="DeleteBucketEncryption" || $.eventName="PutBucketAcl" || $.eventName="PutAccelerateConfiguration" || $.eventName="PutBucketPublicAccessBlock"}' 
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}
@@ -185,6 +185,7 @@ resources:
               Action:
               - lambda:InvokeFunction
               - cloudtrail:UpdateTrail
+              - cloudtrail:StartLogging
               - elasticloadbalancing:ModifyLoadBalancerAttributes
               - iam:UpdateAccountPasswordPolicy
               - kinesis:StartStreamEncryption
@@ -196,6 +197,8 @@ resources:
               - s3:PutBucketVersioning
               - s3:PutEncryptionConfiguration
               - s3:PutBucketAcl
+              - s3:PutAccelerateConfiguration
+              - s3:PutBucketPublicAccessBlock
               Resource: "*"
     CNOrchestratorRole:
       Type: AWS::IAM::Role
