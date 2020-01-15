@@ -22,7 +22,8 @@ def lambda_handler(event, context):
     redshift_list = ["RedShiftNotPublic", "RedShiftVersionUpgrade", "RedShiftAutomatedSnapshot"]
     s3_list = ["S3VersioningEnabled", "S3EncryptionEnabled", "S3bucketNoPublicAAUFull", "S3bucketNoPublicAAURead", "S3bucketNoPublicAAUReadACP", "S3bucketNoPublicAAUWrite", "S3bucketNoPublicAAUWriteACP", "S3notPublictoInternet", "S3notPublicRead", "S3notPublicReadACP", "S3notPublicWrite", "S3notPublicWriteACP","S3TransferAccelerateConfig","S3busketpublicaccess"]
     dynamodb_list = ["DynamoDbContinuousBackup"]
-
+    ec2instance_list = []
+    
     try:
         policy_list = json.loads(event['body'])['RemediationPolicies']
         policy_flag = 1
