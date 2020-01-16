@@ -22,7 +22,11 @@ def lambda_handler(event, context):
     redshift_list = ["RedShiftNotPublic", "RedShiftVersionUpgrade", "RedShiftAutomatedSnapshot"]
     s3_list = ["S3VersioningEnabled", "S3EncryptionEnabled", "S3bucketNoPublicAAUFull", "S3bucketNoPublicAAURead", "S3bucketNoPublicAAUReadACP", "S3bucketNoPublicAAUWrite", "S3bucketNoPublicAAUWriteACP", "S3notPublictoInternet", "S3notPublicRead", "S3notPublicReadACP", "S3notPublicWrite", "S3notPublicWriteACP","S3TransferAccelerateConfig","S3busketpublicaccess"]
     dynamodb_list = ["DynamoDbContinuousBackup"]
-    ec2instance_list = []
+    ec2instance_list = ["EC2MonitoringState", "EC2TerminationProtection"]
+    cloudformation_list = ["StackTermination"]
+    asg_list = ["ASGCooldown"]
+    config_list = ["ConfigCaptureGlobalResources"]
+    sqs_list = ["SQSSSEEnabled"]
     
     try:
         policy_list = json.loads(event['body'])['RemediationPolicies']
@@ -76,7 +80,7 @@ def lambda_handler(event, context):
                 'body': json.dumps(str(e))
             }  
         # rem_bucket = 'cn-rem-cust-rem-acc'
-        available_list = cloudtrail_list + elb_list + elbv2_list + iam_list + kinesis_list + kms_list + rds_cluster_list + rds_instance_list + redshift_list + s3_list + dynamodb_list
+        available_list = cloudtrail_list + elb_list + elbv2_list + iam_list + kinesis_list + kms_list + rds_cluster_list + rds_instance_list + redshift_list + s3_list + dynamodb_list + ec2instance_list + cloudformation_list + asg_list + config_list + sqs_list
             
         try:
             if set(policy_list) <= set(available_list): 
@@ -527,6 +531,135 @@ def lambda_handler(event, context):
                         print('Error during remediation, error:' + str(e))
                 #endregion
 
+                #region rds instance suborchestrator call
+                if EventName in [""]:
+                    try:
+                        DynamodbTableName = log_event["responseElements"]["tableDescription"]["TableName"]
+                        Region = log_event["awsRegion"]
+
+                        remediationObj = {
+                            "accountId": AWSAccId,
+                            "DynamodbTableName": DynamodbTableName,
+                            "Region" : Region,
+                            "policies": records
+                        }
+                        
+                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-config', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = json.loads(response['Payload'].read())
+                        print(response)
+                        return {
+                            'statusCode': 200,
+                            'body': json.dumps(response)
+                        }
+                    except ClientError as e:
+                        print('Error during remediation, error:' + str(e))
+                    except Exception as e:
+                        print('Error during remediation, error:' + str(e))
+                #endregion
+                
+                #region rds instance suborchestrator call
+                if EventName in [""]:
+                    try:
+                        DynamodbTableName = log_event["responseElements"]["TableName"]
+                        Region = log_event["awsRegion"]
+
+                        remediationObj = {
+                            "accountId": AWSAccId,
+                            "DynamodbTableName": DynamodbTableName,
+                            "Region" : Region,
+                            "policies": records
+                        }
+                        
+                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-asg', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = json.loads(response['Payload'].read())
+                        print(response)
+                        return {
+                            'statusCode': 200,
+                            'body': json.dumps(response)
+                        }
+                    except ClientError as e:
+                        print('Error during remediation, error:' + str(e))
+                    except Exception as e:
+                        print('Error during remediation, error:' + str(e))
+                #endregion
+                
+                #region rds instance suborchestrator call
+                if EventName in [""]:
+                    try:
+                        DynamodbTableName = log_event["responseElements"]["TableName"]
+                        Region = log_event["awsRegion"]
+
+                        remediationObj = {
+                            "accountId": AWSAccId,
+                            "DynamodbTableName": DynamodbTableName,
+                            "Region" : Region,
+                            "policies": records
+                        }
+                        
+                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-cloudformation', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = json.loads(response['Payload'].read())
+                        print(response)
+                        return {
+                            'statusCode': 200,
+                            'body': json.dumps(response)
+                        }
+                    except ClientError as e:
+                        print('Error during remediation, error:' + str(e))
+                    except Exception as e:
+                        print('Error during remediation, error:' + str(e))
+                #endregion
+                
+                #region rds instance suborchestrator call
+                if EventName in [""]:
+                    try:
+                        DynamodbTableName = log_event["responseElements"]["TableName"]
+                        Region = log_event["awsRegion"]
+
+                        remediationObj = {
+                            "accountId": AWSAccId,
+                            "DynamodbTableName": DynamodbTableName,
+                            "Region" : Region,
+                            "policies": records
+                        }
+                        
+                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-ec2-instance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = json.loads(response['Payload'].read())
+                        print(response)
+                        return {
+                            'statusCode': 200,
+                            'body': json.dumps(response)
+                        }
+                    except ClientError as e:
+                        print('Error during remediation, error:' + str(e))
+                    except Exception as e:
+                        print('Error during remediation, error:' + str(e))
+                #endregion
+
+                if EventName in [""]:
+                    try:
+                        Queue_Url = log_event["responseElements"]["QueueUrl"]
+                        Region = log_event["awsRegion"]
+
+                        remediationObj = {
+                            "accountId": AWSAccId,
+                            "QueueUrl": Queue_Url,
+                            "Region" : Region,
+                            "policies": records
+                        }
+                        
+                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-sqs', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = json.loads(response['Payload'].read())
+                        print(response)
+                        return {
+                            'statusCode': 200,
+                            'body': json.dumps(response)
+                        }
+                    except ClientError as e:
+                        print('Error during remediation, error:' + str(e))
+                    except Exception as e:
+                        print('Error during remediation, error:' + str(e))
+                #endregion
+
             else:
                 print("Policies not configured for remediation")
                 return {
@@ -755,8 +888,64 @@ def lambda_handler(event, context):
             except Exception as e:
                 print('Error during remediation, error:' + str(e))
         #endregion
+        
+        if PolicyId in (ec2instance_list):
+            try:            
+                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-ec2-instance', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = json.loads(response['Payload'].read())
+                print(response)
+            except ClientError as e:
+                print('Error during remediation, error:' + str(e))
+            except Exception as e:
+                print('Error during remediation, error:' + str(e))
+        #endregion
+        
+        if PolicyId in (cloudformation_list):
+            try:            
+                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-cloudformation', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = json.loads(response['Payload'].read())
+                print(response)
+            except ClientError as e:
+                print('Error during remediation, error:' + str(e))
+            except Exception as e:
+                print('Error during remediation, error:' + str(e))
+        #endregion
+        
+        if PolicyId in (asg_list):
+            try:            
+                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-asg', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = json.loads(response['Payload'].read())
+                print(response)
+            except ClientError as e:
+                print('Error during remediation, error:' + str(e))
+            except Exception as e:
+                print('Error during remediation, error:' + str(e))
+        #endregion
+        
+        if PolicyId in (config_list):
+            try:            
+                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-config', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = json.loads(response['Payload'].read())
+                print(response)
+            except ClientError as e:
+                print('Error during remediation, error:' + str(e))
+            except Exception as e:
+                print('Error during remediation, error:' + str(e))
+        #endregion
+        
+        if PolicyId in (sqs_list):
+            try:            
+                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-sqs', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = json.loads(response['Payload'].read())
+                print(response)
+            except ClientError as e:
+                print('Error during remediation, error:' + str(e))
+            except Exception as e:
+                print('Error during remediation, error:' + str(e))
+        #endregion
                                 
         return {
             'statusCode': response['statusCode'],
             'body': response['body']
         }
+        

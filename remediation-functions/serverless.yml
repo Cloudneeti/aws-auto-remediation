@@ -134,6 +134,72 @@ functions:
       Version: ${opt:version, '1.0'}
       Description: Cloudneeti automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'cn-remediation'}
+  
+  ec2:
+    handler: ec2/ec2instance_suborchestrator.lambda_handler
+    name: cn-aws-remediate-ec2-instance
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+  
+  dynamodb:
+    handler: dynamodb/dynamodb_suborchestrator.lambda_handler
+    name: cn-aws-remediate-dynamodb
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+  
+  config:
+    handler: config/config_suborchestrator.lambda_handler
+    name: cn-aws-remediate-config
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+  
+  asg:
+    handler: asg/asg_suborchestrator.lambda_handler
+    name: cn-aws-remediate-asg
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+  
+  cloudformation:
+    handler: cloudformation/cloudformation_suborchestrator.lambda_handler
+    name: cn-aws-remediate-cloudformation
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+  
+  sqs:
+    handler: sqs/sqs_suborchestrator.lambda_handler
+    name: cn-aws-remediate-sqs
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
       
 resources:
   Resources:
