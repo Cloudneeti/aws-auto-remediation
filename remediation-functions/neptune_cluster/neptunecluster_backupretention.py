@@ -1,31 +1,37 @@
 '''
-Enable sqs queue Server-Side Encryption
+neptune auto version upgrade
 '''
 
 from botocore.exceptions import ClientError
 
-def run_remediation(sqs, queue_url):
-    print("Executing sqs queue remediation")
-    queue_not_enabled_sse = True
+def run_remediation(neptune, cluster_name):
+    print("Executing remediation")            
+    backup='' 
     try:
-        response = sqs.get_queue_attributes(QueueUrl = queue_url, AttributeNames = ['All'])['Attributes']
-        if response['KmsMasterKeyId']:
-            queue_not_enabled_sse = False
+        response = neptune.describe_db_clusters(DBClusterIdentifier=cluster_name)['DBClusters']
+        backupretention=response[0]['BackupRetentionPeriod']
+        if backupretention < 7:
+            backup = False
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
     except Exception as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
-    
-    if queue_not_enabled_sse:   
+
+    if not backup:          
         try:
-            result = sqs.set_queue_attributes(QueueUrl=queue_url,Attributes={"KmsMasterKeyId": "alias/aws/sqs","KmsDataKeyReusePeriodSeconds": "300"})
+            result = neptune.modify_db_cluster(
+                        DBClusterIdentifier=cluster_name,
+                        BackupRetentionPeriod=7,
+                        ApplyImmediately=True
+                    )
+
             responseCode = result['ResponseMetadata']['HTTPStatusCode']
             if responseCode >= 400:
                 output = "Unexpected error: %s \n" % str(result)
             else:
-                output = "Enabled Server-Side Encryption for SQS : %s \n" % queue_url
+                output = "backup retention is now enabled for neptune cluster : %s \n" % cluster_name
                     
         except ClientError as e:
             responseCode = 400
@@ -38,3 +44,4 @@ def run_remediation(sqs, queue_url):
 
     print(str(responseCode)+'-'+output)
     return responseCode,output
+

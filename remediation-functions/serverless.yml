@@ -18,7 +18,7 @@ functions:
     events:
       - cloudwatchLog: 
           logGroup: 'cn-log-group'
-          filter: '{$.eventName="CreateTrail" || $.eventName="UpdateTrail" || $.eventName="StopLogging" || $.eventName="CreateLoadBalancer" || $.eventName="ModifyLoadBalancerAttributes" || $.eventName="UpdateAccountPasswordPolicy" || $.eventName="DeleteAccountPasswordPolicy" || $.eventName="CreateStream" || $.eventName="StopStreamEncryption" || $.eventName="DisableEnhancedMonitoring" || $.eventName="CreateKey" || $.eventName="DisableKeyRotation" || $.eventName="CreateDBCluster" || $.eventName="ModifyDBCluster" || $.eventName="CreateDBInstance" || $.eventName="ModifyDBInstance" || $.eventName="CreateCluster" || $.eventName="ModifyCluster" || $.eventName="CreateBucket" || $.eventName="PutBucketVersioning" || $.eventName="DeleteBucketEncryption" || $.eventName="PutBucketAcl" || $.eventName="PutAccelerateConfiguration" || $.eventName="PutBucketPublicAccessBlock"}' 
+          filter: '{$.eventName="CreateTrail" || $.eventName="UpdateTrail" || $.eventName="StopLogging" || $.eventName="CreateLoadBalancer" || $.eventName="ModifyLoadBalancerAttributes" || $.eventName="UpdateAccountPasswordPolicy" || $.eventName="DeleteAccountPasswordPolicy" || $.eventName="CreateStream" || $.eventName="StopStreamEncryption" || $.eventName="DisableEnhancedMonitoring" || $.eventName="CreateKey" || $.eventName="DisableKeyRotation" || $.eventName="CreateDBCluster" || $.eventName="ModifyDBCluster" || $.eventName="CreateDBInstance" || $.eventName="ModifyDBInstance" || $.eventName="CreateCluster" || $.eventName="ModifyCluster" || $.eventName="CreateBucket" || $.eventName="PutBucketVersioning" || $.eventName="DeleteBucketEncryption" || $.eventName="PutBucketAcl" || $.eventName="PutAccelerateConfiguration" || $.eventName="PutBucketPublicAccessBlock" || $.eventName="CreateTable" || $.eventName="CreateTableReplica" || $.eventName="RestoreTableFromBackup" || $.eventName="UpdateTable" || $.eventName="UpdateContinuousBackups" || $.eventName="PutConfigurationRecorder" || $.eventName="StopConfigurationRecorder" || $.eventName="UpdateAutoScalingGroup" || $.eventName="CreateAutoScalingGroup" || $.eventName="CreateStack" || $.eventName="UpdateStack" || $.eventName="RunInstances" || $.eventName="StartInstances" || $.eventName="ModifyInstanceAttribute" || $.eventName="CreateQueue" || $.eventName="SetQueueAttributes"}' 
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}
@@ -135,6 +135,28 @@ functions:
       Description: Cloudneeti automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'cn-remediation'}
   
+  neptune_cluster:
+    handler: neptune_cluster/neptunecluster_suborchestrator.lambda_handler
+    name: cn-aws-remediate-neptune-cluster
+    timeout: 900
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+
+  neptune_instance:
+    handler: neptune_instance/neptuneinstance_suborchestrator.lambda_handler
+    name: cn-aws-remediate-neptune-instance
+    timeout: 900
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+
   ec2:
     handler: ec2/ec2instance_suborchestrator.lambda_handler
     name: cn-aws-remediate-ec2-instance
@@ -265,6 +287,13 @@ resources:
               - s3:PutBucketAcl
               - s3:PutAccelerateConfiguration
               - s3:PutBucketPublicAccessBlock
+              - dynamodb:UpdateContinuousBackups
+              - ec2:MonitorInstances
+              - ec2:ModifyInstanceAttribute
+              - autoscaling:UpdateAutoScalingGroup
+              - cloudformation:UpdateTerminationProtection
+              - config:PutConfigurationRecorder
+              - sqs:SetQueueAttributes
               Resource: "*"
     CNOrchestratorRole:
       Type: AWS::IAM::Role

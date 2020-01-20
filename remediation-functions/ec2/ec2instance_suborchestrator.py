@@ -37,7 +37,7 @@ def lambda_handler(event, context):
 
         try:
             Region = event["Region"]
-            Instance_name = event["Instance_name"]
+            Instance_ID = event["InstanceID"]
             records_json = json.loads(event["policies"])
             records = records_json["RemediationPolicies"]
         except:
@@ -61,7 +61,7 @@ def lambda_handler(event, context):
         
         if "EC2MonitoringState" in str(records):
             try:
-                ec2_detailed_monitoring.run_remediation(ec2,Instance_name)
+                ec2_detailed_monitoring.run_remediation(ec2,Instance_ID)
             except ClientError as e:
                 print(e)
                 return {  
@@ -77,7 +77,7 @@ def lambda_handler(event, context):
 
         if "EC2TerminationProtection" in str(records):
             try:
-                ec2_termination_protection.run_remediation(ec2,Instance_name)
+                ec2_termination_protection.run_remediation(ec2,Instance_ID)
             except ClientError as e:
                 print(e)
                 return {  
@@ -91,11 +91,11 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }   
         
-        print('remediated-' + Instance_name)
+        print('remediated-' + Instance_ID)
         #returning the output Array in json format
         return {  
             'statusCode': 200,
-            'body': json.dumps('remediated-' + Instance_name)
+            'body': json.dumps('remediated-' + Instance_ID)
         }
 
     else:
@@ -119,7 +119,7 @@ def lambda_handler(event, context):
         try:
             Region_name = json.loads(event["body"])["Region"]
             Region = common.getRegionName(Region_name)
-            Instance_name = json.loads(event["body"])["ResourceName"]
+            Instance_ID = json.loads(event["body"])["ResourceName"]
         except:
             Region = ""
 
@@ -141,10 +141,10 @@ def lambda_handler(event, context):
 
         try:
             if PolicyId == "EC2MonitoringState":  
-                responseCode,output = ec2_detailed_monitoring.run_remediation(ec2,Instance_name)
+                responseCode,output = ec2_detailed_monitoring.run_remediation(ec2,Instance_ID)
 
             if PolicyId == "EC2TerminationProtection":  
-                responseCode,output = ec2_termination_protection.run_remediation(ec2,Instance_name)
+                responseCode,output = ec2_termination_protection.run_remediation(ec2,Instance_ID)
         
         except ClientError as e:
             responseCode = 400

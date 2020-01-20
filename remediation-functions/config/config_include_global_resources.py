@@ -4,14 +4,13 @@ Global resources are included into Amazon Config service
 
 from botocore.exceptions import ClientError
 
-def run_remediation(config, table_name):
-    print("Executing config table remediation")
-
-    current_retention = ''
+def run_remediation(config, ConfigRoleARN, Name):
+    print("Executing config remediation")
 
     try:
-        response = config.describe_continuous_backups(TableName=table_name)['ContinuousBackupsDescription']
-        current_retention=response[0]['ContinuousBackupsStatus']
+        config_det = config.describe_configuration_recorders()["ConfigurationRecorders"]
+        ConfigRoleARN = config_det[0]['roleARN']
+        Name = config_det[0]['name']
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
@@ -19,19 +18,25 @@ def run_remediation(config, table_name):
         responseCode = 400
         output = "Unexpected error: " + str(e)  
 
-    if not current_retention: 
+    if not config_det[0]['recordingGroup']['includeGlobalResourceTypes']: 
         try:
-            result = config.update_continuous_backups(
-                                TableName=table_name,
-                                PointInTimeRecoverySpecification={
-                                    'PointInTimeRecoveryEnabled': True
-                                })
+            result = config.put_configuration_recorder(
+                                ConfigurationRecorder={
+                                    'name': Name,
+                                    'roleARN': ConfigRoleARN,
+                                    'recordingGroup': {
+                                        'allSupported': config_det[0]['recordingGroup']['allSupported'],
+                                        'includeGlobalResourceTypes': True,
+                                        'resourceTypes': config_det[0]['recordingGroup']['resourceTypes']
+                                    }
+                                }
+                            )
 
             responseCode = result['ResponseMetadata']['HTTPStatusCode']
             if responseCode >= 400:
                 output = "Unexpected error: %s \n" % str(result)
             else:
-                output = "Enabled continuous backups for : %s \n" % table_name
+                output = "Enabled inclusion of global resources for config : %s \n" % Name
                     
         except ClientError as e:
             responseCode = 400
@@ -43,7 +48,7 @@ def run_remediation(config, table_name):
             print(output)
     else:
         responseCode = 200
-        output = "config table is already compliant"
+        output = "config is already compliant"
 
     print(str(responseCode)+'-'+output)
     return responseCode,output

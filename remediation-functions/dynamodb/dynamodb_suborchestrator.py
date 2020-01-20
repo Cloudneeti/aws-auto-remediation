@@ -129,10 +129,10 @@ def lambda_handler(event, context):
         
         except ClientError as e:
             responseCode = 400
-            output = "Unable to remediate classic load balancer: " + str(e)
+            output = "Unable to remediate DynamoDB Table: " + str(e)
         except Exception as e:
             responseCode = 400
-            output = "Unable to remediate classic load balancer: " + str(e)
+            output = "Unable to remediate DynamoDB Table: " + str(e)
 
             # returning the output Array in json format
         return {  

@@ -18,7 +18,7 @@ functions:
     events:
       - cloudwatchLog: 
           logGroup: 'cn-log-group'
-          filter: '{$.eventName="CreateTrail" || $.eventName="UpdateTrail" || $.eventName="StopLogging" || $.eventName="CreateLoadBalancer" || $.eventName="ModifyLoadBalancerAttributes" || $.eventName="UpdateAccountPasswordPolicy" || $.eventName="DeleteAccountPasswordPolicy" || $.eventName="CreateStream" || $.eventName="StopStreamEncryption" || $.eventName="DisableEnhancedMonitoring" || $.eventName="CreateKey" || $.eventName="DisableKeyRotation" || $.eventName="CreateDBCluster" || $.eventName="ModifyDBCluster" || $.eventName="CreateDBInstance" || $.eventName="ModifyDBInstance" || $.eventName="CreateCluster" || $.eventName="ModifyCluster" || $.eventName="CreateBucket" || $.eventName="PutBucketVersioning" || $.eventName="DeleteBucketEncryption" || $.eventName="PutBucketAcl" || $.eventName="PutAccelerateConfiguration" || $.eventName="PutBucketPublicAccessBlock"}'
+          filter: '{$.eventName="CreateTrail" || $.eventName="UpdateTrail" || $.eventName="StopLogging" || $.eventName="CreateLoadBalancer" || $.eventName="ModifyLoadBalancerAttributes" || $.eventName="UpdateAccountPasswordPolicy" || $.eventName="DeleteAccountPasswordPolicy" || $.eventName="CreateStream" || $.eventName="StopStreamEncryption" || $.eventName="DisableEnhancedMonitoring" || $.eventName="CreateKey" || $.eventName="DisableKeyRotation" || $.eventName="CreateDBCluster" || $.eventName="ModifyDBCluster" || $.eventName="CreateDBInstance" || $.eventName="ModifyDBInstance" || $.eventName="CreateCluster" || $.eventName="ModifyCluster" || $.eventName="CreateBucket" || $.eventName="PutBucketVersioning" || $.eventName="DeleteBucketEncryption" || $.eventName="PutBucketAcl" || $.eventName="PutAccelerateConfiguration" || $.eventName="PutBucketPublicAccessBlock" || $.eventName="CreateTable" || $.eventName="CreateTableReplica" || $.eventName="RestoreTableFromBackup" || $.eventName="UpdateTable" || $.eventName="UpdateContinuousBackups" || $.eventName="PutConfigurationRecorder" || $.eventName="StopConfigurationRecorder" || $.eventName="UpdateAutoScalingGroup" || $.eventName="CreateAutoScalingGroup" || $.eventName="CreateStack" || $.eventName="UpdateStack" || $.eventName="RunInstances" || $.eventName="StartInstances" || $.eventName="ModifyInstanceAttribute" || $.eventName="CreateQueue" || $.eventName="SetQueueAttributes"}'
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}
@@ -89,6 +89,13 @@ resources:
               - s3:PutBucketAcl
               - s3:PutAccelerateConfiguration
               - s3:PutBucketPublicAccessBlock
+              - dynamodb:UpdateContinuousBackups
+              - ec2:MonitorInstances
+              - ec2:ModifyInstanceAttribute
+              - autoscaling:UpdateAutoScalingGroup
+              - cloudformation:UpdateTerminationProtection
+              - config:PutConfigurationRecorder
+              - sqs:SetQueueAttributes
               Resource: "*"
     CNLambdaRole:
       Type: AWS::IAM::Role

@@ -37,7 +37,8 @@ def lambda_handler(event, context):
 
         try:
             Region = event["Region"]
-            table_name = event["table_name"]
+            ConfigRoleARN = event["ConfigRoleARN"]
+            Name = event["Name"]
             records_json = json.loads(event["policies"])
             records = records_json["RemediationPolicies"]
         except:
@@ -61,7 +62,7 @@ def lambda_handler(event, context):
         
         if "ConfigCaptureGlobalResources" in str(records):
             try:
-                config_include_global_resources.run_remediation(config,table_name)
+                config_include_global_resources.run_remediation(config,ConfigRoleARN,Name)
             except ClientError as e:
                 print(e)
                 return {  
@@ -75,11 +76,11 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }   
         
-        print('remediated-' + table_name)
+        print('remediated-' + Name)
         #returning the output Array in json format
         return {  
             'statusCode': 200,
-            'body': json.dumps('remediated-' + table_name)
+            'body': json.dumps('remediated-' + Name)
         }
 
     else:
@@ -103,7 +104,8 @@ def lambda_handler(event, context):
         try:
             Region_name = json.loads(event["body"])["Region"]
             Region = common.getRegionName(Region_name)
-            table_name = json.loads(event["body"])["ResourceName"]
+            ConfigRoleARN = ''
+            Name = ''
         except:
             Region = ""
 
@@ -122,10 +124,10 @@ def lambda_handler(event, context):
                 'statusCode': 400,
                 'body': str(e)
             }
-
+              
         try:
             if PolicyId == "ConfigCaptureGlobalResources":  
-                responseCode,output = config_include_global_resources.run_remediation(config,table_name)
+                responseCode,output = config_include_global_resources.run_remediation(config,ConfigRoleARN,Name)
         
         except ClientError as e:
             responseCode = 400

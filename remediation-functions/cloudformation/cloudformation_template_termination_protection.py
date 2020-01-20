@@ -4,14 +4,11 @@ Enable Termination Protection feature for AWS CloudFormation stacks
 
 from botocore.exceptions import ClientError
 
-def run_remediation(cloudformation, table_name):
+def run_remediation(cloudformation, StackName):
     print("Executing cloudformation remediation")
-
-    current_retention = ''
-
     try:
-        response = cloudformation.describe_continuous_backups(TableName=table_name)['ContinuousBackupsDescription']
-        current_retention=response[0]['ContinuousBackupsStatus']
+        response = cloudformation.describe_stacks(StackName=StackName)['ContinuousBackupsDescription']
+        termination_protection=response[0]['EnableTerminationProtection']
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
@@ -19,15 +16,15 @@ def run_remediation(cloudformation, table_name):
         responseCode = 400
         output = "Unexpected error: " + str(e)  
 
-    if not current_retention: 
+    if not termination_protection: 
         try:
-            result = cloudformation.update_termination_protection(EnableTerminationProtection=True, StackName='string')
+            result = cloudformation.update_termination_protection(EnableTerminationProtection=True, StackName=StackName)
 
             responseCode = result['ResponseMetadata']['HTTPStatusCode']
             if responseCode >= 400:
                 output = "Unexpected error: %s \n" % str(result)
             else:
-                output = "Enabled Termination Protection feature for CloudFormation stack : %s \n" % table_name
+                output = "Enabled Termination Protection feature for CloudFormation stack : %s \n" % StackName
                     
         except ClientError as e:
             responseCode = 400

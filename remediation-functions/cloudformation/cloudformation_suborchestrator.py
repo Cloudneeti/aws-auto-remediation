@@ -37,7 +37,7 @@ def lambda_handler(event, context):
 
         try:
             Region = event["Region"]
-            table_name = event["table_name"]
+            StackName = event["StackName"]
             records_json = json.loads(event["policies"])
             records = records_json["RemediationPolicies"]
         except:
@@ -61,7 +61,7 @@ def lambda_handler(event, context):
         
         if "StackTermination" in str(records):
             try:
-                cloudformation_template_termination_protection.run_remediation(cloudformation,table_name)
+                cloudformation_template_termination_protection.run_remediation(cloudformation,StackName)
             except ClientError as e:
                 print(e)
                 return {  
@@ -75,11 +75,11 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }   
         
-        print('remediated-' + table_name)
+        print('remediated-' + StackName)
         #returning the output Array in json format
         return {  
             'statusCode': 200,
-            'body': json.dumps('remediated-' + table_name)
+            'body': json.dumps('remediated-' + StackName)
         }
 
     else:
@@ -103,7 +103,7 @@ def lambda_handler(event, context):
         try:
             Region_name = json.loads(event["body"])["Region"]
             Region = common.getRegionName(Region_name)
-            table_name = json.loads(event["body"])["ResourceName"]
+            StackName = json.loads(event["body"])["ResourceName"]
         except:
             Region = ""
 
@@ -125,14 +125,14 @@ def lambda_handler(event, context):
 
         try:
             if PolicyId == "StackTermination":  
-                responseCode,output = cloudformation_template_termination_protection.run_remediation(cloudformation,table_name)
+                responseCode,output = cloudformation_template_termination_protection.run_remediation(cloudformation,StackName)
         
         except ClientError as e:
             responseCode = 400
-            output = "Unable to remediate classic load balancer: " + str(e)
+            output = "Unable to remediate Cloudformation stack: " + str(e)
         except Exception as e:
             responseCode = 400
-            output = "Unable to remediate classic load balancer: " + str(e)
+            output = "Unable to remediate Cloudformation stack: " + str(e)
 
             # returning the output Array in json format
         return {  

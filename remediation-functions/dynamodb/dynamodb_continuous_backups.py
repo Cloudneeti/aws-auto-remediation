@@ -4,14 +4,14 @@ Enable DynamoDB table continuous backups
 
 from botocore.exceptions import ClientError
 
-def run_remediation(dynamodb, table_name):
+def run_remediation(dynamodb, DynamodbTableName):
     print("Executing DynamoDB table remediation")
 
-    current_retention = ''
+    continuous_backup = ''
 
     try:
-        response = dynamodb.describe_continuous_backups(TableName=table_name)['ContinuousBackupsDescription']
-        current_retention=response[0]['ContinuousBackupsStatus']
+        response = dynamodb.describe_continuous_backups(TableName=DynamodbTableName)['ContinuousBackupsDescription']
+        continuous_backup=response[0]['ContinuousBackupsStatus']
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
@@ -19,10 +19,10 @@ def run_remediation(dynamodb, table_name):
         responseCode = 400
         output = "Unexpected error: " + str(e)  
 
-    if not current_retention: 
+    if not continuous_backup: 
         try:
             result = dynamodb.update_continuous_backups(
-                                TableName=table_name,
+                                TableName=DynamodbTableName,
                                 PointInTimeRecoverySpecification={
                                     'PointInTimeRecoveryEnabled': True
                                 })
@@ -31,7 +31,7 @@ def run_remediation(dynamodb, table_name):
             if responseCode >= 400:
                 output = "Unexpected error: %s \n" % str(result)
             else:
-                output = "Enabled continuous backups for : %s \n" % table_name
+                output = "Enabled continuous backups for : %s \n" % DynamodbTableName
                     
         except ClientError as e:
             responseCode = 400
