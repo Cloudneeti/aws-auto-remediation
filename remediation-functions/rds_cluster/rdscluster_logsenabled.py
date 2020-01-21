@@ -82,7 +82,7 @@ def run_remediation(rds, RDSIdentifier):
 
             print(str(responseCode)+'-'+output)
         
-        else if DBengine == 'aurora-postgresql' and len(RDSlogs) == 0:
+        elif DBengine == 'aurora-postgresql' and len(RDSlogs) == 0:
             try:
                 result = rds.modify_db_cluster(
                     DBClusterIdentifier=RDSIdentifier,

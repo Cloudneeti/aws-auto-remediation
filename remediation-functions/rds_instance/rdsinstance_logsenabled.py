@@ -44,7 +44,7 @@ def run_remediation(rds, RDSInstanceName):
                 else:
                     output = "Log Export Enabled for rds-instance: %s \n" % RDSInstanceName
             
-            else if response[0]['Engine'] in ['oracle-se', 'oracle-ee', 'oracle-se1', 'oracle-se2']:
+            elif response[0]['Engine'] in ['oracle-se', 'oracle-ee', 'oracle-se1', 'oracle-se2']:
                 result = rds.modify_db_instance(
                     DBInstanceIdentifier=RDSInstanceName,
                     ApplyImmediately=True,

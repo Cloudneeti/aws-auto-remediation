@@ -18,8 +18,8 @@ def lambda_handler(event, context):
     multiaz=["SQLMultiAZEnabled","MariadbMultiAZEnabled","OracleMultiAZEnabled","SQLServerMultiAZEnabled","MySQLMultiAZEnabled"]
     performance_insights=["SQLPerformanceInsights","MariadbPerformanceInsights","OraclePerformanceInsights","SQLServerPerformanceInsights","AuroraInstancePerformanceInsights","MySQLPerformanceInsights"]
     instance_logexport=["MySQLlogExport","MariadblogExport","OraclelogExport"]
+    instance_datatiertag=["SQLdataTierConfig", "MariadbdataTierConfig", "OracledataTierConfig", "SQLServerdataTierConfig", "AuroraInstancedataTierConfig", "MySQLdataTierConfig"]
 
-    
     try:
         PolicyId = json.loads(event["body"])["PolicyId"]
     except:
@@ -194,6 +194,22 @@ def lambda_handler(event, context):
                 return {
                     'statusCode': 400,
                     'body': str(e)
+                }
+        
+        if set(instance_datatiertag).intersection(set(records)):
+            try:
+                rdsinstance_datatiertag.run_remediation(rds,RDSInstanceName)
+            except ClientError as e:
+                print(e)
+                return {  
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+            except Exception as e:
+                print(e)
+                return {
+                    'statusCode': 400,
+                    'body': str(e)
                 } 
                 
         print('remediated-' + RDSInstanceName)
@@ -269,6 +285,9 @@ def lambda_handler(event, context):
             
             if PolicyId in instance_logexport:
                 responseCode,output = rdsinstance_logsenabled.run_remediation(rds,RDSInstanceName)
+            
+            if PolicyId in instance_datatiertag:
+                responseCode,output = rdsinstance_datatiertag.run_remediation(rds,RDSInstanceName)
         
         except ClientError as e:
             responseCode = 400

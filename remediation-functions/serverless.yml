@@ -281,6 +281,7 @@ resources:
               - kms:EnableKeyRotation
               - rds:ModifyDBCluster
               - rds:ModifyDBInstance
+              - rds:AddTagsToResource
               - redshift:ModifyCluster
               - s3:PutBucketVersioning
               - s3:PutEncryptionConfiguration
