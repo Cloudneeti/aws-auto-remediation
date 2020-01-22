@@ -7,19 +7,17 @@ from botocore.exceptions import ClientError
 def run_remediation(ec2, Instance_name):
     print("Executing ec2 remediation")            
 
-    detailed_monitoring=False
+    detailed_monitoring = False
     try:
-        response=ec2..describe_instances(InstanceIds=[Instance_name],DryRun=True)['Reservations'][0]['Instances'][0]['Monitoring']  #review with lambda
-        detailed_monitoring=response[0]['Monitoring']
+        response=ec2.describe_instances(InstanceIds=[Instance_name])['Reservations'][0]['Instances'][0]['Monitoring']  #review with lambda
+        if response['State'] == 'enabled':
+            detailed_monitoring = True
     except:
         detailed_monitoring=False
 
     if not detailed_monitoring:   
         try:
-            result = ec2.monitor_instances(
-                        InstanceIds=[Instance_name]
-                        DryRun=True
-                    )
+            result = ec2.monitor_instances(InstanceIds=[Instance_name])
 
             responseCode = result['ResponseMetadata']['HTTPStatusCode']
             if responseCode >= 400:

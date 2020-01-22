@@ -6,7 +6,7 @@ import json
 import boto3
 import common
 from botocore.exceptions import ClientError
-from neptune import *
+from neptune_instance import *
 
 def lambda_handler(event, context):
     global aws_access_key_id, aws_secret_access_key, aws_session_token, CustAccID, Region
