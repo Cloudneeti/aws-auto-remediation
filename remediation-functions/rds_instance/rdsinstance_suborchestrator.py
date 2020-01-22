@@ -19,7 +19,7 @@ def lambda_handler(event, context):
     performance_insights=["SQLPerformanceInsights","MariadbPerformanceInsights","OraclePerformanceInsights","SQLServerPerformanceInsights","AuroraInstancePerformanceInsights","MySQLPerformanceInsights"]
     instance_logexport=["MySQLlogExport","MariadblogExport","OraclelogExport"]
     instance_datatiertag=["SQLdataTierConfig", "MariadbdataTierConfig", "OracledataTierConfig", "SQLServerdataTierConfig", "AuroraInstancedataTierConfig", "MySQLdataTierConfig"]
-
+    instance_iam_auth=["SQLIAMAuthEnabled", "MySQLIAMAuthEnabled"]
     try:
         PolicyId = json.loads(event["body"])["PolicyId"]
     except:
@@ -210,6 +210,22 @@ def lambda_handler(event, context):
                 return {
                     'statusCode': 400,
                     'body': str(e)
+                }
+        
+        if set(instance_iam_auth).intersection(set(records)):
+            try:
+                rdsinstance_iam_auth.run_remediation(rds,RDSInstanceName)
+            except ClientError as e:
+                print(e)
+                return {  
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+            except Exception as e:
+                print(e)
+                return {
+                    'statusCode': 400,
+                    'body': str(e)
                 } 
                 
         print('remediated-' + RDSInstanceName)
@@ -289,6 +305,9 @@ def lambda_handler(event, context):
             if PolicyId in instance_datatiertag:
                 responseCode,output = rdsinstance_datatiertag.run_remediation(rds,RDSInstanceName)
         
+            if PolicyId in instance_iam_auth:
+                responseCode,output = rdsinstance_iam_auth.run_remediation(rds,RDSInstanceName)
+                
         except ClientError as e:
             responseCode = 400
             output = "Unable to remediate RDS Instance: " + str(e)

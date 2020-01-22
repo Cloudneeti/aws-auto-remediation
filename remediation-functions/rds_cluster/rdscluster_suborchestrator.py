@@ -16,6 +16,7 @@ def lambda_handler(event, context):
     deletion_protection=["AuroraDeleteProtection", "AuroraServerlessDeleteProtection", "AuroraPostgresServerlessDeleteProtection"]
     cluster_logexport=["AuroralogExport","CloudwatchLogsExports"]
     cluster_datatier_tag=["AuroradataTierConfig", "AuroraServerlessdataTierConfig", "AuroraPostgresServerlessdataTierConfig"]
+    cluster_iam_auth=["AuroraIAMAuthEnabled"]
     
     try:
         PolicyId = json.loads(event["body"])["PolicyId"]
@@ -161,6 +162,22 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
         
+        if set(cluster_iam_auth).intersection(set(records)):
+            try:
+                rdscluster_iam_auth.run_remediation(rds,RDSClusterName)
+            except ClientError as e:
+                print(e)
+                return {  
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+            except Exception as e:
+                print(e)
+                return {
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+        
         print('remediated-' + RDSClusterName)
         #returning the output Array in json format
         return {  
@@ -228,6 +245,9 @@ def lambda_handler(event, context):
             
             if PolicyId in cluster_datatier_tag:
                 responseCode,output = rdscluster_datatiertag.run_remediation(rds,RDSClusterName)
+            
+            if PolicyId in cluster_iam_auth:
+                responseCode,output = rdscluster_iam_auth.run_remediation(rds,RDSClusterName)
                 
         except ClientError as e:
             responseCode = 400
