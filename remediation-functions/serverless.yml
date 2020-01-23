@@ -18,7 +18,7 @@ functions:
     events:
       - cloudwatchLog: 
           logGroup: 'cn-log-group'
-          filter: '{$.eventName="CreateTrail" || $.eventName="UpdateTrail" || $.eventName="StopLogging" || $.eventName="CreateLoadBalancer" || $.eventName="ModifyLoadBalancerAttributes" || $.eventName="UpdateAccountPasswordPolicy" || $.eventName="DeleteAccountPasswordPolicy" || $.eventName="CreateStream" || $.eventName="StopStreamEncryption" || $.eventName="DisableEnhancedMonitoring" || $.eventName="CreateKey" || $.eventName="DisableKeyRotation" || $.eventName="CreateDBCluster" || $.eventName="ModifyDBCluster" || $.eventName="CreateDBInstance" || $.eventName="ModifyDBInstance" || $.eventName="CreateCluster" || $.eventName="ModifyCluster" || $.eventName="CreateBucket" || $.eventName="PutBucketVersioning" || $.eventName="DeleteBucketEncryption" || $.eventName="PutBucketAcl" || $.eventName="PutAccelerateConfiguration" || $.eventName="PutBucketPublicAccessBlock" || $.eventName="CreateTable" || $.eventName="CreateTableReplica" || $.eventName="RestoreTableFromBackup" || $.eventName="UpdateTable" || $.eventName="UpdateContinuousBackups" || $.eventName="PutConfigurationRecorder" || $.eventName="StopConfigurationRecorder" || $.eventName="UpdateAutoScalingGroup" || $.eventName="CreateAutoScalingGroup" || $.eventName="CreateStack" || $.eventName="UpdateStack" || $.eventName="RunInstances" || $.eventName="StartInstances" || $.eventName="ModifyInstanceAttribute" || $.eventName="CreateQueue" || $.eventName="SetQueueAttributes"}' 
+          filter: '{$.eventName="CreateTrail" || $.eventName="StopLogging" || $.eventName="CreateDBCluster" || $.eventName="ModifyDBCluster" || $.eventName="CreateDBInstance" || $.eventName="ModifyDBInstance" || $.eventName="CreateCluster" || $.eventName="ModifyCluster" || $.eventName="CreateBucket" || $.eventName="PutBucketVersioning" || $.eventName="PutAccelerateConfiguration" || $.eventName="PutBucketPublicAccessBlock" || $.eventName="CreateTable" || $.eventName="CreateTableReplica" || $.eventName="RestoreTableFromBackup" || $.eventName="UpdateTable" || $.eventName="UpdateContinuousBackups" || $.eventName="PutConfigurationRecorder" || $.eventName="StopConfigurationRecorder" || $.eventName="UpdateAutoScalingGroup" || $.eventName="CreateAutoScalingGroup" || $.eventName="CreateStack" || $.eventName="UpdateStack" || $.eventName="RunInstances" || $.eventName="StartInstances" || $.eventName="ModifyInstanceAttribute" || $.eventName="CreateQueue" || $.eventName="SetQueueAttributes"}'
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}
@@ -134,7 +134,7 @@ functions:
       Version: ${opt:version, '1.0'}
       Description: Cloudneeti automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'cn-remediation'}
-  
+
   neptune_cluster:
     handler: neptune_cluster/neptunecluster_suborchestrator.lambda_handler
     name: cn-aws-remediate-neptune-cluster
@@ -222,7 +222,18 @@ functions:
       Version: ${opt:version, '1.0'}
       Description: Cloudneeti automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'cn-remediation'}
-      
+  
+  rds_snapshots:
+    handler: rds_snapshots/rdssnapshot_suborchestrator.lambda_handler
+    name: cn-aws-remediate-rdssnapshot
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+    
 resources:
   Resources:
     CNCloudTrail:
@@ -282,6 +293,8 @@ resources:
               - rds:ModifyDBCluster
               - rds:ModifyDBInstance
               - rds:AddTagsToResource
+              - rds:ModifyDBSnapshot
+              - rds:ModifyDBSnapshotAttribute
               - redshift:ModifyCluster
               - s3:PutBucketVersioning
               - s3:PutEncryptionConfiguration
