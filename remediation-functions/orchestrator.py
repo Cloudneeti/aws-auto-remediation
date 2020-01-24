@@ -28,7 +28,7 @@ def lambda_handler(event, context):
     cloudformation_list = ["StackTermination"]
     asg_list = ["ASGCooldown"]
     config_list = ["ConfigCaptureGlobalResources"]
-    sqs_list = ["SQSSSEEnabled"]
+    sqs_list = ["SQSSSEEnabled", "SQSDeadLetterQueue", "SQSEncryptedKMS"]
     rds_snapshot = ["RDSSnapshotNoPublicAccess"]
     
     try:
@@ -703,28 +703,33 @@ def lambda_handler(event, context):
                     try:
                         Queue_Url = log_event["requestParameters"]["queueUrl"]
                         Region = log_event["awsRegion"]
-
-                        remediationObj = {
-                            "accountId": AWSAccId,
-                            "QueueUrl": Queue_Url,
-                            "Region" : Region,
-                            "policies": records
-                        }
-                        
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-sqs', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                        response = json.loads(response['Payload'].read())
-                        print(response)
-                        return {
-                            'statusCode': 200,
-                            'body': json.dumps(response)
-                        }
+                        if '_DeadLetter_Queue' not in Queue_Url:
+                            remediationObj = {
+                                "accountId": AWSAccId,
+                                "QueueUrl": Queue_Url,
+                                "Region" : Region,
+                                "policies": records
+                            }
+                            
+                            response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-sqs', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
+                        else:
+                            return {
+                                'statusCode': 200,
+                                'body': 'Queue is an deadletter queue'
+                            }
                     except ClientError as e:
                         print('Error during remediation, error:' + str(e))
                     except Exception as e:
                         print('Error during remediation, error:' + str(e))
                 #endregion
 
-                #sqs sub-orchestrator call
+                #rds-snapshot sub-orchestrator call
                 if EventName in ["ModifyDBClusterSnapshotAttribute", "ModifyDBSnapshotAttribute"]:
                     try:
                         if EventName == "ModifyDBClusterSnapshotAttribute":

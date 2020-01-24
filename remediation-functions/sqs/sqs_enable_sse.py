@@ -35,6 +35,10 @@ def run_remediation(sqs, queue_url):
             responseCode = 400
             output = "Unexpected error: " + str(e)
             print(output)
+    else:
+        responseCode=200
+        output='erver-Side Encryption already enabled for queue : '+queue_url
+        print(output)
 
     print(str(responseCode)+'-'+output)
     return responseCode,output
