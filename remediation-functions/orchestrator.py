@@ -22,7 +22,7 @@ def lambda_handler(event, context):
     redshift_list = ["RedShiftNotPublic", "RedShiftVersionUpgrade", "RedShiftAutomatedSnapshot"]
     neptune_instance_list = ["NeptuneAutoMinorVersionUpgrade"]
     neptune_cluster_list = ["NeptuneBackupRetention"]
-    s3_list = ["S3VersioningEnabled", "S3EncryptionEnabled", "S3bucketNoPublicAAUFull", "S3bucketNoPublicAAURead", "S3bucketNoPublicAAUReadACP", "S3bucketNoPublicAAUWrite", "S3bucketNoPublicAAUWriteACP", "S3notPublictoInternet", "S3notPublicRead", "S3notPublicReadACP", "S3notPublicWrite", "S3notPublicWriteACP","S3TransferAccelerateConfig","S3busketpublicaccess"]
+    s3_list = ["S3VersioningEnabled", "S3EncryptionEnabled", "S3bucketNoPublicAAUFull", "S3bucketNoPublicAAURead", "S3bucketNoPublicAAUReadACP", "S3bucketNoPublicAAUWrite", "S3bucketNoPublicAAUWriteACP", "S3notPublictoInternet", "S3notPublicRead", "S3notPublicReadACP", "S3notPublicWrite", "S3notPublicWriteACP","S3TransferAccelerateConfig","S3busketpublicaccess","S3ServerAccessLogEnabled"]
     dynamodb_list = ["DynamoDbContinuousBackup"]
     ec2instance_list = ["EC2MonitoringState", "EC2TerminationProtection"]
     cloudformation_list = ["StackTermination"]
@@ -483,7 +483,7 @@ def lambda_handler(event, context):
                 #endregion
 
                 #region S3 sub-orchestrator call
-                if EventName in ["CreateBucket", "PutBucketAcl", "DeleteBucketEncryption", "PutBucketVersioning", "PutBucketPublicAccessBlock", "PutAccelerateConfiguration"]:
+                if EventName in ["CreateBucket", "PutBucketAcl", "DeleteBucketEncryption", "PutBucketVersioning", "PutBucketPublicAccessBlock", "PutAccelerateConfiguration","PutBucketLogging"]:
                     try:
                         bucket = log_event["requestParameters"]["bucketName"]
                         Region = log_event["awsRegion"]
@@ -703,26 +703,20 @@ def lambda_handler(event, context):
                     try:
                         Queue_Url = log_event["requestParameters"]["queueUrl"]
                         Region = log_event["awsRegion"]
-                        if '_DeadLetter_Queue' not in Queue_Url:
-                            remediationObj = {
-                                "accountId": AWSAccId,
-                                "QueueUrl": Queue_Url,
-                                "Region" : Region,
-                                "policies": records
-                            }
-                            
-                            response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-sqs', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                            response = json.loads(response['Payload'].read())
-                            print(response)
-                            return {
-                                'statusCode': 200,
-                                'body': json.dumps(response)
-                            }
-                        else:
-                            return {
-                                'statusCode': 200,
-                                'body': 'Queue is an deadletter queue'
-                            }
+                        remediationObj = {
+                            "accountId": AWSAccId,
+                            "QueueUrl": Queue_Url,
+                            "Region" : Region,
+                            "policies": records
+                        }
+                        
+                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-sqs', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = json.loads(response['Payload'].read())
+                        print(response)
+                        return {
+                            'statusCode': 200,
+                            'body': json.dumps(response)
+                        }
                     except ClientError as e:
                         print('Error during remediation, error:' + str(e))
                     except Exception as e:

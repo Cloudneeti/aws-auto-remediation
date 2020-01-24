@@ -90,6 +90,7 @@ resources:
               - s3:PutEncryptionConfiguration
               - s3:PutBucketAcl
               - s3:PutAccelerateConfiguration
+              - s3:PutBucketLogging
               - s3:PutBucketPublicAccessBlock
               - dynamodb:UpdateContinuousBackups
               - ec2:MonitorInstances

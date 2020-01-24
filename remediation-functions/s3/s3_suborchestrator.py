@@ -141,6 +141,24 @@ def lambda_handler(event, context):
                     'statusCode': 400,
                     'body': str(e)
                 }
+        
+        #enable bucket access logging
+        if 'cn-s3-log-bucket-' not in bucket_name:
+            if "S3ServerAccessLogEnabled" in set(records): 
+                try:
+                    s3_access_logging.run_remediation(s3_client,bucket_name)
+                except ClientError as e:
+                    print(e)
+                    return {  
+                        'statusCode': 400,
+                        'body': str(e)
+                    }   
+                except Exception as e:
+                    print(e)
+                    return {
+                        'statusCode': 400,
+                        'body': str(e)
+                    }
                 
         print('remediated-' + bucket_name)
         #returning the output Array in json format
@@ -206,7 +224,11 @@ def lambda_handler(event, context):
         
             if PolicyId == "S3EncryptionEnabled":  
                 responseCode,output = s3_restrict_public_access.run_remediation(s3_client,bucket_name)
-                
+            
+            if 'cn-s3-log-bucket-' not in bucket_name:
+                if PolicyId == "S3ServerAccessLogEnabled":  
+                    responseCode,output = s3_restrict_public_access.run_remediation(s3_client,bucket_name)
+                    
         except ClientError as e:
             responseCode = 400
             output = "Unable to remediate bucket: " + str(e)

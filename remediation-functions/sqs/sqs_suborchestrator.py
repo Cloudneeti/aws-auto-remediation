@@ -90,22 +90,23 @@ def lambda_handler(event, context):
                     'statusCode': 400,
                     'body': str(e)
                 }
-        
-        if "SQSDeadLetterQueue" in str(records):
-            try:
-                sqs_deadletter_queue.run_remediation(sqs, queue_url)
-            except ClientError as e:
-                print(e)
-                return {  
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-            except Exception as e:
-                print(e)
-                return {
-                    'statusCode': 400,
-                    'body': str(e)
-                }
+                
+        if '_DeadLetter_Queue' not in Queue_Url:
+            if "SQSDeadLetterQueue" in str(records):
+                try:
+                    sqs_deadletter_queue.run_remediation(sqs, queue_url)
+                except ClientError as e:
+                    print(e)
+                    return {  
+                        'statusCode': 400,
+                        'body': str(e)
+                    }
+                except Exception as e:
+                    print(e)
+                    return {
+                        'statusCode': 400,
+                        'body': str(e)
+                    }
                 
         if "SQSEncryptedKMS" in str(records):
             try:
@@ -192,8 +193,9 @@ def lambda_handler(event, context):
             if PolicyId == "SQSSSEEnabled":  
                 responseCode,output = sqs_enable_sse.run_remediation(sqs, queue_url)
             
-            if PolicyId == "SQSDeadLetterQueue":  
-                responseCode,output = sqs_deadletter_queue.run_remediation(sqs, queue_url)
+            if '_DeadLetter_Queue' not in queue_url:
+                if PolicyId == "SQSDeadLetterQueue":  
+                    responseCode,output = sqs_deadletter_queue.run_remediation(sqs, queue_url)
             
             if PolicyId == "SQSEncryptedKMS":  
                 responseCode,output = sqs_encryption_cmk.run_remediation(sqs, kms, queue_url, CustAccID)

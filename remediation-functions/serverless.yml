@@ -301,6 +301,7 @@ resources:
               - s3:PutBucketAcl
               - s3:PutAccelerateConfiguration
               - s3:PutBucketPublicAccessBlock
+              - s3:PutBucketLogging
               - dynamodb:UpdateContinuousBackups
               - ec2:MonitorInstances
               - ec2:ModifyInstanceAttribute
