@@ -22,13 +22,13 @@ def lambda_handler(event, context):
     redshift_list = ["RedShiftNotPublic", "RedShiftVersionUpgrade", "RedShiftAutomatedSnapshot"]
     neptune_instance_list = ["NeptuneAutoMinorVersionUpgrade"]
     neptune_cluster_list = ["NeptuneBackupRetention"]
-    s3_list = ["S3VersioningEnabled", "S3EncryptionEnabled", "S3bucketNoPublicAAUFull", "S3bucketNoPublicAAURead", "S3bucketNoPublicAAUReadACP", "S3bucketNoPublicAAUWrite", "S3bucketNoPublicAAUWriteACP", "S3notPublictoInternet", "S3notPublicRead", "S3notPublicReadACP", "S3notPublicWrite", "S3notPublicWriteACP","S3TransferAccelerateConfig","S3busketpublicaccess","S3ServerAccessLogEnabled"]
+    s3_list = ["S3VersioningEnabled", "S3EncryptionEnabled", "S3bucketNoPublicAAUFull", "S3bucketNoPublicAAURead", "S3bucketNoPublicAAUReadACP", "S3bucketNoPublicAAUWrite", "S3bucketNoPublicAAUWriteACP", "S3notPublictoInternet", "S3notPublicRead", "S3notPublicReadACP", "S3notPublicWrite", "S3notPublicWriteACP","S3TransferAccelerateConfig","S3busketpublicaccess"]
     dynamodb_list = ["DynamoDbContinuousBackup"]
     ec2instance_list = ["EC2MonitoringState", "EC2TerminationProtection"]
     cloudformation_list = ["StackTermination"]
     asg_list = ["ASGCooldown"]
     config_list = ["ConfigCaptureGlobalResources"]
-    sqs_list = ["SQSSSEEnabled", "SQSDeadLetterQueue", "SQSEncryptedKMS"]
+    sqs_list = ["SQSSSEEnabled", "SQSEncryptedKMS"]
     rds_snapshot = ["RDSSnapshotNoPublicAccess"]
     
     try:
@@ -83,7 +83,7 @@ def lambda_handler(event, context):
                 'body': json.dumps(str(e))
             }  
         # rem_bucket = 'cn-rem-cust-rem-acc'
-        available_list = cloudtrail_list + elb_list + elbv2_list + iam_list + kinesis_list + kms_list + rds_cluster_list + rds_instance_list + redshift_list + s3_list + dynamodb_list + ec2instance_list + cloudformation_list + asg_list + config_list + sqs_list + neptune_instance_list + neptune_cluster_list
+        available_list = cloudtrail_list + elb_list + elbv2_list + iam_list + kinesis_list + kms_list + rds_cluster_list + rds_instance_list + redshift_list + s3_list + dynamodb_list + ec2instance_list + cloudformation_list + asg_list + config_list + sqs_list + neptune_instance_list + neptune_cluster_list + rds_snapshot
             
         try:
             if set(policy_list) <= set(available_list): 

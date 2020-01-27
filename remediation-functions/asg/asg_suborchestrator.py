@@ -61,7 +61,7 @@ def lambda_handler(event, context):
         
         if "ASGCooldown" in str(records):
             try:
-                autoscaling_continuous_backups.run_remediation(autoscaling,AutoScalingGroupName)
+                asg_utilizing_cooldown.run_remediation(autoscaling,AutoScalingGroupName)
             except ClientError as e:
                 print(e)
                 return {  
@@ -125,7 +125,7 @@ def lambda_handler(event, context):
 
         try:
             if PolicyId == "ASGCooldown":  
-                responseCode,output = autoscaling_continuous_backups.run_remediation(autoscaling,AutoScalingGroupName)
+                responseCode,output = asg_utilizing_cooldown.run_remediation(autoscaling,AutoScalingGroupName)
         
         except ClientError as e:
             responseCode = 400

@@ -9,14 +9,14 @@ def run_remediation(ec2, Instance_name):
 
     termination_protection=False
     try:
-        response=ec2.describe_instance_attribute(Attribute='disableApiTermination',DryRun=True,InstanceId=Instance_name)
+        response=ec2.describe_instance_attribute(Attribute='disableApiTermination',InstanceId=Instance_name)
         termination_protection=response['DisableApiTermination']['Value']
     except:
         termination_protection=False
 
     if not termination_protection:   
         try:
-            result = ec2.modify_instance_attribute(Attribute='disableApiTermination',DisableApiTermination={'Value': True},DryRun=True)
+            result = ec2.modify_instance_attribute(InstanceId=Instance_name,DisableApiTermination={'Value': True})
 
             responseCode = result['ResponseMetadata']['HTTPStatusCode']
             if responseCode >= 400:
@@ -26,7 +26,7 @@ def run_remediation(ec2, Instance_name):
                     
         except ClientError as e:
             responseCode = 400
-            output = "Unexpected error: " + str(e)
+            output = "Unexpected error : " + str(e)
             print(output)
         except Exception as e:
             responseCode = 400

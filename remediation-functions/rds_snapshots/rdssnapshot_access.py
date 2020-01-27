@@ -8,6 +8,7 @@ def run_remediation(rds, RDSSnapshotName):
     print("Executing RDS Instance remediation")
     Snapshot_Detail = ''
     snapshot_not_encrypted = False
+    access_flag = False
     try:
         Snapshot_Detail = rds.describe_db_snapshots(DBSnapshotIdentifier=RDSSnapshotName,SnapshotType='manual')['DBSnapshots']
         if Snapshot_Detail[0]['Encrypted'] == False:

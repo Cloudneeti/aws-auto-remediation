@@ -192,13 +192,6 @@ def lambda_handler(event, context):
         try:
             if PolicyId == "SQSSSEEnabled":  
                 responseCode,output = sqs_enable_sse.run_remediation(sqs, queue_url)
-            
-            if '_DeadLetter_Queue' not in queue_url:
-                if PolicyId == "SQSDeadLetterQueue":  
-                    responseCode,output = sqs_deadletter_queue.run_remediation(sqs, queue_url)
-            
-            if PolicyId == "SQSEncryptedKMS":  
-                responseCode,output = sqs_encryption_cmk.run_remediation(sqs, kms, queue_url, CustAccID)
         
         except ClientError as e:
             responseCode = 400
