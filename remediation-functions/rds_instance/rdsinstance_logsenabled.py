@@ -18,18 +18,8 @@ def run_remediation(rds, RDSInstanceName):
         output = "Unexpected error: " + str(e)
 
     if len(RDSlogs) < 2:  
-        while response[0]['DBInstanceStatus'] not in ['available', 'stopped']:
-            try:
-                response = rds.describe_db_instances(DBInstanceIdentifier=RDSInstanceName)['DBInstances']
-            except ClientError as e:
-                responseCode = 400
-                output = "Unexpected error: " + str(e)
-            except Exception as e:
-                responseCode = 400
-                output = "Unexpected error: " + str(e)
-
         try:
-            if response[0]['Engine'] == 'mysql' or 'mariadb':
+            if response[0]['Engine'] in ['mysql','mariadb']:
                 result = rds.modify_db_instance(
                     DBInstanceIdentifier=RDSInstanceName,
                     ApplyImmediately=True,

@@ -12,9 +12,16 @@ def run_remediation(rds, RDSIdentifier):
     RDSlogs=''
     try:
         response = rds.describe_db_clusters(DBClusterIdentifier=RDSIdentifier)['DBClusters']
-        RDSlogs=response[0]['EnabledCloudwatchLogsExports']
         DBenginemode=response[0]['EngineMode']
         DBengine=response[0]['Engine']
+    except ClientError as e:
+        responseCode = 400
+        output = "Unexpected error: " + str(e)
+    except Exception as e:
+        responseCode = 400
+        output = "Unexpected error: " + str(e)
+    try:
+        RDSlogs=response[0]['EnabledCloudwatchLogsExports']
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
