@@ -28,7 +28,7 @@ def lambda_handler(event, context):
     cloudformation_list = ["StackTermination"]
     asg_list = ["ASGCooldown"]
     config_list = ["ConfigCaptureGlobalResources"]
-    sqs_list = ["SQSSSEEnabled", "SQSEncryptedKMS"]
+    sqs_list = ["SQSSSEEnabled"]
     rds_snapshot = ["RDSSnapshotNoPublicAccess"]
     
     try:

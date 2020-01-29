@@ -287,6 +287,7 @@ resources:
               - cloudtrail:StartLogging
               - elasticloadbalancing:ModifyLoadBalancerAttributes
               - iam:UpdateAccountPasswordPolicy
+              - iam:PassRole
               - kinesis:StartStreamEncryption
               - kinesis:EnableEnhancedMonitoring
               - kms:EnableKeyRotation
