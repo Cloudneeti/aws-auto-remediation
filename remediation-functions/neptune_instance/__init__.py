@@ -1,1 +1,1 @@
-__all__ = [ "neptune_minorversionupgrade"]
+__all__ = [ "neptuneinstance_minorversionupgrade"]

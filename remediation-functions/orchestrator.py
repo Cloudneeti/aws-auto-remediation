@@ -673,9 +673,12 @@ def lambda_handler(event, context):
                 #endregion
                 
                 #region ec2 instance suborchestrator call
-                if EventName in ["RunInstances", "StartInstances", "ModifyInstanceAttribute"]:
+                if EventName in ["RunInstances", "StartInstances", "ModifyInstanceAttribute","UnmonitorInstances"]:
                     try:
-                        InstanceID = log_event["responseElements"]["instancesSet"]["items"][0]["instanceId"]
+                        if EventName == "ModifyInstanceAttribute":
+                            InstanceID = log_event["requestParameters"]["instanceId"]
+                        else:
+                            InstanceID = log_event["responseElements"]["instancesSet"]["items"][0]["instanceId"]
                         Region = log_event["awsRegion"]
 
                         remediationObj = {
