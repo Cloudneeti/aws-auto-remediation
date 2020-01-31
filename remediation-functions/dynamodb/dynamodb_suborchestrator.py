@@ -62,6 +62,12 @@ def lambda_handler(event, context):
         if "DynamoDbContinuousBackup" in str(records):
             try:
                 dynamodb_continuous_backups.run_remediation(dynamodb,table_name)
+                print('remediated-' + table_name)
+                #returning the output Array in json format
+                return {  
+                    'statusCode': 200,
+                    'body': json.dumps('remediated-' + table_name)
+                }
             except ClientError as e:
                 print(e)
                 return {  
@@ -75,12 +81,6 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }   
         
-        print('remediated-' + table_name)
-        #returning the output Array in json format
-        return {  
-            'statusCode': 200,
-            'body': json.dumps('remediated-' + table_name)
-        }
 
     else:
         print("CN-portal triggered remediation")

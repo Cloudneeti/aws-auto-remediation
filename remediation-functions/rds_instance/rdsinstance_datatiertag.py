@@ -13,11 +13,11 @@ def run_remediation(rds, RDSInstanceName):
         security_group_id = dbinstance_details[0]['VpcSecurityGroups'][0]['VpcSecurityGroupId']
         try:
             response = rds.list_tags_for_resource(ResourceName= dbinstance_details[0]['DBInstanceArn'])['TagList']
+            for tag in response:
+                if response[tag]['Key'].lower() in tags and response[tag]['Value'] == security_group_id:
+                    data_tier_tag = True
         except:
             data_tier_tag= False
-        for tag in response:
-            if response[tag]['Key'].lower() in tags and response[tag]['Value'] == security_group_id:
-                data_tier_tag = True
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)

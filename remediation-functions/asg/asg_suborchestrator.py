@@ -62,6 +62,12 @@ def lambda_handler(event, context):
         if "ASGCooldown" in str(records):
             try:
                 asg_utilizing_cooldown.run_remediation(autoscaling,AutoScalingGroupName)
+                print('remediated-' + AutoScalingGroupName)
+                #returning the output Array in json format
+                return {  
+                    'statusCode': 200,
+                    'body': json.dumps('remediated-' + AutoScalingGroupName)
+                }
             except ClientError as e:
                 print(e)
                 return {  
@@ -74,13 +80,6 @@ def lambda_handler(event, context):
                     'statusCode': 400,
                     'body': str(e)
                 }   
-        
-        print('remediated-' + AutoScalingGroupName)
-        #returning the output Array in json format
-        return {  
-            'statusCode': 200,
-            'body': json.dumps('remediated-' + AutoScalingGroupName)
-        }
 
     else:
         print("CN-portal triggered remediation")
