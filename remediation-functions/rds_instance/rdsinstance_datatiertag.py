@@ -11,7 +11,10 @@ def run_remediation(rds, RDSInstanceName):
     try:
         dbinstance_details = rds.describe_db_instances(DBInstanceIdentifier=RDSInstanceName)['DBInstances']
         security_group_id = dbinstance_details[0]['VpcSecurityGroups'][0]['VpcSecurityGroupId']
-        response = rds.list_tags_for_resource(ResourceName= dbinstance_details[0]['DBInstanceArn'])['TagList']
+        try:
+            response = rds.list_tags_for_resource(ResourceName= dbinstance_details[0]['DBInstanceArn'])['TagList']
+        except:
+            data_tier_tag= False
         for tag in response:
             if response[tag]['Key'].lower() in tags and response[tag]['Value'] == security_group_id:
                 data_tier_tag = True

@@ -400,7 +400,7 @@ def lambda_handler(event, context):
 
 
                 #region rds cluster suborchestrator call
-                if EventName in ["CreateDBCluster", "ModifyDBCluster", "CreateDBInstance"]:
+                if EventName in ["CreateDBCluster", "ModifyDBCluster", "CreateDBInstance","RemoveTagsFromResource"]:
                     try:
                         DBEngine=log_event["responseElements"]["engine"]
                     except:
@@ -432,7 +432,7 @@ def lambda_handler(event, context):
                 #endregion
 
                 #region rds instance suborchestrator call
-                if EventName in ["CreateDBInstance", "ModifyDBInstance"]:
+                if EventName in ["CreateDBInstance", "ModifyDBInstance", "RemoveTagsFromResource"]:
                     try:
                         RDSInstanceName = log_event["responseElements"]["dBInstanceIdentifier"]
                         Region = log_event["awsRegion"]
@@ -543,27 +543,33 @@ def lambda_handler(event, context):
                 #region Neptune instance suborchestrator call
                 if EventName in ["CreateDBInstance", "ModifyDBInstance"]:
                     try:
-                        NeptuneInstanceName = log_event["responseElements"]["dBInstanceIdentifier"]
-                        Region = log_event["awsRegion"]
+                        DBEngine=log_event["responseElements"]["engine"]
+                    except:
+                        DBEngine=''
 
-                        remediationObj = {
-                            "accountId": AWSAccId,
-                            "NeptuneInstanceName": NeptuneInstanceName,
-                            "Region" : Region,
-                            "policies": records
-                        }
-                        
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-neptune-instance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                        response = json.loads(response['Payload'].read())
-                        print(response)
-                        return {
-                            'statusCode': 200,
-                            'body': json.dumps(response)
-                        }
-                    except ClientError as e:
-                        print('Error during remediation, error:' + str(e))
-                    except Exception as e:
-                        print('Error during remediation, error:' + str(e))
+                    if 'neptune' in str(DBEngine):
+                        try:
+                            NeptuneInstanceName = log_event["responseElements"]["dBInstanceIdentifier"]
+                            Region = log_event["awsRegion"]
+
+                            remediationObj = {
+                                "accountId": AWSAccId,
+                                "NeptuneInstanceName": NeptuneInstanceName,
+                                "Region" : Region,
+                                "policies": records
+                            }
+                            
+                            response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-neptune-instance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
+                        except ClientError as e:
+                            print('Error during remediation, error:' + str(e))
+                        except Exception as e:
+                            print('Error during remediation, error:' + str(e))
                 #endregion
                 
                 #region dynamodb suborchestrator call
@@ -647,9 +653,12 @@ def lambda_handler(event, context):
                 #endregion
                 
                 #region cloudformation suborchestrator call
-                if EventName in ["CreateStack","UpdateStack"]:
+                if EventName in ["CreateStack","UpdateStack","UpdateTerminationProtection"]:
                     try:
-                        StackName = log_event["requestParameters"]["stackName"]
+                        try:
+                            StackName = log_event["requestParameters"]["stackName"]
+                        except:
+                            StackName = ''
                         Region = log_event["awsRegion"]
 
                         remediationObj = {
