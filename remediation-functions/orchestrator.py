@@ -18,7 +18,7 @@ def lambda_handler(event, context):
     kinesis_list = ["KinesisEnhancedMonitoring", "KinesisSSE"]
     kms_list = ["KMSKeyRotation"]
     rds_cluster_list = ["AuroraDeleteProtection", "AuroraServerlessDeleteProtection", "AuroraPostgresServerlessDeleteProtection", "AuroraBackup", "AuroraBackupTerm", "AuroraServerlessBackupTerm", "AuroraPostgresServerlessBackupTerm", "AuroraCopyTagsToSnapshot", "AuroraServerlessCopyTagsToSnapshot", "AuroraPostgresServerlessCopyTagsToSnapshot", "AuroraServerlessScalingAutoPause", "AuroraPostgresServerlessScalingAutoPause","AuroralogExport","CloudwatchLogsExports", "AuroradataTierConfig", "AuroraServerlessdataTierConfig", "AuroraPostgresServerlessdataTierConfig","AuroraIAMAuthEnabled"]
-    rds_instance_list = ["SQLBackup","SQLBackupTerm","MariadbBackup","MariadbBackupTerm","OracleBackup","OracleBackupTerm","SQLServerBackup","SQLServerBackupTerm","SQLCopyTagsToSnapshot","MariadbCopyTagsToSnapshot","OracleCopyTagsToSnapshot","SQLServerCopyTagsToSnapshot","SQLDeletionProtection", "MariadbDeletionProtection", "OracleDeletionProtection", "SQLServerDeletionProtection", "SQLPrivateInstance","MariadbPrivateInstance","OraclePrivateInstance","SQLServerPrivateInstance","AuroraInstancePrivateInstance","SQLVersionUpgrade","MariadbVersionUpgrade","OracleVersionUpgrade","SQLServerVersionUpgrade","AuroraInstanceVersionUpgrade", "SQLMultiAZEnabled","MariadbMultiAZEnabled","OracleMultiAZEnabled","SQLServerMultiAZEnabled","SQLPerformanceInsights","MariadbPerformanceInsights","OraclePerformanceInsights","SQLServerPerformanceInsights","AuroraInstancePerformanceInsights","MySQLVersionUpgrade","MySQLBackup","MySQLBackupTerm","MySQLCopyTagsToSnapshot","MySQLDeletionProtection","MySQLPerformanceInsights","MySQLPrivateInstance","MySQLMultiAZEnabled","MySQLlogExport","MariadblogExport","OraclelogExport","SQLdataTierConfig", "MariadbdataTierConfig", "OracledataTierConfig", "SQLServerdataTierConfig", "AuroraInstancedataTierConfig", "MySQLdataTierConfig", "SQLIAMAuthEnabled", "MySQLIAMAuthEnabled"]
+    rds_instance_list = ["SQLBackup","SQLBackupTerm","MariadbBackup","MariadbBackupTerm","OracleBackup","OracleBackupTerm","SQLServerBackup","SQLServerBackupTerm","SQLCopyTagsToSnapshot","MariadbCopyTagsToSnapshot","OracleCopyTagsToSnapshot","SQLServerCopyTagsToSnapshot","SQLDeletionProtection", "MariadbDeletionProtection", "OracleDeletionProtection", "SQLServerDeletionProtection", "SQLPrivateInstance","MariadbPrivateInstance","OraclePrivateInstance","SQLServerPrivateInstance","AuroraInstancePrivateInstance","SQLVersionUpgrade","MariadbVersionUpgrade","OracleVersionUpgrade","SQLServerVersionUpgrade","AuroraInstanceVersionUpgrade", "SQLMultiAZEnabled","MariadbMultiAZEnabled","OracleMultiAZEnabled","SQLServerMultiAZEnabled","SQLPerformanceInsights","MariadbPerformanceInsights","OraclePerformanceInsights","SQLServerPerformanceInsights","AuroraInstancePerformanceInsights","MySQLVersionUpgrade","MySQLBackup","MySQLBackupTerm","MySQLCopyTagsToSnapshot","MySQLDeletionProtection","MySQLPerformanceInsights","MySQLPrivateInstance","MySQLMultiAZEnabled","MySQLlogExport","MariadblogExport","OraclelogExport","SQLdataTierConfig", "MariadbdataTierConfig", "OracledataTierConfig", "SQLServerdataTierConfig", "AuroraInstancedataTierConfig", "MySQLdataTierConfig", "SQLIAMAuthEnabled", "MySQLIAMAuthEnabled","MySQLBlockEncryption","MySQLEnableFIPS"]]
     redshift_list = ["RedShiftNotPublic", "RedShiftVersionUpgrade", "RedShiftAutomatedSnapshot"]
     neptune_instance_list = ["NeptuneAutoMinorVersionUpgrade"]
     neptune_cluster_list = ["NeptuneBackupRetention"]
@@ -753,6 +753,38 @@ def lambda_handler(event, context):
                         print('Error during remediation, error:' + str(e))
                     except Exception as e:
                         print('Error during remediation, error:' + str(e))
+                #endregion
+                
+                #region rds cluster suborchestrator call
+                if EventName in ["CreateDBCluster", "ModifyDBCluster", "CreateDBInstance"]:
+                    try:
+                        DBEngine=log_event["responseElements"]["engine"]
+                    except:
+                        DBEngine=''
+
+                    if 'docdb' in str(DBEngine):
+                        try:
+                            RDSClusterName = log_event["responseElements"]["dBClusterIdentifier"]
+                            Region = log_event["awsRegion"]
+
+                            remediationObj = {
+                                "accountId": AWSAccId,
+                                "RDSClusterName": RDSClusterName,
+                                "Region" : Region,
+                                "policies": records
+                            }
+                            
+                            response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-documentdb-cluster', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
+                        except ClientError as e:
+                            print('Error during remediation, error:' + str(e))
+                        except Exception as e:
+                            print('Error during remediation, error:' + str(e))
                 #endregion
                 
             else:
