@@ -20,6 +20,7 @@ def lambda_handler(event, context):
     instance_logexport=["MySQLlogExport","MariadblogExport","OraclelogExport"]
     instance_datatiertag=["SQLdataTierConfig", "MariadbdataTierConfig", "OracledataTierConfig", "SQLServerdataTierConfig", "AuroraInstancedataTierConfig", "MySQLdataTierConfig"]
     instance_iam_auth=["SQLIAMAuthEnabled", "MySQLIAMAuthEnabled"]
+    db_parameters=["MySQLBlockEncryption","MySQLEnableFIPS"]
     try:
         PolicyId = json.loads(event["body"])["PolicyId"]
     except:
@@ -227,7 +228,23 @@ def lambda_handler(event, context):
                     'statusCode': 400,
                     'body': str(e)
                 } 
-                
+        
+        if set(db_parameters).intersection(set(records)):
+            try:
+                rdsinstance_updateparameters.run_remediation(rds,RDSInstanceName)
+            except ClientError as e:
+                print(e)
+                return {  
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+            except Exception as e:
+                print(e)
+                return {
+                    'statusCode': 400,
+                    'body': str(e)
+                } 
+                        
         print('remediated-' + RDSInstanceName)
         #returning the output Array in json format
         return {  
@@ -306,6 +323,9 @@ def lambda_handler(event, context):
                 responseCode,output = rdsinstance_datatiertag.run_remediation(rds,RDSInstanceName)
         
             if PolicyId in instance_iam_auth:
+                responseCode,output = rdsinstance_iam_auth.run_remediation(rds,RDSInstanceName)
+            
+            if PolicyId in db_parameters:
                 responseCode,output = rdsinstance_iam_auth.run_remediation(rds,RDSInstanceName)
                 
         except ClientError as e:

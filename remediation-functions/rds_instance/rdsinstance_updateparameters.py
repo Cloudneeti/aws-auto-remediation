@@ -90,7 +90,7 @@ def run_remediation(rds, RDSInstanceName):
                 print(output)
         else:
             responseCode=200
-            output='Data-tier security group already configured for RDS Instance : '+RDSInstanceName
+            output='DB parameters are already for RDS Instance : '+RDSInstanceName
             print(output)
     else:
         responseCode=200
