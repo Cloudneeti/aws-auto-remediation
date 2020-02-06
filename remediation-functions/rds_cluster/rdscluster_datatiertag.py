@@ -11,10 +11,13 @@ def run_remediation(rds, RDSIdentifier):
     try:
         dbcluster_detail = rds.describe_db_clusters(DBClusterIdentifier=RDSIdentifier)['DBClusters']
         security_group_id = dbcluster_detail[0]['VpcSecurityGroups'][0]['VpcSecurityGroupId']
-        response = rds.list_tags_for_resource(ResourceName=dbcluster_detail[0]['DBClusterArn'])['TagList']
-        for tag in response:
-            if response[tag]['Key'].lower() in tags and response[tag]['Value'] == security_group_id:
-                data_tier_tag = True
+        try:
+            response = rds.list_tags_for_resource(ResourceName=dbcluster_detail[0]['DBClusterArn'])['TagList']
+            for tag in response:
+                if response[tag]['Key'].lower() in tags and response[tag]['Value'] == security_group_id:
+                    data_tier_tag = True
+        except:
+            data_tier_tag = False
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)

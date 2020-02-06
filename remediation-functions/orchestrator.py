@@ -400,7 +400,7 @@ def lambda_handler(event, context):
 
 
                 #region rds cluster suborchestrator call
-                if EventName in ["CreateDBCluster", "ModifyDBCluster", "CreateDBInstance"]:
+                if EventName in ["CreateDBCluster", "ModifyDBCluster", "CreateDBInstance","RemoveTagsFromResource"]:
                     try:
                         DBEngine=log_event["responseElements"]["engine"]
                     except:
@@ -432,7 +432,7 @@ def lambda_handler(event, context):
                 #endregion
 
                 #region rds instance suborchestrator call
-                if EventName in ["CreateDBInstance", "ModifyDBInstance"]:
+                if EventName in ["CreateDBInstance", "ModifyDBInstance", "RemoveTagsFromResource"]:
                     try:
                         RDSInstanceName = log_event["responseElements"]["dBInstanceIdentifier"]
                         Region = log_event["awsRegion"]
@@ -647,9 +647,12 @@ def lambda_handler(event, context):
                 #endregion
                 
                 #region cloudformation suborchestrator call
-                if EventName in ["CreateStack","UpdateStack"]:
+                if EventName in ["CreateStack","UpdateStack","UpdateTerminationProtection"]:
                     try:
-                        StackName = log_event["requestParameters"]["stackName"]
+                        try:
+                            StackName = log_event["requestParameters"]["stackName"]
+                        except:
+                            StackName = ''
                         Region = log_event["awsRegion"]
 
                         remediationObj = {

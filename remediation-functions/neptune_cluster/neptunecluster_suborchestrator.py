@@ -62,6 +62,12 @@ def lambda_handler(event, context):
         if "NeptuneBackupRetention" in str(records):
             try:
                 neptunecluster_backupretention.run_remediation(neptune,neptune_name)
+                print('remediated-' + neptune_name)
+                #returning the output Array in json format
+                return {  
+                    'statusCode': 200,
+                    'body': json.dumps('remediated-' + neptune_name)
+                }
             except ClientError as e:
                 print(e)
                 return {  
@@ -75,12 +81,6 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
 
-        print('remediated-' + neptune_name)
-        #returning the output Array in json format
-        return {  
-            'statusCode': 200,
-            'body': json.dumps('remediated-' + neptune_name)
-        }
 
     else:
         print("CN-portal triggered remediation")

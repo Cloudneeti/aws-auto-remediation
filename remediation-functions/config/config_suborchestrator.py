@@ -63,6 +63,12 @@ def lambda_handler(event, context):
         if "ConfigCaptureGlobalResources" in str(records):
             try:
                 config_include_global_resources.run_remediation(config,ConfigRoleARN,Name)
+                print('remediated-' + Name)
+                #returning the output Array in json format
+                return {  
+                    'statusCode': 200,
+                    'body': json.dumps('remediated-' + Name)
+                }
             except ClientError as e:
                 print(e)
                 return {  
@@ -76,12 +82,6 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }   
         
-        print('remediated-' + Name)
-        #returning the output Array in json format
-        return {  
-            'statusCode': 200,
-            'body': json.dumps('remediated-' + Name)
-        }
 
     else:
         print("CN-portal triggered remediation")

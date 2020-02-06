@@ -62,6 +62,12 @@ def lambda_handler(event, context):
         if "StackTermination" in str(records):
             try:
                 cloudformation_template_termination_protection.run_remediation(cloudformation,StackName)
+                print('remediated-' + StackName)
+                #returning the output Array in json format
+                return {  
+                    'statusCode': 200,
+                    'body': json.dumps('remediated-' + StackName)
+                }
             except ClientError as e:
                 print(e)
                 return {  
@@ -75,12 +81,6 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }   
         
-        print('remediated-' + StackName)
-        #returning the output Array in json format
-        return {  
-            'statusCode': 200,
-            'body': json.dumps('remediated-' + StackName)
-        }
 
     else:
         print("CN-portal triggered remediation")
