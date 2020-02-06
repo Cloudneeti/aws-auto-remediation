@@ -398,65 +398,6 @@ def lambda_handler(event, context):
                         print('Error during remediation, error:' + str(e))
                 #endregion
 
-
-                #region rds cluster suborchestrator call
-                if EventName in ["CreateDBCluster", "ModifyDBCluster", "CreateDBInstance","RemoveTagsFromResource"]:
-                    try:
-                        DBEngine=log_event["responseElements"]["engine"]
-                    except:
-                        DBEngine=''
-
-                    if 'aurora' in str(DBEngine):
-                        try:
-                            RDSClusterName = log_event["responseElements"]["dBClusterIdentifier"]
-                            Region = log_event["awsRegion"]
-
-                            remediationObj = {
-                                "accountId": AWSAccId,
-                                "RDSClusterName": RDSClusterName,
-                                "Region" : Region,
-                                "policies": records
-                            }
-                            
-                            response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-rdscluster', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                            response = json.loads(response['Payload'].read())
-                            print(response)
-                            return {
-                                'statusCode': 200,
-                                'body': json.dumps(response)
-                            }
-                        except ClientError as e:
-                            print('Error during remediation, error:' + str(e))
-                        except Exception as e:
-                            print('Error during remediation, error:' + str(e))
-                #endregion
-
-                #region rds instance suborchestrator call
-                if EventName in ["CreateDBInstance", "ModifyDBInstance", "RemoveTagsFromResource"]:
-                    try:
-                        RDSInstanceName = log_event["responseElements"]["dBInstanceIdentifier"]
-                        Region = log_event["awsRegion"]
-
-                        remediationObj = {
-                            "accountId": AWSAccId,
-                            "RDSInstanceName": RDSInstanceName,
-                            "Region" : Region,
-                            "policies": records
-                        }
-                        
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-rdsinstance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                        response = json.loads(response['Payload'].read())
-                        print(response)
-                        return {
-                            'statusCode': 200,
-                            'body': json.dumps(response)
-                        }
-                    except ClientError as e:
-                        print('Error during remediation, error:' + str(e))
-                    except Exception as e:
-                        print('Error during remediation, error:' + str(e))
-                #endregion
-
                 #region redshift sub-orchestrator call
                 if EventName in ["CreateCluster", "ModifyCluster"]:
                     try:
@@ -788,6 +729,64 @@ def lambda_handler(event, context):
                             print('Error during remediation, error:' + str(e))
                         except Exception as e:
                             print('Error during remediation, error:' + str(e))
+                #endregion
+                
+                #region rds cluster suborchestrator call
+                if EventName in ["CreateDBCluster", "ModifyDBCluster", "CreateDBInstance","RemoveTagsFromResource"]:
+                    try:
+                        DBEngine=log_event["responseElements"]["engine"]
+                    except:
+                        DBEngine=''
+
+                    if 'aurora' in str(DBEngine):
+                        try:
+                            RDSClusterName = log_event["responseElements"]["dBClusterIdentifier"]
+                            Region = log_event["awsRegion"]
+
+                            remediationObj = {
+                                "accountId": AWSAccId,
+                                "RDSClusterName": RDSClusterName,
+                                "Region" : Region,
+                                "policies": records
+                            }
+                            
+                            response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-rdscluster', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
+                        except ClientError as e:
+                            print('Error during remediation, error:' + str(e))
+                        except Exception as e:
+                            print('Error during remediation, error:' + str(e))
+                #endregion
+
+                #region rds instance suborchestrator call
+                if EventName in ["CreateDBInstance", "ModifyDBInstance", "RemoveTagsFromResource"]:
+                    try:
+                        RDSInstanceName = log_event["responseElements"]["dBInstanceIdentifier"]
+                        Region = log_event["awsRegion"]
+
+                        remediationObj = {
+                            "accountId": AWSAccId,
+                            "RDSInstanceName": RDSInstanceName,
+                            "Region" : Region,
+                            "policies": records
+                        }
+                        
+                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-rdsinstance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = json.loads(response['Payload'].read())
+                        print(response)
+                        return {
+                            'statusCode': 200,
+                            'body': json.dumps(response)
+                        }
+                    except ClientError as e:
+                        print('Error during remediation, error:' + str(e))
+                    except Exception as e:
+                        print('Error during remediation, error:' + str(e))
                 #endregion
                 
             else:
