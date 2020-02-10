@@ -7,9 +7,9 @@ from botocore.exceptions import ClientError
 #def run_remediation(boto_session, rule, resource):
 def run_remediation(s3_client, bucket_name):
     print("Executing remediation")
-
+    #Update transfer acceleration config. for bucket
     try:
-        result = s3_client.put_bucket_accelerate_configuration(Bucket=bucket_name, AccelerateConfiguration={'Status': 'Enabled'})
+        result = s3_client.put_bucket_accelerate_configuration(Bucket = bucket_name, AccelerateConfiguration = {'Status': 'Enabled'})
 
         responseCode = result['ResponseMetadata']['HTTPStatusCode']
         if responseCode >= 400:

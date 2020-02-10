@@ -25,6 +25,7 @@ def run_remediation(rds, RDSInstanceName):
             try:
                 result = rds.modify_db_instance(
                     DBInstanceIdentifier = RDSInstanceName,
+                    BackupRetentionPeriod = response[0]['BackupRetentionPeriod'],
                     ApplyImmediately = False,
                     EnablePerformanceInsights = True
                 )

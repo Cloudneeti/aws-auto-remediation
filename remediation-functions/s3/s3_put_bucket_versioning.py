@@ -6,11 +6,11 @@ from botocore.exceptions import ClientError
 
 def run_remediation(s3_client, bucket_name):
     print("Executing remediation")
-    
+    #Enable versioninig for bucket
     try:
         result = s3_client.put_bucket_versioning(
-                    Bucket=bucket_name,
-                    VersioningConfiguration=
+                    Bucket = bucket_name,
+                    VersioningConfiguration =
                     {
                     'Status': 'Enabled'
                     }

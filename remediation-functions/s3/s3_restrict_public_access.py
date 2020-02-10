@@ -7,11 +7,11 @@ from botocore.exceptions import ClientError
 #def run_remediation(boto_session, rule, resource):
 def run_remediation(s3_client, bucket_name):
     print("Executing remediation")
-
+    #Update Public access settings for bucket
     try:
         result = s3_client.put_public_access_block(
-                                            Bucket= bucket_name,
-                                            PublicAccessBlockConfiguration={
+                                            Bucket = bucket_name,
+                                            PublicAccessBlockConfiguration = {
                                                 'BlockPublicAcls': True,
                                                 'IgnorePublicAcls': True,
                                                 'BlockPublicPolicy': True,

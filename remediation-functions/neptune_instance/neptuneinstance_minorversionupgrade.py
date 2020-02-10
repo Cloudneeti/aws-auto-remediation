@@ -7,9 +7,10 @@ from botocore.exceptions import ClientError
 def run_remediation(neptune, instance_name):
     print("Executing remediation")            
     versionupgrade='' 
+    #Verify current value for auto minor version upgrade 
     try:
-        response = neptune.describe_db_instances(DBInstanceIdentifier=instance_name)['DBInstances']
-        versionupgrade=response[0]['AutoMinorVersionUpgrade']
+        response = neptune.describe_db_instances(DBInstanceIdentifier = instance_name)['DBInstances']
+        versionupgrade = response[0]['AutoMinorVersionUpgrade']
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
@@ -17,12 +18,13 @@ def run_remediation(neptune, instance_name):
         responseCode = 400
         output = "Unexpected error: " + str(e)
 
-    if not versionupgrade:        
+    if not versionupgrade:
+        #Update auto-minor version upgrade for neptune db-instance        
         try:
             result = neptune.modify_db_instance(
-                        DBInstanceIdentifier=instance_name,
-                        AutoMinorVersionUpgrade=True,
-                        ApplyImmediately=True
+                        DBInstanceIdentifier = instance_name,
+                        AutoMinorVersionUpgrade = True,
+                        ApplyImmediately = False
                     )
 
             responseCode = result['ResponseMetadata']['HTTPStatusCode']

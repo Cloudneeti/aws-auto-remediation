@@ -25,6 +25,7 @@ def run_remediation(rds, RDSInstanceName):
                 if response[0]['Engine'] in ['mysql','mariadb']:
                     result = rds.modify_db_instance(
                         DBInstanceIdentifier = RDSInstanceName,
+                        BackupRetentionPeriod = response[0]['BackupRetentionPeriod'],
                         ApplyImmediately = False,
                         CloudwatchLogsExportConfiguration = {
                             'EnableLogTypes': ['audit', 'error', 'general', 'slowquery']
@@ -40,6 +41,7 @@ def run_remediation(rds, RDSInstanceName):
                 elif response[0]['Engine'] in ['oracle-se', 'oracle-ee', 'oracle-se1', 'oracle-se2']:
                     result = rds.modify_db_instance(
                         DBInstanceIdentifier = RDSInstanceName,
+                        BackupRetentionPeriod = response[0]['BackupRetentionPeriod'],
                         ApplyImmediately = False,
                         CloudwatchLogsExportConfiguration = {
                             'EnableLogTypes': ['alert','audit','listener','trace']

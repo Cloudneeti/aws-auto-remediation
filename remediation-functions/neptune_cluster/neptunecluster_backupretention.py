@@ -6,10 +6,11 @@ from botocore.exceptions import ClientError
 
 def run_remediation(neptune, cluster_name):
     print("Executing remediation")            
-    backup='' 
+    backup = ''
+    #verify value for current backup retention 
     try:
-        response = neptune.describe_db_clusters(DBClusterIdentifier=cluster_name)['DBClusters']
-        backupretention=response[0]['BackupRetentionPeriod']
+        response = neptune.describe_db_clusters(DBClusterIdentifier = cluster_name)['DBClusters']
+        backupretention = response[0]['BackupRetentionPeriod']
         if backupretention < 7:
             backup = False
     except ClientError as e:
@@ -19,12 +20,13 @@ def run_remediation(neptune, cluster_name):
         responseCode = 400
         output = "Unexpected error: " + str(e)
 
-    if not backup:          
+    if not backup:
+        #Update current backup retention          
         try:
             result = neptune.modify_db_cluster(
-                        DBClusterIdentifier=cluster_name,
-                        BackupRetentionPeriod=7,
-                        ApplyImmediately=True
+                        DBClusterIdentifier = cluster_name,
+                        BackupRetentionPeriod = 7,
+                        ApplyImmediately = True
                     )
 
             responseCode = result['ResponseMetadata']['HTTPStatusCode']

@@ -33,6 +33,7 @@ def run_remediation(rds, RDSIdentifier):
             try:
                 result = rds.modify_db_cluster(
                     DBClusterIdentifier = RDSIdentifier,
+                    BackupRetentionPeriod = response[0]['BackupRetentionPeriod'],
                     ApplyImmediately = False,
                     CloudwatchLogsExportConfiguration = {
                         'EnableLogTypes': ['audit', 'error', 'general', 'slowquery']
@@ -66,6 +67,7 @@ def run_remediation(rds, RDSIdentifier):
             try:
                 result = rds.modify_db_cluster(
                     DBClusterIdentifier = RDSIdentifier,
+                    BackupRetentionPeriod = response[0]['BackupRetentionPeriod'],
                     ApplyImmediately = False,
                     CloudwatchLogsExportConfiguration = {
                         'EnableLogTypes': ['audit', 'error', 'general', 'slowquery']
@@ -93,6 +95,7 @@ def run_remediation(rds, RDSIdentifier):
             try:
                 result = rds.modify_db_cluster(
                     DBClusterIdentifier = RDSIdentifier,
+                    BackupRetentionPeriod = response[0]['BackupRetentionPeriod'],
                     ApplyImmediately = False,
                     CloudwatchLogsExportConfiguration = {
                         'EnableLogTypes': ['postgresql']

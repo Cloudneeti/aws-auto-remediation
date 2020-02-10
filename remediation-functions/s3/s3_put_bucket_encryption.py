@@ -7,11 +7,11 @@ from botocore.exceptions import ClientError
 #def run_remediation(boto_session, rule, resource):
 def run_remediation(s3_client, bucket_name):
     print("Executing remediation")
-
+    #Apply SSE Encryption with AES256 algo. to bucket
     try:
         result = s3_client.put_bucket_encryption(
-            Bucket=bucket_name,
-            ServerSideEncryptionConfiguration={
+            Bucket = bucket_name,
+            ServerSideEncryptionConfiguration = {
                 'Rules': [
                     {
                         'ApplyServerSideEncryptionByDefault': {
