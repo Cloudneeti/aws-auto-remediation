@@ -9,6 +9,7 @@ import hashlib
 from botocore.exceptions import ClientError
 import gzip
 import base64
+import os
 
 def lambda_handler(event, context):
     cloudtrail_list = ["CTMultiRegionTrail", "CTLogFileValidation"]
@@ -21,6 +22,11 @@ def lambda_handler(event, context):
     rds_instance_list = ["SQLBackup","SQLBackupTerm","MariadbBackup","MariadbBackupTerm","OracleBackup","OracleBackupTerm","SQLServerBackup","SQLServerBackupTerm","SQLCopyTagsToSnapshot","MariadbCopyTagsToSnapshot","OracleCopyTagsToSnapshot","SQLServerCopyTagsToSnapshot","SQLDeletionProtection", "MariadbDeletionProtection", "OracleDeletionProtection", "SQLServerDeletionProtection", "SQLPrivateInstance","MariadbPrivateInstance","OraclePrivateInstance","SQLServerPrivateInstance","AuroraInstancePrivateInstance","SQLVersionUpgrade","MariadbVersionUpgrade","OracleVersionUpgrade","SQLServerVersionUpgrade","AuroraInstanceVersionUpgrade", "SQLMultiAZEnabled","MariadbMultiAZEnabled","OracleMultiAZEnabled","SQLServerMultiAZEnabled","SQLPerformanceInsights","MariadbPerformanceInsights","OraclePerformanceInsights","SQLServerPerformanceInsights","AuroraInstancePerformanceInsights"]
     redshift_list = ["RedShiftNotPublic", "RedShiftVersionUpgrade", "RedShiftAutomatedSnapshot"]
     s3_list = ["S3VersioningEnabled", "S3EncryptionEnabled", "S3bucketNoPublicAAUFull", "S3bucketNoPublicAAURead", "S3bucketNoPublicAAUReadACP", "S3bucketNoPublicAAUWrite", "S3bucketNoPublicAAUWriteACP", "S3notPublictoInternet", "S3notPublicRead", "S3notPublicReadACP", "S3notPublicWrite", "S3notPublicWriteACP"]
+
+    try:
+        runtime_region = os.environ['AWS_REGION']
+    except:
+        runtime_region = 'us-east-1'
 
     try:
         policy_list = json.loads(event['body'])['RemediationPolicies']
@@ -52,7 +58,6 @@ def lambda_handler(event, context):
             RemAccHash = hashlib.md5(str(RemediationAWSAccountId).encode('utf-8')).hexdigest()
             s3Client = boto3.client('s3')
             buckets = s3Client.list_buckets()['Buckets']
-            Region = "us-east-1"
             for i in range(len(buckets)):
                 if RemAccHash in str(buckets[i]['Name']):
                     rem_bucket = buckets[i]['Name']
@@ -165,7 +170,7 @@ def lambda_handler(event, context):
                 s3Client = boto3.client('s3')
                 buckets = s3Client.list_buckets()['Buckets']
                 RemAccHash = hashlib.md5(str(RemediationAWSAccountId).encode('utf-8')).hexdigest()
-                Region = "us-east-1"
+
                 for i in range(len(buckets)):
                     if RemAccHash in str(buckets[i]['Name']):
                         rem_bucket = buckets[i]['Name']
@@ -204,7 +209,7 @@ def lambda_handler(event, context):
             
             if records:
                 try:
-                    invokeLambda = boto3.client('lambda', region_name='us-east-1')
+                    invokeLambda = boto3.client('lambda', region_name=runtime_region)
     
                 except ClientError as e: 
                     print(e)
@@ -531,7 +536,7 @@ def lambda_handler(event, context):
                 OrchestartorAccess = False
             
             try:
-                invokeLambda = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name='us-east-1')
+                invokeLambda = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=runtime_region)
                 response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-relayfunction', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 RelayAccess = json.loads(response['Payload'].read())
             except:
@@ -550,7 +555,7 @@ def lambda_handler(event, context):
     #region CN Portal Triggered remediation
     else:  
         try:  
-            invokeLambda = boto3.client('lambda', region_name='us-east-1')
+            invokeLambda = boto3.client('lambda', region_name=runtime_region)
         except ClientError as e:
             print(e)
             response = {

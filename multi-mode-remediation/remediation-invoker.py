@@ -8,9 +8,15 @@ import common
 from botocore.exceptions import ClientError
 import gzip
 import base64
+import os
 
 def lambda_handler(event, context):
     #multi-event customer account CW event
+    try:
+        runtime_region = os.environ['AWS_REGION']
+    except:
+        runtime_region = 'us-east-1'
+
     try:
         cw_data = event['awslogs']['data']
     except:
@@ -76,7 +82,7 @@ def lambda_handler(event, context):
             }
 
         try:
-            invokeLambda = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name='us-east-1')
+            invokeLambda = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=runtime_region)
             response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-orchestrator', InvocationType = 'RequestResponse', Payload = json.dumps(event))
             t = json.loads(response['Payload'].read())
             print(t['body'])

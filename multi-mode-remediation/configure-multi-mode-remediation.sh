@@ -68,6 +68,8 @@ if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#a
     usage
 fi
 
+aws_region="$(aws configure get region 2>/dev/null)"
+
 acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
 
 env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
@@ -80,10 +82,10 @@ relay_role=$?
 rem_role_det="$(aws iam get-role --role-name CN-Auto-Remediation-Role 2>/dev/null)"
 Rem_role=$?
 
-CT_det="$(aws cloudtrail get-trail-status --name cn-remediation-trail 2>/dev/null)"
+CT_det="$(aws cloudtrail get-trail-status --name cn-remediation-trail --region $aws_region 2>/dev/null)"
 CT_status=$?
 
-Lambda_det="$(aws lambda get-function --function-name cn-aws-remediate-relayfunction 2>/dev/null)"
+Lambda_det="$(aws lambda get-function --function-name cn-aws-remediate-relayfunction --region $aws_region 2>/dev/null)"
 Lambda_status=$?
 
 s3_detail="$(aws s3api get-bucket-versioning --bucket cn-rem-$env-$acc_sha 2>/dev/null)"
@@ -96,10 +98,10 @@ if [[ "$relay_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 0
         echo "Redploying framework....."
         if ( test ! -z "$env" && test ! -z "$version" )
         then
-            serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --rem-account-id $remawsaccountid --version $version
+            serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --rem-account-id $remawsaccountid --region $aws_region --version $version
             lambda_status=$?
         else
-            serverless deploy --env multirem-acc-$acc_sha --aws-account-id $awsaccountid --rem-account-id $remawsaccountid --version 1.0
+            serverless deploy --env multirem-acc-$acc_sha --aws-account-id $awsaccountid --rem-account-id $remawsaccountid --region $aws_region --version 1.0
             lambda_status=$?
         fi
 
@@ -110,27 +112,27 @@ if [[ "$relay_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 0
         fi
         exit 1
     else
-        echo "Remediation components already exist with a different environment prefix. Please run verify-multi-acc-remediation-setup.py for more details !"
+        echo "Remediation components already exist with a different environment prefix. Please run verify-remediation-setup.sh for more details !"
         exit 1
     fi
 fi
 
 if ( test ! -z "$env" && test ! -z "$version" )
 then
-	aws cloudformation deploy --template-file deployment-bucket.yml --stack-name $env-$acc_sha --parameter-overrides Stack=$env-$acc_sha awsaccountid=$awsaccountid --capabilities CAPABILITY_NAMED_IAM
+	aws cloudformation deploy --template-file deployment-bucket.yml --stack-name $env-$acc_sha --parameter-overrides Stack=$env-$acc_sha awsaccountid=$awsaccountid region=$aws_region --capabilities CAPABILITY_NAMED_IAM
     bucket_status=$?
     if [[ "$bucket_status" -eq 0 ]]; then
-	    serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --rem-account-id $remawsaccountid --version $version
+	    serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --rem-account-id $remawsaccountid --region $aws_region --version $version
         lambda_status=$?
     else
         echo "Something went wrong! Please contact Cloudneeti support for more details"
         exit 1
     fi
 else
-	aws cloudformation deploy --template-file deployment-bucket.yml --stack-name multirem-acc-$acc_sha --parameter-overrides Stack=multirem-acc-$acc_sha awsaccountid=$awsaccountid --capabilities CAPABILITY_NAMED_IAM
+	aws cloudformation deploy --template-file deployment-bucket.yml --stack-name multirem-acc-$acc_sha --parameter-overrides Stack=multirem-acc-$acc_sha awsaccountid=$awsaccountid region=$aws_region --capabilities CAPABILITY_NAMED_IAM
     bucket_status=$?
     if [[ "$bucket_status" -eq 0 ]]; then
-	    serverless deploy --env multirem-acc-$acc_sha --aws-account-id $awsaccountid --rem-account-id $remawsaccountid --version 1.0
+	    serverless deploy --env multirem-acc-$acc_sha --aws-account-id $awsaccountid --rem-account-id $remawsaccountid --region $aws_region --version 1.0
         lambda_status=$?
     else
         echo "Something went wrong! Please contact Cloudneeti support for more details"
