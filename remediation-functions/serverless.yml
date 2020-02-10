@@ -219,6 +219,7 @@ resources:
                 Effect: Allow
                 Action:
                 - lambda:InvokeFunction
+                - lambda:GetFunction
                 Resource: "*"
     CNLambdaRole:
       Type: AWS::IAM::Role
