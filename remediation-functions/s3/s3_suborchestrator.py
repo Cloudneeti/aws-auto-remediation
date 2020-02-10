@@ -64,11 +64,6 @@ def lambda_handler(event, context):
             try:
                 s3_put_bucket_encryption.run_remediation(s3_client,bucket_name)
                 print('remediated-' + bucket_name)
-                #returning the output Array in json format
-                return {  
-                    'statusCode': 200,
-                    'body': json.dumps('remediated-' + bucket_name)
-                }
             except ClientError as e:
                 print(e)
                 return {  
@@ -86,11 +81,6 @@ def lambda_handler(event, context):
             try: 
                 s3_put_bucket_versioning.run_remediation(s3_client,bucket_name)
                 print('remediated-' + bucket_name)
-                #returning the output Array in json format
-                return {  
-                    'statusCode': 200,
-                    'body': json.dumps('remediated-' + bucket_name)
-                }
             except ClientError as e:
                 print(e)
                 return {  
@@ -108,11 +98,6 @@ def lambda_handler(event, context):
             try:
                 s3_put_bucket_acl.run_remediation(s3_client,bucket_name)
                 print('remediated-' + bucket_name)
-                #returning the output Array in json format
-                return {  
-                    'statusCode': 200,
-                    'body': json.dumps('remediated-' + bucket_name)
-                }
             except ClientError as e:
                 print(e)
                 return {  
@@ -131,11 +116,6 @@ def lambda_handler(event, context):
             try:
                 s3_transfer_accelaration.run_remediation(s3_client,bucket_name)
                 print('remediated-' + bucket_name)
-                #returning the output Array in json format
-                return {  
-                    'statusCode': 200,
-                    'body': json.dumps('remediated-' + bucket_name)
-                }
             except ClientError as e:
                 print(e)
                 return {  
@@ -149,6 +129,11 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }      
         
+        #returning the output Array in json format
+        return {  
+            'statusCode': 200,
+            'body': json.dumps('remediated-' + bucket_name)
+        }
         #enable block public access feature
         if "S3busketpublicaccess" in set(records): 
             try:

@@ -5,15 +5,13 @@ Enable Log Exports feature for AWS RDS database clusters[AuroraMySQL,AuroraPostg
 from botocore.exceptions import ClientError
 
 def run_remediation(rds, RDSIdentifier):
-    print('Executing RDS Cluster remediation')  
-    response=''
-    DBenginemode=''
-    DBengine=''
-    RDSlogs=''
+    print('Executing RDS Cluster remediation')
+    RDSlogs = ''
+    #Verify cloudwatch logs enabled for db-cluster
     try:
-        response = rds.describe_db_clusters(DBClusterIdentifier=RDSIdentifier)['DBClusters']
-        DBenginemode=response[0]['EngineMode']
-        DBengine=response[0]['Engine']
+        response = rds.describe_db_clusters(DBClusterIdentifier = RDSIdentifier)['DBClusters']
+        DBenginemode = response[0]['EngineMode']
+        DBengine = response[0]['Engine']
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
@@ -21,7 +19,7 @@ def run_remediation(rds, RDSIdentifier):
         responseCode = 400
         output = "Unexpected error: " + str(e)
     try:
-        RDSlogs=response[0]['EnabledCloudwatchLogsExports']
+        RDSlogs = response[0]['EnabledCloudwatchLogsExports']
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
@@ -30,12 +28,13 @@ def run_remediation(rds, RDSIdentifier):
         output = "Unexpected error: " + str(e)
 
     if DBenginemode == 'serverless' and DBengine == 'aurora':
+        #Enable cloudwatch logs for serverless db-cluster        
         if len(RDSlogs) <= 3:                  
             try:
                 result = rds.modify_db_cluster(
-                    DBClusterIdentifier=RDSIdentifier,
-                    ApplyImmediately=True,
-                    CloudwatchLogsExportConfiguration={
+                    DBClusterIdentifier = RDSIdentifier,
+                    ApplyImmediately = False,
+                    CloudwatchLogsExportConfiguration = {
                         'EnableLogTypes': ['audit', 'error', 'general', 'slowquery']
                     }
                 )
@@ -44,7 +43,7 @@ def run_remediation(rds, RDSIdentifier):
                 if responseCode >= 400:
                     output = 'Unexpected error: ' + str(result)
                 else:
-                    output = 'CloudWatch logs feature enabled for cluster : '+RDSIdentifier
+                    output = 'CloudWatch logs feature enabled for cluster : '+ RDSIdentifier
                         
             except ClientError as e:
                 responseCode = 400
@@ -57,17 +56,18 @@ def run_remediation(rds, RDSIdentifier):
 
             print(str(responseCode)+'-'+output)
         else:
-            responseCode=200
-            output='CloudWatch logs feature already enabled for cluster : '+RDSIdentifier
+            responseCode = 200
+            output = 'CloudWatch logs feature already enabled for cluster : '+ RDSIdentifier
             print(output)
             
     else:
+        #Enable cloudwatch logs for provisioned db-cluster 
         if DBengine == 'aurora' and len(RDSlogs) <= 3:            
             try:
                 result = rds.modify_db_cluster(
-                    DBClusterIdentifier=RDSIdentifier,
-                    ApplyImmediately=True,
-                    CloudwatchLogsExportConfiguration={
+                    DBClusterIdentifier = RDSIdentifier,
+                    ApplyImmediately = False,
+                    CloudwatchLogsExportConfiguration = {
                         'EnableLogTypes': ['audit', 'error', 'general', 'slowquery']
                     }
                 )
@@ -92,9 +92,9 @@ def run_remediation(rds, RDSIdentifier):
         elif DBengine == 'aurora-postgresql' and len(RDSlogs) == 0:
             try:
                 result = rds.modify_db_cluster(
-                    DBClusterIdentifier=RDSIdentifier,
-                    ApplyImmediately=True,
-                    CloudwatchLogsExportConfiguration={
+                    DBClusterIdentifier = RDSIdentifier,
+                    ApplyImmediately = False,
+                    CloudwatchLogsExportConfiguration = {
                         'EnableLogTypes': ['postgresql']
                     }
                 )
@@ -117,8 +117,8 @@ def run_remediation(rds, RDSIdentifier):
             print(str(responseCode)+'-'+output)
             
         else:
-            responseCode=200
-            output='CloudWatch logs feature already enabled for cluster : '+RDSIdentifier
+            responseCode = 200
+            output = 'CloudWatch logs feature already enabled for cluster : '+ RDSIdentifier
             print(output)
 
         return responseCode,output

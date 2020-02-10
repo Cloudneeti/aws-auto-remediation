@@ -13,7 +13,6 @@ def run_remediation(cloudtrail_client, Trail):
             IncludeGlobalServiceEvents=True,
             IsMultiRegionTrail=True
         )
-
         responseCode = result['ResponseMetadata']['HTTPStatusCode']
         if responseCode >= 400:
             output = "Unexpected error: %s \n" % str(result)

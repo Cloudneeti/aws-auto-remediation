@@ -6,10 +6,11 @@ from botocore.exceptions import ClientError
 
 def run_remediation(rds, RDSInstanceName):
     print("Executing RDS instance remediation")  
-    copytags=''
+    copytags = ''
+    #Verify Current Copytag to snapshot configuration
     try:
-        response = rds.describe_db_instances(DBInstanceIdentifier=RDSInstanceName)['DBInstances']
-        copytags=response[0]['CopyTagsToSnapshot']
+        response = rds.describe_db_instances(DBInstanceIdentifier = RDSInstanceName)['DBInstances']
+        copytags = response[0]['CopyTagsToSnapshot']
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
@@ -19,22 +20,13 @@ def run_remediation(rds, RDSInstanceName):
         output = "Unexpected error: " + str(e)
         print(output)
 
-    if not copytags:  
-        while response[0]['DBInstanceStatus'] not in ['available', 'stopped']:
-            try:
-                response = rds.describe_db_instances(DBInstanceIdentifier=RDSInstanceName)['DBInstances']
-            except ClientError as e:
-                responseCode = 400
-                output = "Unexpected error: " + str(e)
-            except Exception as e:
-                responseCode = 400
-                output = "Unexpected error: " + str(e)
-
+    if not copytags:
+        #Enable Copytag to Snapshot
         try:
             result = rds.modify_db_instance(
-                DBInstanceIdentifier=RDSInstanceName,
-                ApplyImmediately=True,
-                CopyTagsToSnapshot=True
+                DBInstanceIdentifier = RDSInstanceName,
+                ApplyImmediately = False,
+                CopyTagsToSnapshot = True
             )
 
             responseCode = result['ResponseMetadata']['HTTPStatusCode']
@@ -54,8 +46,8 @@ def run_remediation(rds, RDSInstanceName):
 
         print(str(responseCode)+'-'+output)
     else:
-        responseCode=200
-        output='Copy tags to snapshot already enabled for rds-instance : '+RDSInstanceName
+        responseCode = 200
+        output ='Copy tags to snapshot already enabled for rds-instance : '+ RDSInstanceName
         print(output)
 
     return responseCode,output

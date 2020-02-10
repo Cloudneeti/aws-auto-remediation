@@ -63,11 +63,6 @@ def lambda_handler(event, context):
             try:
                 ec2_detailed_monitoring.run_remediation(ec2,Instance_ID)
                 print('remediated-' + Instance_ID)
-                #returning the output Array in json format
-                return {  
-                    'statusCode': 200,
-                    'body': json.dumps('remediated-' + Instance_ID)
-                }
             except ClientError as e:
                 print(e)
                 return {  
@@ -85,11 +80,6 @@ def lambda_handler(event, context):
             try:
                 ec2_termination_protection.run_remediation(ec2,Instance_ID)
                 print('remediated-' + Instance_ID)
-                #returning the output Array in json format
-                return {  
-                    'statusCode': 200,
-                    'body': json.dumps('remediated-' + Instance_ID)
-                }
             except ClientError as e:
                 print(e)
                 return {  
@@ -103,6 +93,11 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }   
         
+        #returning the output Array in json format
+        return {  
+            'statusCode': 200,
+            'body': json.dumps('remediated-' + Instance_ID)
+        }
 
     else:
         print("CN-portal triggered remediation")

@@ -63,11 +63,6 @@ def lambda_handler(event, context):
             try:
                 cloudtrail_enable_multi_region_trail.run_remediation(cloudtrail_client,Trail)
                 print('remediated-' + Trail)
-                #returning the output Array in json format
-                return {  
-                    'statusCode': 200,
-                    'body': json.dumps('remediated-' + Trail)
-                }
             except ClientError as e:
                 print(e)
                 return {  
@@ -85,11 +80,6 @@ def lambda_handler(event, context):
             try:
                 cloudtrail_enable_log_file_validation.run_remediation(cloudtrail_client,Trail)
                 print('remediated-' + Trail)
-                #returning the output Array in json format
-                return {  
-                    'statusCode': 200,
-                    'body': json.dumps('remediated-' + Trail)
-                }
             except ClientError as e:
                 print(e)
                 return {  
@@ -107,11 +97,6 @@ def lambda_handler(event, context):
             try:
                 cloudtrail_enable_trail_logging.run_remediation(cloudtrail_client,Trail)
                 print('remediated-' + Trail)
-                #returning the output Array in json format
-                return {  
-                    'statusCode': 200,
-                    'body': json.dumps('remediated-' + Trail)
-                }
             except ClientError as e:
                 print(e)
                 return {  
@@ -125,6 +110,11 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }   
         
+        #returning the output Array in json format
+        return {  
+            'statusCode': 200,
+            'body': json.dumps('remediated-' + Trail)
+        }
 
     else:
         print("CN-portal triggered remediation")

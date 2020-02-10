@@ -10,13 +10,13 @@ from rds_cluster import *
 
 def lambda_handler(event, context):
     global aws_access_key_id, aws_secret_access_key, aws_session_token, CustAccID, Region
-    auto_pause=["AuroraServerlessScalingAutoPause", "AuroraPostgresServerlessScalingAutoPause"]
-    backup_retention=["AuroraBackup", "AuroraBackupTerm", "AuroraServerlessBackupTerm", "AuroraPostgresServerlessBackupTerm"]
-    copytagstosnapshots=["AuroraCopyTagsToSnapshot", "AuroraServerlessCopyTagsToSnapshot", "AuroraPostgresServerlessCopyTagsToSnapshot"]
-    deletion_protection=["AuroraDeleteProtection", "AuroraServerlessDeleteProtection", "AuroraPostgresServerlessDeleteProtection"]
-    cluster_logexport=["AuroralogExport","CloudwatchLogsExports"]
-    cluster_datatier_tag=["AuroradataTierConfig", "AuroraServerlessdataTierConfig", "AuroraPostgresServerlessdataTierConfig"]
-    cluster_iam_auth=["AuroraIAMAuthEnabled"]
+    auto_pause = ["AuroraServerlessScalingAutoPause", "AuroraPostgresServerlessScalingAutoPause"]
+    backup_retention = ["AuroraBackup", "AuroraBackupTerm", "AuroraServerlessBackupTerm", "AuroraPostgresServerlessBackupTerm"]
+    copytagstosnapshots = ["AuroraCopyTagsToSnapshot", "AuroraServerlessCopyTagsToSnapshot", "AuroraPostgresServerlessCopyTagsToSnapshot"]
+    deletion_protection = ["AuroraDeleteProtection", "AuroraServerlessDeleteProtection", "AuroraPostgresServerlessDeleteProtection"]
+    cluster_logexport = ["AuroralogExport","CloudwatchLogsExports"]
+    cluster_datatier_tag = ["AuroradataTierConfig", "AuroraServerlessdataTierConfig", "AuroraPostgresServerlessdataTierConfig"]
+    cluster_iam_auth = ["AuroraIAMAuthEnabled"]
     
     try:
         PolicyId = json.loads(event["body"])["PolicyId"]
@@ -66,6 +66,22 @@ def lambda_handler(event, context):
                 'body': str(e)
             }
 
+        if set(backup_retention).intersection(set(records)):
+            try:
+                rdscluster_backupretention.run_remediation(rds,RDSClusterName)
+            except ClientError as e:
+                print(e)
+                return {  
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+            except Exception as e:
+                print(e)
+                return {
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+        
         if set(auto_pause).intersection(set(records)):
             try:
                 rdscluster_autopause.run_remediation(rds,RDSClusterName)
@@ -82,21 +98,6 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
 
-        if set(backup_retention).intersection(set(records)):
-            try:
-                rdscluster_backupretention.run_remediation(rds,RDSClusterName)
-            except ClientError as e:
-                print(e)
-                return {  
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-            except Exception as e:
-                print(e)
-                return {
-                    'statusCode': 400,
-                    'body': str(e)
-                }
 
         if set(copytagstosnapshots).intersection(set(records)):
             try:

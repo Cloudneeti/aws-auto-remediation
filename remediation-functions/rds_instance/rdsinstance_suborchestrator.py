@@ -10,17 +10,17 @@ from rds_instance import *
 
 def lambda_handler(event, context):
     global aws_access_key_id, aws_secret_access_key, aws_session_token, CustAccID, Region
-    backup_retention=["SQLBackup","SQLBackupTerm","MariadbBackup","MariadbBackupTerm","OracleBackup","OracleBackupTerm","SQLServerBackup","SQLServerBackupTerm","MySQLBackup","MySQLBackupTerm"]
-    copytagstosnapshot=["SQLCopyTagsToSnapshot","MariadbCopyTagsToSnapshot","OracleCopyTagsToSnapshot","SQLServerCopyTagsToSnapshot","MySQLCopyTagsToSnapshot"]
-    deletion_protection=["SQLDeletionProtection","MariadbDeletionProtection", "OracleDeletionProtection", "SQLServerDeletionProtection","MySQLDeletionProtection"]
-    disable_public_access=["SQLPrivateInstance","MariadbPrivateInstance","OraclePrivateInstance","SQLServerPrivateInstance","AuroraInstancePrivateInstance","MySQLPrivateInstance"]
-    minor_version=["SQLVersionUpgrade","MariadbVersionUpgrade","OracleVersionUpgrade","SQLServerVersionUpgrade","AuroraInstanceVersionUpgrade","MySQLVersionUpgrade"]
-    multiaz=["SQLMultiAZEnabled","MariadbMultiAZEnabled","OracleMultiAZEnabled","SQLServerMultiAZEnabled","MySQLMultiAZEnabled"]
-    performance_insights=["SQLPerformanceInsights","MariadbPerformanceInsights","OraclePerformanceInsights","SQLServerPerformanceInsights","AuroraInstancePerformanceInsights","MySQLPerformanceInsights"]
-    instance_logexport=["MySQLlogExport","MariadblogExport","OraclelogExport"]
-    instance_datatiertag=["SQLdataTierConfig", "MariadbdataTierConfig", "OracledataTierConfig", "SQLServerdataTierConfig", "AuroraInstancedataTierConfig", "MySQLdataTierConfig"]
-    instance_iam_auth=["SQLIAMAuthEnabled", "MySQLIAMAuthEnabled"]
-    db_parameters=["MySQLBlockEncryption","MySQLEnableFIPS"]
+    backup_retention = ["SQLBackup","SQLBackupTerm","MariadbBackup","MariadbBackupTerm","OracleBackup","OracleBackupTerm","SQLServerBackup","SQLServerBackupTerm","MySQLBackup","MySQLBackupTerm"]
+    copytagstosnapshot = ["SQLCopyTagsToSnapshot","MariadbCopyTagsToSnapshot","OracleCopyTagsToSnapshot","SQLServerCopyTagsToSnapshot","MySQLCopyTagsToSnapshot"]
+    deletion_protection = ["SQLDeletionProtection","MariadbDeletionProtection", "OracleDeletionProtection", "SQLServerDeletionProtection","MySQLDeletionProtection"]
+    disable_public_access = ["SQLPrivateInstance","MariadbPrivateInstance","OraclePrivateInstance","SQLServerPrivateInstance","AuroraInstancePrivateInstance","MySQLPrivateInstance"]
+    minor_version = ["SQLVersionUpgrade","MariadbVersionUpgrade","OracleVersionUpgrade","SQLServerVersionUpgrade","AuroraInstanceVersionUpgrade","MySQLVersionUpgrade"]
+    multiaz = ["SQLMultiAZEnabled","MariadbMultiAZEnabled","OracleMultiAZEnabled","SQLServerMultiAZEnabled","MySQLMultiAZEnabled"]
+    performance_insights = ["SQLPerformanceInsights","MariadbPerformanceInsights","OraclePerformanceInsights","SQLServerPerformanceInsights","AuroraInstancePerformanceInsights","MySQLPerformanceInsights"]
+    instance_logexport = ["MySQLlogExport","MariadblogExport","OraclelogExport"]
+    instance_datatiertag = ["SQLdataTierConfig", "MariadbdataTierConfig", "OracledataTierConfig", "SQLServerdataTierConfig", "AuroraInstancedataTierConfig", "MySQLdataTierConfig"]
+    instance_iam_auth = ["SQLIAMAuthEnabled", "MySQLIAMAuthEnabled"]
+    db_parameters = ["MySQLBlockEncryption","MySQLEnableFIPS"]
     try:
         PolicyId = json.loads(event["body"])["PolicyId"]
     except:

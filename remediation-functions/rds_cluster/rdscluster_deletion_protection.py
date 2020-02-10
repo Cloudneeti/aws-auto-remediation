@@ -6,9 +6,9 @@ from botocore.exceptions import ClientError
 
 def run_remediation(rds, RDSIdentifier):
     print("Executing RDS Cluster remediation")  
-
+    #Verify deletion protection for db-cluster
     try:
-        response = rds.describe_db_clusters(DBClusterIdentifier=RDSIdentifier)['DBClusters']
+        response = rds.describe_db_clusters(DBClusterIdentifier = RDSIdentifier)['DBClusters']
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
@@ -18,12 +18,13 @@ def run_remediation(rds, RDSIdentifier):
         output = "Unexpected error: " + str(e)
         print(output)
 
-    if not response[0]['DeletionProtection']:            
+    if not response[0]['DeletionProtection']:
+        #Update deletion protection for db-cluster                    
         try:
             result = rds.modify_db_cluster(
-                DBClusterIdentifier=RDSIdentifier,
-                ApplyImmediately=True,
-                DeletionProtection=True
+                DBClusterIdentifier = RDSIdentifier,
+                ApplyImmediately = False,
+                DeletionProtection = True
             )
 
             responseCode = result['ResponseMetadata']['HTTPStatusCode']
@@ -44,7 +45,7 @@ def run_remediation(rds, RDSIdentifier):
         print(str(responseCode)+'-'+output)
     else:
         responseCode=200
-        output='Deletion protection already enabled for cluster : '+RDSIdentifier
+        output = 'Deletion protection already enabled for cluster : '+ RDSIdentifier
         print(output)
 
     return responseCode,output
