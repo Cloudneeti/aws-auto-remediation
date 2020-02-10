@@ -16,9 +16,230 @@ functions:
     timeout: 900
     role: CNLambdaRole
     events:
-      - cloudwatchLog: 
-          logGroup: 'cn-log-group'
-          filter: '{$.eventName="StopLogging" || $.eventName="CreateDBCluster" || $.eventName="ModifyDBCluster" || $.eventName="CreateDBInstance" || $.eventName="ModifyDBInstance" || $.eventName="CreateCluster" || $.eventName="ModifyCluster" || $.eventName="CreateBucket" || $.eventName="PutAccelerateConfiguration" || $.eventName="PutBucketPublicAccessBlock" || $.eventName="CreateTable" || $.eventName="UpdateTable" || $.eventName="UpdateContinuousBackups" || $.eventName="PutConfigurationRecorder" || $.eventName="StopConfigurationRecorder" || $.eventName="UpdateAutoScalingGroup" || $.eventName="CreateAutoScalingGroup" || $.eventName="CreateStack" || $.eventName="UpdateStack" || $.eventName="RunInstances" || $.eventName="StartInstances" || $.eventName="ModifyInstanceAttribute" || $.eventName="CreateQueue" || $.eventName="SetQueueAttributes" || $.eventName="UnmonitorInstances" || $.eventName="UpdateTerminationProtection" || $.eventName="RemoveTagsFromResource"}'
+      - cloudwatchEvent:
+          name: 'cn-aws-rds-event-rule'
+          description: 'CloudWatch Event triggered on rds'
+          event:
+            source:
+              - aws.rds
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - rds.amazonaws.com
+              eventName:
+                - CreateDBCluster
+                - ModifyDBCluster
+                - CreateDBInstance
+                - ModifyDBInstance
+                - CreateCluster
+                - ModifyCluster
+                - RemoveTagsFromResource
+              targets:
+                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
+      - cloudwatchEvent:
+          name: 'cn-aws-ec2-event-rule'
+          description: 'CloudWatch Event triggered on ec2'
+          event:
+            source:
+              - aws.ec2
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - ec2.amazonaws.com
+              eventName:
+                - RunInstances
+                - StartInstances
+                - ModifyInstanceAttribute
+                - UnmonitorInstances
+              targets:
+                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
+      - cloudwatchEvent:
+          name: 'cn-aws-cloudtrail-event-rule'
+          description: 'CloudWatch Event triggered on cloudtrail'
+          event:
+            source:
+              - aws.cloudtrail
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - cloudtrail.amazonaws.com
+              eventName:
+                - CreateTrail
+                - UpdateTrail
+                - StopLogging
+              targets:
+                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
+      - cloudwatchEvent:
+          name: 'cn-aws-iam-event-rule'
+          description: 'CloudWatch Event triggered on iam'
+          event:
+            source:
+              - aws.iam
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - iam.amazonaws.com
+              eventName:
+                - UpdateAccountPasswordPolicy
+                - DeleteAccountPasswordPolicy
+              targets:
+                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
+      - cloudwatchEvent:
+          name: 'cn-aws-kinesis-event-rule'
+          description: 'CloudWatch Event triggered on kinesis'
+          event:
+            source:
+              - aws.kinesis
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - kinesis.amazonaws.com
+              eventName:
+                - CreateStream
+                - StopStreamEncryption
+                - DisableEnhancedMonitoring
+              targets:
+                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
+      - cloudwatchEvent:
+          name: 'cn-aws-kms-event-rule'
+          description: 'CloudWatch Event triggered on kms'
+          event:
+            source:
+              - aws.kms
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - kms.amazonaws.com
+              eventName:
+                - CreateKey
+                - DisableKeyRotation
+              targets:
+                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
+      - cloudwatchEvent:
+          name: 'cn-aws-elb-event-rule'
+          description: 'CloudWatch Event triggered on elb'
+          event:
+            source:
+              - aws.elasticloadbalancing
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - elasticloadbalancing.amazonaws.com
+              eventName:
+                - CreateLoadBalancer
+                - ModifyLoadBalancerAttributes
+              targets:
+                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
+      - cloudwatchEvent:
+          name: 'cn-aws-s3bucket-event-rule'
+          description: 'CloudWatch Event triggered on s3bucket'
+          event:
+            source:
+              - aws.s3
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - s3.amazonaws.com
+              eventName:
+                - CreateBucket
+                - PutBucketVersioning
+                - DeleteBucketEncryption
+                - PutBucketAcl
+                - PutAccelerateConfiguration
+                - PutBucketPublicAccessBlock
+              targets:
+                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
+      - cloudwatchEvent:
+          name: 'cn-aws-dynamodb-event-rule'
+          description: 'CloudWatch Event triggered on dynamodb'
+          event:
+            source:
+              - aws.dynamodb
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - dynamodb.amazonaws.com
+              eventName:
+                - CreateTable
+                - RestoreTableFromBackup
+                - UpdateTable
+                - UpdateContinuousBackups
+              targets:
+                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
+      - cloudwatchEvent:
+          name: 'cn-aws-config-event-rule'
+          description: 'CloudWatch Event triggered on config'
+          event:
+            source:
+              - aws.config
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - config.amazonaws.com
+              eventName:
+                - PutConfigurationRecorder
+                - StopConfigurationRecorder
+              targets:
+                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
+      - cloudwatchEvent:
+          name: 'cn-aws-asg-event-rule'
+          description: 'CloudWatch Event triggered on asg'
+          event:
+            source:
+              - aws.autoscaling
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - autoscaling.amazonaws.com
+              eventName:
+                - UpdateAutoScalingGroup
+                - CreateAutoScalingGroup
+              targets:
+                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
+      - cloudwatchEvent:
+          name: 'cn-aws-cloudformation-event-rule'
+          description: 'CloudWatch Event triggered on cloudformation stack'
+          event:
+            source:
+              - aws.cloudformation
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - cloudformation.amazonaws.com
+              eventName:
+                - CreateStack
+                - UpdateStack
+                - UpdateTerminationProtection
+              targets:
+                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
+      - cloudwatchEvent:
+          name: 'cn-aws-sqs-event-rule'
+          description: 'CloudWatch Event triggered on sqs queue'
+          event:
+            source:
+              - aws.sqs
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - sqs.amazonaws.com
+              eventName:
+                - CreateQueue
+                - SetQueueAttributes
+              targets:
+                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}
@@ -358,9 +579,7 @@ resources:
                 - logs:PutLogEvents
                 - cloudtrail:DescribeTrails
                 - cloudtrail:GetTrailStatus
-                - s3:ListAllMyBuckets
-                - s3:GetObject
-                - s3:PutObject
+                - s3:*
                 - lambda:InvokeFunction
                 Resource: "*"
               - Sid: AllowAssumeRoleForLambdaPolicy
