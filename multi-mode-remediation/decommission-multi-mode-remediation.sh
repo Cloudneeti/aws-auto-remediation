@@ -54,13 +54,15 @@ if [[ "$env" == "" ]] ||  [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~
     usage
 fi
 
+aws_region="$(aws configure get region 2>/dev/null)"
+
 acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
 env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
 
 echo "Validating environment prefix..."
 sleep 5
 
-stack_detail="$(aws cloudformation describe-stacks --stack-name cn-aws-remediate-$env-$acc_sha 2>/dev/null)"
+stack_detail="$(aws cloudformation describe-stacks --stack-name cn-aws-remediate-$env-$acc_sha --region $aws_region 2>/dev/null)"
 stack_status=$?
 
 if [[ $stack_status -ne 0 ]]; then
@@ -81,14 +83,14 @@ fi
 echo "Deleting deployment stack..."
 if ( test ! -z "$awsaccountid" && test ! -z "$env" )
 then
-    aws cloudformation delete-stack --stack-name cn-aws-remediate-$env-$acc_sha 2>/dev/null
+    aws cloudformation delete-stack --stack-name cn-aws-remediate-$env-$acc_sha --region $aws_region 2>/dev/null
     lambda_status=$?
-	aws cloudformation delete-stack --stack-name $env-$acc_sha 2>/dev/null
+	aws cloudformation delete-stack --stack-name $env-$acc_sha --region $aws_region 2>/dev/null
     bucket_status=$?
 else
-    aws cloudformation delete-stack --stack-name cn-aws-remediate-multirem-acc-$acc_sha 2>/dev/null
+    aws cloudformation delete-stack --stack-name cn-aws-remediate-multirem-acc-$acc_sha --region $aws_region 2>/dev/null
     lambda_status=$?
-	aws cloudformation delete-stack --stack-name multirem-acc-$acc_sha 2>/dev/null
+	aws cloudformation delete-stack --stack-name multirem-acc-$acc_sha --region $aws_region 2>/dev/null
     bucket_status=$?	
 fi
 

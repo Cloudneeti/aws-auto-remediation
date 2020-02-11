@@ -6,6 +6,10 @@ Parameters:
     awsaccountid:
         Description: AWS Account ID
         Type: String
+    region:
+        Description: Region of deployment
+        Type: String
+        Default: us-east-1
 Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
@@ -105,7 +109,9 @@ Resources:
               Resource: 
                 Fn::Join:
                 - ""
-                - - 'arn:aws:logs:us-east-1:'
+                - - 'arn:aws:logs:'
+                  - !Ref region
+                  - ':'
                   - !Ref awsaccountid
                   - ':log-group:cn-log-group:*'
             - Sid: CTCWPolicy2
@@ -115,7 +121,9 @@ Resources:
               Resource: 
                 Fn::Join:
                 - ""
-                - - 'arn:aws:logs:us-east-1:'
+                - - 'arn:aws:logs:'
+                  - !Ref region
+                  - ':'
                   - !Ref awsaccountid
                   - ':log-group:cn-log-group:*'
 

@@ -57,10 +57,12 @@ if [[ "$env" == "" ]] || [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ 
     usage
 fi
 
+aws_region="$(aws configure get region 2>/dev/null)"
+
 acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
 env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
 
-stack_detail="$(aws cloudformation describe-stacks --stack-name cn-aws-remediate-$env-$acc_sha 2>/dev/null)"
+stack_detail="$(aws cloudformation describe-stacks --stack-name cn-aws-remediate-$env-$acc_sha --region $aws_region 2>/dev/null)"
 stack_status=$?
 
 echo "Validating environment prefix..."
@@ -79,13 +81,13 @@ rem_role_det="$(aws iam get-role --role-name CN-Auto-Remediation-Role 2>/dev/nul
 Rem_role=$?
 
 echo "Verifying Cloudtrail deployment...."
-CT_det="$(aws cloudtrail get-trail-status --name cn-remediation-trail 2>/dev/null)"
+CT_det="$(aws cloudtrail get-trail-status --name cn-remediation-trail --region $aws_region 2>/dev/null)"
 CT_status=$?
 
-CT_log="$(aws cloudtrail get-trail-status --name cn-remediation-trail | jq -r '.IsLogging' 2>/dev/null)"
+CT_log="$(aws cloudtrail get-trail-status --name cn-remediation-trail --region $aws_region | jq -r '.IsLogging' 2>/dev/null)"
 
 echo "Verifying Lambda deployment...."
-Lambda_det="$(aws lambda get-function --function-name cn-aws-remediate-relayfunction 2>/dev/null)"
+Lambda_det="$(aws lambda get-function --function-name cn-aws-remediate-relayfunction --region $aws_region 2>/dev/null)"
 Lambda_status=$?
 
 s3_detail="$(aws s3api get-bucket-versioning --bucket cn-rem-$env-$acc_sha 2>/dev/null)"
