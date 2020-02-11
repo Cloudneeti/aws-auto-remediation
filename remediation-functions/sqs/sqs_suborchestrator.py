@@ -58,59 +58,10 @@ def lambda_handler(event, context):
                 'statusCode': 400,
                 'body': str(e)
             }
-            
-        try:
-            # Create KMS client
-            kms = boto3.client('kms', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)  
-        except ClientError as e:
-            print(e)
-            return {  
-                'statusCode': 400,
-                'body': str(e)
-            }
-        except Exception as e:
-            print(e)
-            return {
-                'statusCode': 400,
-                'body': str(e)
-            }
         
         if "SQSSSEEnabled" in str(records):
             try:
                 sqs_enable_sse.run_remediation(sqs, queue_url)
-            except ClientError as e:
-                print(e)
-                return {  
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-            except Exception as e:
-                print(e)
-                return {
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-                
-        if '_DeadLetter_Queue' not in Queue_Url:
-            if "SQSDeadLetterQueue" in str(records):
-                try:
-                    sqs_deadletter_queue.run_remediation(sqs, queue_url)
-                except ClientError as e:
-                    print(e)
-                    return {  
-                        'statusCode': 400,
-                        'body': str(e)
-                    }
-                except Exception as e:
-                    print(e)
-                    return {
-                        'statusCode': 400,
-                        'body': str(e)
-                    }
-                
-        if "SQSEncryptedKMS" in str(records):
-            try:
-                sqs_encryption_cmk.run_remediation(sqs, kms, queue_url, CustAccID)
             except ClientError as e:
                 print(e)
                 return {  

@@ -12,21 +12,40 @@ def run_remediation(dynamodb, DynamodbTableName):
     try:
         response = dynamodb.describe_continuous_backups(TableName=DynamodbTableName)['ContinuousBackupsDescription']
         continuous_backup=response[0]['ContinuousBackupsStatus']
+        print(continuous_backup)
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
     except Exception as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)  
+    
+    try:
+        table_details = dynamodb.describe_table(TableName=DynamodbTableName)['Table']
+    except ClientError as e:
+        responseCode = 400
+        output = "Unexpected error: " + str(e)
+    except Exception as e:
+        responseCode = 400
+        output = "Unexpected error: " + str(e) 
 
-    if not continuous_backup: 
+    if not continuous_backup:
+        while table_details['TableStatus'] not in ['ACTIVE']:
+            try:
+                table_details = dynamodb.describe_table(TableName=DynamodbTableName)['Table']
+            except ClientError as e:
+                responseCode = 400
+                output = "Unexpected error: " + str(e)
+            except Exception as e:
+                responseCode = 400
+                output = "Unexpected error: " + str(e) 
         try:
             result = dynamodb.update_continuous_backups(
                                 TableName=DynamodbTableName,
                                 PointInTimeRecoverySpecification={
                                     'PointInTimeRecoveryEnabled': True
                                 })
-
+            print("dynamodb contineous backup updated")
             responseCode = result['ResponseMetadata']['HTTPStatusCode']
             if responseCode >= 400:
                 output = "Unexpected error: %s \n" % str(result)

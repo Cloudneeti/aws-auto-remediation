@@ -10,19 +10,30 @@ def run_remediation(kinesis, stream_name):
     encryption_status = False
 
     try:
-        encryption_state = kinesis.describe_stream(StreamName=stream_name)['StreamDescription']['EncryptionType']
+        response = kinesis.describe_stream(StreamName=stream_name)['StreamDescription']
+        encryption_state = response['EncryptionType']
         if encryption_state != 'NONE':
             encryption_status = True
     except:
         encryption_status = False    
 
     if not encryption_status:
+        #verify instance state  
+        while response['StreamStatus'] not in ['ACTIVE']:
+            try:
+                response = kinesis.describe_stream(StreamName=stream_name)['StreamDescription']
+            except ClientError as e:
+                responseCode = 400
+                output = "Unexpected error: " + str(e)
+            except Exception as e:
+                responseCode = 400
+                output = "Unexpected error: " + str(e)
 
         try:
             result = kinesis.start_stream_encryption(
                         StreamName=stream_name,
                         EncryptionType='KMS',
-                        KeyId='aws/kinesis'
+                        KeyId='alias/aws/kinesis'
                     )
 
             responseCode = result['ResponseMetadata']['HTTPStatusCode']

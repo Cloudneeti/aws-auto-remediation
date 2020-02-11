@@ -8,16 +8,27 @@ def run_remediation(kinesis, stream_name):
     print("Executing remediation")            
 
     enhanced_monitoring = False
-
+    #Verify monitoring status
     try:
-        enhanced_monitoring_status = kinesis.describe_stream(StreamName=stream_name)['StreamDescription']['EnhancedMonitoring'][0]['ShardLevelMetrics']
+        response = kinesis.describe_stream(StreamName=stream_name)['StreamDescription']
+        enhanced_monitoring_status = response['EnhancedMonitoring'][0]['ShardLevelMetrics']
         if enhanced_monitoring_status:
             enhanced_monitoring = True
     except:
         enhanced_monitoring = False    
 
     if not enhanced_monitoring:
-
+        #verify instance state  
+        while response['StreamStatus'] not in ['ACTIVE']:
+            try:
+                response = kinesis.describe_stream(StreamName=stream_name)['StreamDescription']
+            except ClientError as e:
+                responseCode = 400
+                output = "Unexpected error: " + str(e)
+            except Exception as e:
+                responseCode = 400
+                output = "Unexpected error: " + str(e)
+        #Enable monitoring status
         try:
             result = kinesis.enable_enhanced_monitoring(
                         StreamName=stream_name,

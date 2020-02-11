@@ -34,7 +34,7 @@ def run_remediation(rds, RDSIdentifier):
             result = rds.modify_db_cluster(
                 DBClusterIdentifier = RDSIdentifier,
                 ApplyImmediately = True,
-                BackupRetentionPeriod=7
+                BackupRetentionPeriod=8
             )
 
             responseCode = result['ResponseMetadata']['HTTPStatusCode']

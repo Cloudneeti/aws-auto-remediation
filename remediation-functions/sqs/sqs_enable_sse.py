@@ -7,6 +7,8 @@ from botocore.exceptions import ClientError
 def run_remediation(sqs, queue_url):
     print("Executing sqs queue remediation")
     queue_not_enabled_sse = True
+    
+    #Verify sqs queue encryption
     try:
         response = sqs.get_queue_attributes(QueueUrl = queue_url, AttributeNames = ['All'])['Attributes']
         if response['KmsMasterKeyId']:
@@ -18,7 +20,8 @@ def run_remediation(sqs, queue_url):
         responseCode = 400
         output = "Unexpected error: " + str(e)
     
-    if queue_not_enabled_sse:   
+    if queue_not_enabled_sse:
+        #Enable sqs queue encryption   
         try:
             result = sqs.set_queue_attributes(QueueUrl=queue_url,Attributes={"KmsMasterKeyId": "alias/aws/sqs","KmsDataKeyReusePeriodSeconds": "300"})
             responseCode = result['ResponseMetadata']['HTTPStatusCode']

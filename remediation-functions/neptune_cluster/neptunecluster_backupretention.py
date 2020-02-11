@@ -21,6 +21,16 @@ def run_remediation(neptune, cluster_name):
         output = "Unexpected error: " + str(e)
 
     if not backup:
+        #verify instance state  
+        while response[0]['Status'] not in ['available', 'stopped']:
+            try:
+                response = neptune.describe_db_clusters(DBClusterIdentifier = cluster_name)['DBClusters']
+            except ClientError as e:
+                responseCode = 400
+                output = "Unexpected error: " + str(e)
+            except Exception as e:
+                responseCode = 400
+                output = "Unexpected error: " + str(e)
         #Update current backup retention          
         try:
             result = neptune.modify_db_cluster(

@@ -32,8 +32,6 @@ functions:
                 - ModifyDBCluster
                 - CreateDBInstance
                 - ModifyDBInstance
-                - CreateCluster
-                - ModifyCluster
                 - RemoveTagsFromResource
       - cloudwatchEvent:
           name: 'cn-aws-ec2-event-rule'
@@ -214,6 +212,20 @@ functions:
               eventName:
                 - CreateQueue
                 - SetQueueAttributes
+      - cloudwatchEvent:
+          name: 'cn-aws-redshift-event-rule'
+          description: 'CloudWatch Event triggered on redshift cluster'
+          event:
+            source:
+              - aws.redshift
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - redshift.amazonaws.com
+              eventName:
+                - CreateCluster
+                - ModifyCluster
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}

@@ -19,12 +19,23 @@ def run_remediation(neptune, instance_name):
         output = "Unexpected error: " + str(e)
 
     if not versionupgrade:
+        #verify instance state  
+        while response[0]['DBInstanceStatus'] not in ['available', 'stopped']:
+            try:
+                response = neptune.describe_db_instances(DBInstanceIdentifier = instance_name)['DBInstances']
+            except ClientError as e:
+                responseCode = 400
+                output = "Unexpected error: " + str(e)
+            except Exception as e:
+                responseCode = 400
+                output = "Unexpected error: " + str(e)
+                
         #Update auto-minor version upgrade for neptune db-instance        
         try:
             result = neptune.modify_db_instance(
                         DBInstanceIdentifier = instance_name,
                         AutoMinorVersionUpgrade = True,
-                        ApplyImmediately = False
+                        ApplyImmediately = True
                     )
 
             responseCode = result['ResponseMetadata']['HTTPStatusCode']
