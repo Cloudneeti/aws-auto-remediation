@@ -35,8 +35,6 @@ functions:
                 - CreateCluster
                 - ModifyCluster
                 - RemoveTagsFromResource
-              targets:
-                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
       - cloudwatchEvent:
           name: 'cn-aws-ec2-event-rule'
           description: 'CloudWatch Event triggered on ec2'
@@ -53,8 +51,6 @@ functions:
                 - StartInstances
                 - ModifyInstanceAttribute
                 - UnmonitorInstances
-              targets:
-                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
       - cloudwatchEvent:
           name: 'cn-aws-cloudtrail-event-rule'
           description: 'CloudWatch Event triggered on cloudtrail'
@@ -70,8 +66,6 @@ functions:
                 - CreateTrail
                 - UpdateTrail
                 - StopLogging
-              targets:
-                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
       - cloudwatchEvent:
           name: 'cn-aws-iam-event-rule'
           description: 'CloudWatch Event triggered on iam'
@@ -86,8 +80,6 @@ functions:
               eventName:
                 - UpdateAccountPasswordPolicy
                 - DeleteAccountPasswordPolicy
-              targets:
-                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
       - cloudwatchEvent:
           name: 'cn-aws-kinesis-event-rule'
           description: 'CloudWatch Event triggered on kinesis'
@@ -103,8 +95,6 @@ functions:
                 - CreateStream
                 - StopStreamEncryption
                 - DisableEnhancedMonitoring
-              targets:
-                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
       - cloudwatchEvent:
           name: 'cn-aws-kms-event-rule'
           description: 'CloudWatch Event triggered on kms'
@@ -119,8 +109,6 @@ functions:
               eventName:
                 - CreateKey
                 - DisableKeyRotation
-              targets:
-                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
       - cloudwatchEvent:
           name: 'cn-aws-elb-event-rule'
           description: 'CloudWatch Event triggered on elb'
@@ -135,8 +123,6 @@ functions:
               eventName:
                 - CreateLoadBalancer
                 - ModifyLoadBalancerAttributes
-              targets:
-                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
       - cloudwatchEvent:
           name: 'cn-aws-s3bucket-event-rule'
           description: 'CloudWatch Event triggered on s3bucket'
@@ -155,8 +141,6 @@ functions:
                 - PutBucketAcl
                 - PutAccelerateConfiguration
                 - PutBucketPublicAccessBlock
-              targets:
-                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
       - cloudwatchEvent:
           name: 'cn-aws-dynamodb-event-rule'
           description: 'CloudWatch Event triggered on dynamodb'
@@ -173,8 +157,6 @@ functions:
                 - RestoreTableFromBackup
                 - UpdateTable
                 - UpdateContinuousBackups
-              targets:
-                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
       - cloudwatchEvent:
           name: 'cn-aws-config-event-rule'
           description: 'CloudWatch Event triggered on config'
@@ -189,8 +171,6 @@ functions:
               eventName:
                 - PutConfigurationRecorder
                 - StopConfigurationRecorder
-              targets:
-                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
       - cloudwatchEvent:
           name: 'cn-aws-asg-event-rule'
           description: 'CloudWatch Event triggered on asg'
@@ -205,8 +185,6 @@ functions:
               eventName:
                 - UpdateAutoScalingGroup
                 - CreateAutoScalingGroup
-              targets:
-                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
       - cloudwatchEvent:
           name: 'cn-aws-cloudformation-event-rule'
           description: 'CloudWatch Event triggered on cloudformation stack'
@@ -222,8 +200,6 @@ functions:
                 - CreateStack
                 - UpdateStack
                 - UpdateTerminationProtection
-              targets:
-                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
       - cloudwatchEvent:
           name: 'cn-aws-sqs-event-rule'
           description: 'CloudWatch Event triggered on sqs queue'
@@ -238,8 +214,6 @@ functions:
               eventName:
                 - CreateQueue
                 - SetQueueAttributes
-              targets:
-                - arn:aws:lambda:us-east-1:${opt:aws-account-id}:function:cn-aws-remediate-orchestrator
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}

@@ -29,7 +29,6 @@ def lambda_handler(event, context):
 
     #region CW Call
     if not PolicyId:
-        print("Executing auto-remediation")
         try:  # common code
             CustAccID, role_arn = common.getRoleArn_cwlogs(event)
             aws_access_key_id, aws_secret_access_key, aws_session_token = common.getCredentials(role_arn)

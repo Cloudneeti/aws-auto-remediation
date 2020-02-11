@@ -190,7 +190,6 @@ def lambda_handler(event, context):
                 for event in data['Payload']:
                     if 'Records' in event:
                         records = event['Records']['Payload'].decode('utf-8')
-    
             except ClientError as e:
                 print(e)            
                 return {
@@ -744,7 +743,6 @@ def lambda_handler(event, context):
                             print("started rds cluster lambda invocation")
                             RDSClusterName = event_data["responseElements"]["dBClusterIdentifier"]
                             Region = event_data["awsRegion"]
-
                             remediationObj = {
                                 "accountId": AWSAccId,
                                 "RDSClusterName": RDSClusterName,
@@ -771,7 +769,6 @@ def lambda_handler(event, context):
                         print("started rds instance lambda invocation")
                         RDSInstanceName = event_data["responseElements"]["dBInstanceIdentifier"]
                         Region = event_data["awsRegion"]
-
                         remediationObj = {
                             "accountId": AWSAccId,
                             "RDSInstanceName": RDSInstanceName,

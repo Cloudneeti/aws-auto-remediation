@@ -27,7 +27,6 @@ def run_remediation(rds, RDSInstanceName):
                 ApplyImmediately = False,
                 DeletionProtection = True
             )
-
             responseCode = result['ResponseMetadata']['HTTPStatusCode']
             if responseCode >= 400:
                 output = "Unexpected error: %s \n" % str(result)

@@ -35,11 +35,9 @@ def run_remediation(rds, RDSInstanceName):
         try:
             result = rds.modify_db_instance(
                 DBInstanceIdentifier = RDSInstanceName,
-                BackupRetentionPeriod = response[0]['BackupRetentionPeriod'],
                 ApplyImmediately = True,
                 BackupRetentionPeriod = 7
             )
-
             responseCode = result['ResponseMetadata']['HTTPStatusCode']
             if responseCode >= 400:
                 output = "Unexpected error: %s \n" % str(result)

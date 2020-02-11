@@ -129,21 +129,11 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }      
         
-        #returning the output Array in json format
-        return {  
-            'statusCode': 200,
-            'body': json.dumps('remediated-' + bucket_name)
-        }
         #enable block public access feature
         if "S3busketpublicaccess" in set(records): 
             try:
                 s3_restrict_public_access.run_remediation(s3_client,bucket_name)
                 print('remediated-' + bucket_name)
-                #returning the output Array in json format
-                return {  
-                    'statusCode': 200,
-                    'body': json.dumps('remediated-' + bucket_name)
-                }
             except ClientError as e:
                 print(e)
                 return {  
@@ -156,6 +146,12 @@ def lambda_handler(event, context):
                     'statusCode': 400,
                     'body': str(e)
                 }
+        
+        #returning the output Array in json format
+        return {  
+            'statusCode': 200,
+            'body': json.dumps('remediated-' + bucket_name)
+        }
                 
         
     else:
