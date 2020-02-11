@@ -17,9 +17,123 @@ functions:
     timeout: 900
     role: CNLambdaRole
     events:
-      - cloudwatchLog: 
-          logGroup: 'cn-log-group'
-          filter: '{$.eventName="CreateTrail" || $.eventName="UpdateTrail" || $.eventName="CreateLoadBalancer" || $.eventName="ModifyLoadBalancerAttributes" || $.eventName="UpdateAccountPasswordPolicy" || $.eventName="DeleteAccountPasswordPolicy" || $.eventName="CreateStream" || $.eventName="StopStreamEncryption" || $.eventName="DisableEnhancedMonitoring" || $.eventName="CreateKey" || $.eventName="DisableKeyRotation" || $.eventName="CreateDBCluster" || $.eventName="ModifyDBCluster" || $.eventName="CreateDBInstance" || $.eventName="ModifyDBInstance" || $.eventName="CreateCluster" || $.eventName="ModifyCluster" || $.eventName="CreateBucket" || $.eventName="PutBucketVersioning" || $.eventName="DeleteBucketEncryption" || $.eventName="PutBucketAcl"}'
+      - cloudwatchEvent:
+          name: 'cn-aws-rds-event-rule'
+          description: 'CloudWatch Event triggered on rds'
+          event:
+            source:
+              - aws.rds
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - rds.amazonaws.com
+              eventName:
+                - CreateDBCluster
+                - ModifyDBCluster
+                - CreateDBInstance
+                - ModifyDBInstance
+                - RemoveTagsFromResource
+      - cloudwatchEvent:
+          name: 'cn-aws-cloudtrail-event-rule'
+          description: 'CloudWatch Event triggered on cloudtrail'
+          event:
+            source:
+              - aws.cloudtrail
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - cloudtrail.amazonaws.com
+              eventName:
+                - CreateTrail
+                - UpdateTrail
+      - cloudwatchEvent:
+          name: 'cn-aws-iam-event-rule'
+          description: 'CloudWatch Event triggered on iam'
+          event:
+            source:
+              - aws.iam
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - iam.amazonaws.com
+              eventName:
+                - UpdateAccountPasswordPolicy
+                - DeleteAccountPasswordPolicy
+      - cloudwatchEvent:
+          name: 'cn-aws-kinesis-event-rule'
+          description: 'CloudWatch Event triggered on kinesis'
+          event:
+            source:
+              - aws.kinesis
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - kinesis.amazonaws.com
+              eventName:
+                - CreateStream
+                - DisableEnhancedMonitoring
+      - cloudwatchEvent:
+          name: 'cn-aws-kms-event-rule'
+          description: 'CloudWatch Event triggered on kms'
+          event:
+            source:
+              - aws.kms
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - kms.amazonaws.com
+              eventName:
+                - CreateKey
+                - DisableKeyRotation
+      - cloudwatchEvent:
+          name: 'cn-aws-elb-event-rule'
+          description: 'CloudWatch Event triggered on elb'
+          event:
+            source:
+              - aws.elasticloadbalancing
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - elasticloadbalancing.amazonaws.com
+              eventName:
+                - CreateLoadBalancer
+                - ModifyLoadBalancerAttributes
+      - cloudwatchEvent:
+          name: 'cn-aws-s3bucket-event-rule'
+          description: 'CloudWatch Event triggered on s3bucket'
+          event:
+            source:
+              - aws.s3
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - s3.amazonaws.com
+              eventName:
+                - CreateBucket
+                - PutBucketVersioning
+                - DeleteBucketEncryption
+                - PutBucketAcl
+      - cloudwatchEvent:
+          name: 'cn-aws-redshift-event-rule'
+          description: 'CloudWatch Event triggered on redshift cluster'
+          event:
+            source:
+              - aws.redshift
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - redshift.amazonaws.com
+              eventName:
+                - CreateCluster
+                - ModifyCluster
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:remediationversion}

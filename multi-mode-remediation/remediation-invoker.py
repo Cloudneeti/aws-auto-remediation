@@ -18,9 +18,9 @@ def lambda_handler(event, context):
         runtime_region = 'us-east-1'
 
     try:
-        cw_data = event['awslogs']['data']
+        cw_event_data = event['detail']
     except:
-        cw_data = ''
+        cw_event_data = ''
 
     #multi-account verify access
     try:
@@ -30,15 +30,9 @@ def lambda_handler(event, context):
         VerifyAccess = '' 
 
     #trigger by cw logs
-    if cw_data:
+    if cw_event_data:
         try:
-            compressed_payload = base64.b64decode(cw_data)
-            uncompressed_payload = gzip.decompress(compressed_payload)
-            payload = json.loads(uncompressed_payload)
-        
-            log_events = payload['logEvents']
-            log_event = json.loads(log_events[0]['message'])
-            AWSAccId = log_event["userIdentity"]["accountId"]
+            AWSAccId = cw_event_data["userIdentity"]["accountId"]
         except ClientError as e:
             print(e)
         except Exception as e: 
