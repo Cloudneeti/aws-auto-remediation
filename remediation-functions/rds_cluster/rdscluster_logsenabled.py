@@ -1,7 +1,7 @@
 '''
 Enable Log Exports feature for AWS RDS database clusters[AuroraMySQL,AuroraPostgresSQL,AuroraMySQL Serverless]
 '''
-
+import time
 from botocore.exceptions import ClientError
 
 def run_remediation(rds, RDSIdentifier):
@@ -28,6 +28,18 @@ def run_remediation(rds, RDSIdentifier):
         output = "Unexpected error: " + str(e)
 
     if DBenginemode == 'serverless' and DBengine == 'aurora':
+        #verify cluster state
+        while response[0]['Status'] not in ['available', 'stopped']:
+            try:
+                response = rds.describe_db_clusters(DBClusterIdentifier = RDSIdentifier)['DBClusters']
+                time.sleep(10)
+            except ClientError as e:
+                responseCode = 400
+                output = "Unexpected error: " + str(e)
+            except Exception as e:
+                responseCode = 400
+                output = "Unexpected error: " + str(e)
+                
         #Enable cloudwatch logs for serverless db-cluster        
         if len(RDSlogs) <= 3:                  
             try:
@@ -62,6 +74,17 @@ def run_remediation(rds, RDSIdentifier):
             print(output)
             
     else:
+        #verify cluster state
+        while response[0]['Status'] not in ['available', 'stopped']:
+            try:
+                response = rds.describe_db_clusters(DBClusterIdentifier = RDSIdentifier)['DBClusters']
+            except ClientError as e:
+                responseCode = 400
+                output = "Unexpected error: " + str(e)
+            except Exception as e:
+                responseCode = 400
+                output = "Unexpected error: " + str(e)
+                
         #Enable cloudwatch logs for provisioned db-cluster 
         if DBengine == 'aurora' and len(RDSlogs) <= 3:            
             try:

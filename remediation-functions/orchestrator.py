@@ -32,6 +32,11 @@ def lambda_handler(event, context):
     rds_snapshot = ["RDSSnapshotNoPublicAccess"]
     
     try:
+        runtime_region = os.environ['AWS_REGION']
+    except:
+        runtime_region = 'us-east-1'
+        
+    try:
         policy_list = json.loads(event['body'])['RemediationPolicies']
         policy_flag = 1
     except:
@@ -45,9 +50,9 @@ def lambda_handler(event, context):
         pass
 
     try:
-        event_data = event['detail']
+        cw_event_data = event['detail']
     except:
-        event_data = ''
+        cw_event_data = ''
 
     try:
         VerifyAccess = json.loads(event['body'])['VerifyAccess']
@@ -61,7 +66,6 @@ def lambda_handler(event, context):
             RemAccHash = hashlib.md5(str(RemediationAWSAccountId).encode('utf-8')).hexdigest()
             s3Client = boto3.client('s3')
             buckets = s3Client.list_buckets()['Buckets']
-            Region = "us-east-1"
             for i in range(len(buckets)):
                 if RemAccHash in str(buckets[i]['Name']):
                     rem_bucket = buckets[i]['Name']
@@ -121,11 +125,12 @@ def lambda_handler(event, context):
     #endregion    
 
     #region Auto-remediation
-    elif event_data:
+    elif cw_event_data:
         try:
-            AWSAccId = event_data["userIdentity"]["accountId"]
-            EventName = event_data["eventName"]
-            EventSource = event_data["userIdentity"]["arn"]
+            records = ""
+            AWSAccId = cw_event_data["userIdentity"]["accountId"]
+            EventName = cw_event_data["eventName"]
+            EventSource = cw_event_data["userIdentity"]["arn"]
         except ClientError as e: 
             print(e)
             return {
@@ -167,7 +172,6 @@ def lambda_handler(event, context):
                 s3Client = boto3.client('s3')
                 buckets = s3Client.list_buckets()['Buckets']
                 RemAccHash = hashlib.md5(str(RemediationAWSAccountId).encode('utf-8')).hexdigest()
-                Region = "us-east-1"
                 for i in range(len(buckets)):
                     if RemAccHash in str(buckets[i]['Name']):
                         rem_bucket = buckets[i]['Name']
@@ -205,7 +209,7 @@ def lambda_handler(event, context):
             
             if records:
                 try:
-                    invokeLambda = boto3.client('lambda', region_name='us-east-1')
+                    invokeLambda = boto3.client('lambda', region_name=runtime_region)
     
                 except ClientError as e: 
                     print(e)
@@ -224,11 +228,11 @@ def lambda_handler(event, context):
                 if EventName in ["CreateTrail", "UpdateTrail", "StopLogging"]:
                     try:
                         if EventName == "StopLogging":
-                            TrailARN = event_data["requestParameters"]["name"] #ARN captured as name in this event
+                            TrailARN = cw_event_data["requestParameters"]["name"] #ARN captured as name in this event
                             Trail = TrailARN.split('/')[1]
                         else:
-                            Trail = event_data["responseElements"]["name"]
-                        Region = event_data["awsRegion"]
+                            Trail = cw_event_data["responseElements"]["name"]
+                        Region = cw_event_data["awsRegion"]
                         remediationObj = {
                             "accountId": AWSAccId,
                             "Trail": Trail,
@@ -252,7 +256,7 @@ def lambda_handler(event, context):
                 if EventName in ["CreateLoadBalancer", "ModifyLoadBalancerAttributes"]:
                     if EventName == "CreateLoadBalancer":
                         try:
-                            lb_detail=event_data["requestParameters"]["type"]
+                            lb_detail=cw_event_data["requestParameters"]["type"]
                             if lb_detail in ["application", "network"]:
                                 lb_type='elbv2'
                             else:
@@ -261,7 +265,7 @@ def lambda_handler(event, context):
                             lb_type='elb'
                     else:
                         try:
-                            lb_attributes=event_data["requestParameters"]["attributes"]
+                            lb_attributes=cw_event_data["requestParameters"]["attributes"]
                             lb_type='elbv2'
                         except:
                             lb_type='elb'
@@ -269,11 +273,11 @@ def lambda_handler(event, context):
                     if lb_type == 'elbv2':
                         try:
                             if EventName == "CreateLoadBalancer":
-                                LoadBalancerArn = event_data["responseElements"]["loadBalancers"][0]["loadBalancerArn"]
+                                LoadBalancerArn = cw_event_data["responseElements"]["loadBalancers"][0]["loadBalancerArn"]
                             else:
-                                LoadBalancerArn = event_data["requestParameters"]["loadBalancerArn"]
+                                LoadBalancerArn = cw_event_data["requestParameters"]["loadBalancerArn"]
                                 
-                            Region = event_data["awsRegion"]
+                            Region = cw_event_data["awsRegion"]
 
                             remediationObj = {
                                 "accountId": AWSAccId,
@@ -295,8 +299,8 @@ def lambda_handler(event, context):
 
                     else:
                         try:
-                            LoadBalancerName = event_data["requestParameters"]["loadBalancerName"]
-                            Region = event_data["awsRegion"]
+                            LoadBalancerName = cw_event_data["requestParameters"]["loadBalancerName"]
+                            Region = cw_event_data["awsRegion"]
 
                             remediationObj = {
                                 "accountId": AWSAccId,
@@ -341,8 +345,8 @@ def lambda_handler(event, context):
                 #region Kinesis sub-orchestrator call
                 if EventName in ["CreateStream", "StopStreamEncryption", "DisableEnhancedMonitoring"]:
                     try:
-                        kinesis_stream = event_data["requestParameters"]["streamName"]
-                        Region = event_data["awsRegion"]
+                        kinesis_stream = cw_event_data["requestParameters"]["streamName"]
+                        Region = cw_event_data["awsRegion"]
                         remediationObj = {
                             "accountId": AWSAccId,
                             "kinesis_stream": kinesis_stream,
@@ -366,11 +370,11 @@ def lambda_handler(event, context):
                 #region kms suborchestrator invocation
                 if EventName in ["CreateKey", "DisableKeyRotation"]:
                     try:
-                        KeyId = event_data["responseElements"]["keyMetadata"]["keyId"]
-                        Region = event_data["awsRegion"]
+                        KeyId = cw_event_data["responseElements"]["keyMetadata"]["keyId"]
+                        Region = cw_event_data["awsRegion"]
                     except:
-                        KeyId = event_data["requestParameters"]["keyId"]
-                        Region = event_data["awsRegion"]
+                        KeyId = cw_event_data["requestParameters"]["keyId"]
+                        Region = cw_event_data["awsRegion"]
 
                     try: 
                         remediationObj = {
@@ -396,8 +400,8 @@ def lambda_handler(event, context):
                 #region redshift sub-orchestrator call
                 if EventName in ["CreateCluster", "ModifyCluster"]:
                     try:
-                        redshift = event_data["requestParameters"]["clusterIdentifier"]
-                        Region = event_data["awsRegion"]
+                        redshift = cw_event_data["requestParameters"]["clusterIdentifier"]
+                        Region = cw_event_data["awsRegion"]
                         remediationObj = {
                             "accountId": AWSAccId,
                             "redshift": redshift,
@@ -421,8 +425,8 @@ def lambda_handler(event, context):
                 #region S3 sub-orchestrator call
                 if EventName in ["CreateBucket", "PutBucketAcl", "DeleteBucketEncryption", "PutBucketVersioning", "PutBucketPublicAccessBlock", "PutAccelerateConfiguration","PutBucketLogging"]:
                     try:
-                        bucket = event_data["requestParameters"]["bucketName"]
-                        Region = event_data["awsRegion"]
+                        bucket = cw_event_data["requestParameters"]["bucketName"]
+                        Region = cw_event_data["awsRegion"]
                         remediationObj = {
                             "accountId": AWSAccId,
                             "bucket": bucket,
@@ -446,14 +450,14 @@ def lambda_handler(event, context):
                 #region neptune cluster suborchestrator call
                 if EventName in ["CreateDBCluster", "ModifyDBCluster", "CreateDBInstance"]:
                     try:
-                        DBEngine=event_data["responseElements"]["engine"]
+                        DBEngine=cw_event_data["responseElements"]["engine"]
                     except:
                         DBEngine=''
 
                     if 'neptune' in str(DBEngine):
                         try:
-                            NeptuneClusterName = event_data["responseElements"]["dBClusterIdentifier"]
-                            Region = event_data["awsRegion"]
+                            NeptuneClusterName = cw_event_data["responseElements"]["dBClusterIdentifier"]
+                            Region = cw_event_data["awsRegion"]
 
                             remediationObj = {
                                 "accountId": AWSAccId,
@@ -478,14 +482,14 @@ def lambda_handler(event, context):
                 #region Neptune instance suborchestrator call
                 if EventName in ["CreateDBInstance", "ModifyDBInstance"]:
                     try:
-                        DBEngine=event_data["responseElements"]["engine"]
+                        DBEngine=cw_event_data["responseElements"]["engine"]
                     except:
                         DBEngine=''
 
                     if 'neptune' in str(DBEngine):
                         try:
-                            NeptuneInstanceName = event_data["responseElements"]["dBInstanceIdentifier"]
-                            Region = event_data["awsRegion"]
+                            NeptuneInstanceName = cw_event_data["responseElements"]["dBInstanceIdentifier"]
+                            Region = cw_event_data["awsRegion"]
 
                             remediationObj = {
                                 "accountId": AWSAccId,
@@ -510,8 +514,8 @@ def lambda_handler(event, context):
                 #region dynamodb suborchestrator call
                 if EventName in ["CreateTable", "CreateTableReplica", "RestoreTableFromBackup", "UpdateTable", "UpdateContinuousBackups"]:
                     try:
-                        DynamodbTableName = event_data["requestParameters"]["tableName"]
-                        Region = event_data["awsRegion"]
+                        DynamodbTableName = cw_event_data["requestParameters"]["tableName"]
+                        Region = cw_event_data["awsRegion"]
 
                         remediationObj = {
                             "accountId": AWSAccId,
@@ -536,9 +540,9 @@ def lambda_handler(event, context):
                 #region config suborchestrator call
                 if EventName in ["PutConfigurationRecorder", "StopConfigurationRecorder"]:
                     try:
-                        ConfigRoleARN = event_data["requestParameters"]["configurationRecorder"]["roleARN"]
-                        Configname = event_data["requestParameters"]["configurationRecorder"]["name"]
-                        Region = event_data["awsRegion"]
+                        ConfigRoleARN = cw_event_data["requestParameters"]["configurationRecorder"]["roleARN"]
+                        Configname = cw_event_data["requestParameters"]["configurationRecorder"]["name"]
+                        Region = cw_event_data["awsRegion"]
 
                         remediationObj = {
                             "accountId": AWSAccId,
@@ -564,8 +568,8 @@ def lambda_handler(event, context):
                 #region asg suborchestrator call
                 if EventName in ["UpdateAutoScalingGroup","CreateAutoScalingGroup"]:
                     try:
-                        AutoScalingGroupName = event_data["requestParameters"]["autoScalingGroupName"]
-                        Region = event_data["awsRegion"]
+                        AutoScalingGroupName = cw_event_data["requestParameters"]["autoScalingGroupName"]
+                        Region = cw_event_data["awsRegion"]
 
                         remediationObj = {
                             "accountId": AWSAccId,
@@ -591,10 +595,10 @@ def lambda_handler(event, context):
                 if EventName in ["CreateStack","UpdateStack","UpdateTerminationProtection"]:
                     try:
                         try:
-                            StackName = event_data["requestParameters"]["stackName"]
+                            StackName = cw_event_data["requestParameters"]["stackName"]
                         except:
                             StackName = ''
-                        Region = event_data["awsRegion"]
+                        Region = cw_event_data["awsRegion"]
 
                         remediationObj = {
                             "accountId": AWSAccId,
@@ -620,10 +624,10 @@ def lambda_handler(event, context):
                 if EventName in ["RunInstances", "StartInstances", "ModifyInstanceAttribute","UnmonitorInstances"]:
                     try:
                         if EventName == "ModifyInstanceAttribute":
-                            InstanceID = event_data["requestParameters"]["instanceId"]
+                            InstanceID = cw_event_data["requestParameters"]["instanceId"]
                         else:
-                            InstanceID = event_data["responseElements"]["instancesSet"]["items"][0]["instanceId"]
-                        Region = event_data["awsRegion"]
+                            InstanceID = cw_event_data["responseElements"]["instancesSet"]["items"][0]["instanceId"]
+                        Region = cw_event_data["awsRegion"]
 
                         remediationObj = {
                             "accountId": AWSAccId,
@@ -648,8 +652,8 @@ def lambda_handler(event, context):
                 #sqs sub-orchestrator call
                 if EventName in ["CreateQueue", "SetQueueAttributes"]:
                     try:
-                        Queue_Url = event_data["requestParameters"]["queueUrl"]
-                        Region = event_data["awsRegion"]
+                        Queue_Url = cw_event_data["requestParameters"]["queueUrl"]
+                        Region = cw_event_data["awsRegion"]
                         remediationObj = {
                             "accountId": AWSAccId,
                             "QueueUrl": Queue_Url,
@@ -674,10 +678,10 @@ def lambda_handler(event, context):
                 if EventName in ["ModifyDBClusterSnapshotAttribute", "ModifyDBSnapshotAttribute"]:
                     try:
                         if EventName == "ModifyDBClusterSnapshotAttribute":
-                            RDSSnapshotName = event_data["responseElements"]["dBClusterSnapshotIdentifier"]
+                            RDSSnapshotName = cw_event_data["responseElements"]["dBClusterSnapshotIdentifier"]
                         else:
-                            RDSSnapshotName = event_data["responseElements"]["dBSnapshotIdentifier"]
-                        Region = event_data["awsRegion"]
+                            RDSSnapshotName = cw_event_data["responseElements"]["dBSnapshotIdentifier"]
+                        Region = cw_event_data["awsRegion"]
 
                         remediationObj = {
                             "accountId": AWSAccId,
@@ -702,14 +706,14 @@ def lambda_handler(event, context):
                 #region documentdb cluster suborchestrator call
                 if EventName in ["CreateDBCluster", "ModifyDBCluster", "CreateDBInstance"]:
                     try:
-                        DBEngine=event_data["responseElements"]["engine"]
+                        DBEngine=cw_event_data["responseElements"]["engine"]
                     except:
                         DBEngine=''
 
                     if 'docdb' in str(DBEngine):
                         try:
-                            RDSClusterName = event_data["responseElements"]["dBClusterIdentifier"]
-                            Region = event_data["awsRegion"]
+                            RDSClusterName = cw_event_data["responseElements"]["dBClusterIdentifier"]
+                            Region = cw_event_data["awsRegion"]
 
                             remediationObj = {
                                 "accountId": AWSAccId,
@@ -734,15 +738,15 @@ def lambda_handler(event, context):
                 #region rds cluster suborchestrator call
                 if EventName in ["CreateDBCluster", "ModifyDBCluster", "CreateDBInstance","RemoveTagsFromResource"]:
                     try:
-                        DBEngine=event_data["responseElements"]["engine"]
+                        DBEngine=cw_event_data["responseElements"]["engine"]
                     except:
                         DBEngine=''
 
                     if 'aurora' in str(DBEngine):
                         try:
                             print("started rds cluster lambda invocation")
-                            RDSClusterName = event_data["responseElements"]["dBClusterIdentifier"]
-                            Region = event_data["awsRegion"]
+                            RDSClusterName = cw_event_data["responseElements"]["dBClusterIdentifier"]
+                            Region = cw_event_data["awsRegion"]
                             remediationObj = {
                                 "accountId": AWSAccId,
                                 "RDSClusterName": RDSClusterName,
@@ -767,8 +771,8 @@ def lambda_handler(event, context):
                 if EventName in ["CreateDBInstance", "ModifyDBInstance", "RemoveTagsFromResource"]:
                     try:
                         print("started rds instance lambda invocation")
-                        RDSInstanceName = event_data["responseElements"]["dBInstanceIdentifier"]
-                        Region = event_data["awsRegion"]
+                        RDSInstanceName = cw_event_data["responseElements"]["dBInstanceIdentifier"]
+                        Region = cw_event_data["awsRegion"]
                         remediationObj = {
                             "accountId": AWSAccId,
                             "RDSInstanceName": RDSInstanceName,
@@ -821,7 +825,7 @@ def lambda_handler(event, context):
                 OrchestartorAccess = False
             
             try:
-                invokeLambda = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name='us-east-1')
+                invokeLambda = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=runtime_region)
                 response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-relayfunction', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 RelayAccess = json.loads(response['Payload'].read())
             except:
@@ -840,7 +844,7 @@ def lambda_handler(event, context):
     #region CN Portal Triggered remediation
     else:  
         try:  
-            invokeLambda = boto3.client('lambda', region_name='us-east-1')
+            invokeLambda = boto3.client('lambda', region_name=runtime_region)
         except ClientError as e:
             print(e)
             response = {

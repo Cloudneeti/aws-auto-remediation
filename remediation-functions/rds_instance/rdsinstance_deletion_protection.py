@@ -1,7 +1,7 @@
 '''
 Enable Deletion Protection feature for AWS RDS database instances
 '''
-
+import time
 from botocore.exceptions import ClientError
 
 def run_remediation(rds, RDSInstanceName):
@@ -19,6 +19,18 @@ def run_remediation(rds, RDSInstanceName):
         output = "Unexpected error: " + str(e)
             
     if not deletion_protection:
+        #verify instance state  
+        while response[0]['DBInstanceStatus'] not in ['available', 'stopped']:
+            try:
+                response = rds.describe_db_instances(DBInstanceIdentifier = RDSInstanceName)['DBInstances']
+                time.sleep(10)
+            except ClientError as e:
+                responseCode = 400
+                output = "Unexpected error: " + str(e)
+            except Exception as e:
+                responseCode = 400
+                output = "Unexpected error: " + str(e)
+                
         #Apply deletion protection
         try:
             result = rds.modify_db_instance(

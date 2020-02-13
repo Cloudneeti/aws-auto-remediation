@@ -1,7 +1,7 @@
 '''
 RDS Instance Backup Retention Period
 '''
-
+import time
 from botocore.exceptions import ClientError
 
 def run_remediation(rds, RDSInstanceName):
@@ -24,6 +24,7 @@ def run_remediation(rds, RDSInstanceName):
         while response[0]['DBInstanceStatus'] not in ['available', 'stopped']:
             try:
                 response = rds.describe_db_instances(DBInstanceIdentifier = RDSInstanceName)['DBInstances']
+                time.sleep(10)
             except ClientError as e:
                 responseCode = 400
                 output = "Unexpected error: " + str(e)

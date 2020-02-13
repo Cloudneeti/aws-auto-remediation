@@ -1,7 +1,7 @@
 '''
 RDS instance performance insights
 '''
-
+import time
 from botocore.exceptions import ClientError
 
 def run_remediation(rds, RDSInstanceName):
@@ -21,6 +21,18 @@ def run_remediation(rds, RDSInstanceName):
 
     if DBInstanceClass not in ['db.t2.micro', 'db.t2.small', 'db.t3.micro', 'db.t3.small']:
         if not performance_insights:
+            #verify instance state  
+            while response[0]['DBInstanceStatus'] not in ['available', 'stopped']:
+                try:
+                    response = rds.describe_db_instances(DBInstanceIdentifier = RDSInstanceName)['DBInstances']
+                    time.sleep(10)
+                except ClientError as e:
+                    responseCode = 400
+                    output = "Unexpected error: " + str(e)
+                except Exception as e:
+                    responseCode = 400
+                    output = "Unexpected error: " + str(e)
+                    
             #Apply performance insights for db-instance
             try:
                 result = rds.modify_db_instance(

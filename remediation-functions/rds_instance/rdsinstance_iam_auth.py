@@ -1,7 +1,7 @@
 '''
 Enable IAM Authentication for RDS Instances
 '''
-
+import time
 from botocore.exceptions import ClientError
 
 def run_remediation(rds, RDSInstanceName):
@@ -21,6 +21,18 @@ def run_remediation(rds, RDSInstanceName):
     
     if dbinstance_details[0]['Engine'] not in ['mariadb','oracle-se', 'oracle-ee', 'oracle-se1', 'oracle-se2','sqlserver-ex','sqlserver-se','sqlserver-web','sqlserver-ee','aurora-postgresql','aurora']:        
         if not iam_auth_value:
+            #verify instance state  
+            while dbinstance_details[0]['DBInstanceStatus'] not in ['available', 'stopped']:
+                try:
+                    dbinstance_details = rds.describe_db_instances(DBInstanceIdentifier = RDSInstanceName)['DBInstances']
+                    time.sleep(10)
+                except ClientError as e:
+                    responseCode = 400
+                    output = "Unexpected error: " + str(e)
+                except Exception as e:
+                    responseCode = 400
+                    output = "Unexpected error: " + str(e)
+                
             #Apply iam authentication for db-instance
             try:
                 result = rds.modify_db_instance(

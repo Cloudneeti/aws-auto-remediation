@@ -17,22 +17,79 @@ functions:
     role: CNLambdaRole
     events:
       - cloudwatchEvent:
-          name: 'cn-aws-rds-event-rule'
-          description: 'CloudWatch Event triggered on rds'
+          name: 'cn-aws-asg-event-rule'
+          description: 'CloudWatch Event triggered on asg'
           event:
             source:
-              - aws.rds
+              - aws.autoscaling
             detail-type:
               - AWS API Call via CloudTrail
             detail:
               eventSource:
-                - rds.amazonaws.com
+                - autoscaling.amazonaws.com
               eventName:
-                - CreateDBCluster
-                - ModifyDBCluster
-                - CreateDBInstance
-                - ModifyDBInstance
-                - RemoveTagsFromResource
+                - UpdateAutoScalingGroup
+                - CreateAutoScalingGroup
+      - cloudwatchEvent:
+          name: 'cn-aws-cloudformation-event-rule'
+          description: 'CloudWatch Event triggered on cloudformation stack'
+          event:
+            source:
+              - aws.cloudformation
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - cloudformation.amazonaws.com
+              eventName:
+                - CreateStack
+                - UpdateStack
+                - UpdateTerminationProtection
+      - cloudwatchEvent:
+          name: 'cn-aws-cloudtrail-event-rule'
+          description: 'CloudWatch Event triggered on cloudtrail'
+          event:
+            source:
+              - aws.cloudtrail
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - cloudtrail.amazonaws.com
+              eventName:
+                - CreateTrail
+                - UpdateTrail
+                - StopLogging
+      - cloudwatchEvent:
+          name: 'cn-aws-config-event-rule'
+          description: 'CloudWatch Event triggered on config'
+          event:
+            source:
+              - aws.config
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - config.amazonaws.com
+              eventName:
+                - PutConfigurationRecorder
+                - StopConfigurationRecorder
+      - cloudwatchEvent:
+          name: 'cn-aws-dynamodb-event-rule'
+          description: 'CloudWatch Event triggered on dynamodb'
+          event:
+            source:
+              - aws.dynamodb
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - dynamodb.amazonaws.com
+              eventName:
+                - CreateTable
+                - RestoreTableFromBackup
+                - UpdateTable
+                - UpdateContinuousBackups
       - cloudwatchEvent:
           name: 'cn-aws-ec2-event-rule'
           description: 'CloudWatch Event triggered on ec2'
@@ -50,20 +107,19 @@ functions:
                 - ModifyInstanceAttribute
                 - UnmonitorInstances
       - cloudwatchEvent:
-          name: 'cn-aws-cloudtrail-event-rule'
-          description: 'CloudWatch Event triggered on cloudtrail'
+          name: 'cn-aws-elb-event-rule'
+          description: 'CloudWatch Event triggered on elb'
           event:
             source:
-              - aws.cloudtrail
+              - aws.elasticloadbalancing
             detail-type:
               - AWS API Call via CloudTrail
             detail:
               eventSource:
-                - cloudtrail.amazonaws.com
+                - elasticloadbalancing.amazonaws.com
               eventName:
-                - CreateTrail
-                - UpdateTrail
-                - StopLogging
+                - CreateLoadBalancer
+                - ModifyLoadBalancerAttributes
       - cloudwatchEvent:
           name: 'cn-aws-iam-event-rule'
           description: 'CloudWatch Event triggered on iam'
@@ -108,19 +164,36 @@ functions:
                 - CreateKey
                 - DisableKeyRotation
       - cloudwatchEvent:
-          name: 'cn-aws-elb-event-rule'
-          description: 'CloudWatch Event triggered on elb'
+          name: 'cn-aws-rds-event-rule'
+          description: 'CloudWatch Event triggered on rds/neptune/docdb'
           event:
             source:
-              - aws.elasticloadbalancing
+              - aws.rds
             detail-type:
               - AWS API Call via CloudTrail
             detail:
               eventSource:
-                - elasticloadbalancing.amazonaws.com
+                - rds.amazonaws.com
               eventName:
-                - CreateLoadBalancer
-                - ModifyLoadBalancerAttributes
+                - CreateDBCluster
+                - ModifyDBCluster
+                - CreateDBInstance
+                - ModifyDBInstance
+                - RemoveTagsFromResource
+      - cloudwatchEvent:
+          name: 'cn-aws-redshift-event-rule'
+          description: 'CloudWatch Event triggered on redshift cluster'
+          event:
+            source:
+              - aws.redshift
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - redshift.amazonaws.com
+              eventName:
+                - CreateCluster
+                - ModifyCluster
       - cloudwatchEvent:
           name: 'cn-aws-s3bucket-event-rule'
           description: 'CloudWatch Event triggered on s3bucket'
@@ -140,65 +213,6 @@ functions:
                 - PutAccelerateConfiguration
                 - PutBucketPublicAccessBlock
       - cloudwatchEvent:
-          name: 'cn-aws-dynamodb-event-rule'
-          description: 'CloudWatch Event triggered on dynamodb'
-          event:
-            source:
-              - aws.dynamodb
-            detail-type:
-              - AWS API Call via CloudTrail
-            detail:
-              eventSource:
-                - dynamodb.amazonaws.com
-              eventName:
-                - CreateTable
-                - RestoreTableFromBackup
-                - UpdateTable
-                - UpdateContinuousBackups
-      - cloudwatchEvent:
-          name: 'cn-aws-config-event-rule'
-          description: 'CloudWatch Event triggered on config'
-          event:
-            source:
-              - aws.config
-            detail-type:
-              - AWS API Call via CloudTrail
-            detail:
-              eventSource:
-                - config.amazonaws.com
-              eventName:
-                - PutConfigurationRecorder
-                - StopConfigurationRecorder
-      - cloudwatchEvent:
-          name: 'cn-aws-asg-event-rule'
-          description: 'CloudWatch Event triggered on asg'
-          event:
-            source:
-              - aws.autoscaling
-            detail-type:
-              - AWS API Call via CloudTrail
-            detail:
-              eventSource:
-                - autoscaling.amazonaws.com
-              eventName:
-                - UpdateAutoScalingGroup
-                - CreateAutoScalingGroup
-      - cloudwatchEvent:
-          name: 'cn-aws-cloudformation-event-rule'
-          description: 'CloudWatch Event triggered on cloudformation stack'
-          event:
-            source:
-              - aws.cloudformation
-            detail-type:
-              - AWS API Call via CloudTrail
-            detail:
-              eventSource:
-                - cloudformation.amazonaws.com
-              eventName:
-                - CreateStack
-                - UpdateStack
-                - UpdateTerminationProtection
-      - cloudwatchEvent:
           name: 'cn-aws-sqs-event-rule'
           description: 'CloudWatch Event triggered on sqs queue'
           event:
@@ -212,20 +226,6 @@ functions:
               eventName:
                 - CreateQueue
                 - SetQueueAttributes
-      - cloudwatchEvent:
-          name: 'cn-aws-redshift-event-rule'
-          description: 'CloudWatch Event triggered on redshift cluster'
-          event:
-            source:
-              - aws.redshift
-            detail-type:
-              - AWS API Call via CloudTrail
-            detail:
-              eventSource:
-                - redshift.amazonaws.com
-              eventName:
-                - CreateCluster
-                - ModifyCluster
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}

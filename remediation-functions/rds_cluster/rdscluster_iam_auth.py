@@ -1,7 +1,7 @@
 '''
 Enable IAM Authentication for RDS Cluster
 '''
-
+import time
 from botocore.exceptions import ClientError
 
 def run_remediation(rds, RDSIdentifier):
@@ -24,6 +24,18 @@ def run_remediation(rds, RDSIdentifier):
 
     if DBenginemode != 'serverless':
         if not iam_auth_value:
+            #verify cluster state
+            while dbcluster_detail[0]['Status'] not in ['available', 'stopped']:
+                try:
+                    dbcluster_detail = rds.describe_db_clusters(DBClusterIdentifier = RDSIdentifier)['DBClusters']
+                    time.sleep(10)
+                except ClientError as e:
+                    responseCode = 400
+                    output = "Unexpected error: " + str(e)
+                except Exception as e:
+                    responseCode = 400
+                    output = "Unexpected error: " + str(e)
+                
             #Updating iam authentication for db-cluster                        
             try:
                 result = rds.modify_db_cluster(

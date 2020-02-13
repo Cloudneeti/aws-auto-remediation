@@ -21,6 +21,7 @@ def lambda_handler(event, context):
     instance_datatiertag = ["SQLdataTierConfig", "MariadbdataTierConfig", "OracledataTierConfig", "SQLServerdataTierConfig", "AuroraInstancedataTierConfig", "MySQLdataTierConfig"]
     instance_iam_auth = ["SQLIAMAuthEnabled", "MySQLIAMAuthEnabled"]
     db_parameters = ["MySQLBlockEncryption","MySQLEnableFIPS"]
+    
     try:
         PolicyId = json.loads(event["body"])["PolicyId"]
     except:
@@ -82,7 +83,7 @@ def lambda_handler(event, context):
                 return {
                     'statusCode': 400,
                     'body': str(e)
-                }
+                }                
 
         if set(copytagstosnapshot).intersection(set(records)):
             try:
@@ -146,23 +147,7 @@ def lambda_handler(event, context):
                 return {
                     'statusCode': 400,
                     'body': str(e)
-                } 
-
-        if set(multiaz).intersection(set(records)):
-            try:
-                rdsinstance_multizone.run_remediation(rds,RDSInstanceName)
-            except ClientError as e:
-                print(e)
-                return {  
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-            except Exception as e:
-                print(e)
-                return {
-                    'statusCode': 400,
-                    'body': str(e)
-                } 
+                }  
         
         if set(performance_insights).intersection(set(records)):
             try:
@@ -178,7 +163,7 @@ def lambda_handler(event, context):
                 return {
                     'statusCode': 400,
                     'body': str(e)
-                } 
+                }
         
         if set(instance_logexport).intersection(set(records)):
             try:
@@ -226,11 +211,27 @@ def lambda_handler(event, context):
                 return {
                     'statusCode': 400,
                     'body': str(e)
-                } 
+                }
         
         if set(db_parameters).intersection(set(records)):
             try:
                 rdsinstance_updateparameters.run_remediation(rds,RDSInstanceName)
+            except ClientError as e:
+                print(e)
+                return {  
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+            except Exception as e:
+                print(e)
+                return {
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+        
+        if set(multiaz).intersection(set(records)):
+            try:
+                rdsinstance_multizone.run_remediation(rds,RDSInstanceName)
             except ClientError as e:
                 print(e)
                 return {  

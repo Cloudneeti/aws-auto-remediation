@@ -1,7 +1,7 @@
 '''
 Enable Amazon RDS Log Exports feature[MySQL,MariaDB,Oracle]
 '''
-
+import time
 from botocore.exceptions import ClientError
 
 def run_remediation(rds, RDSInstanceName):
@@ -20,6 +20,18 @@ def run_remediation(rds, RDSInstanceName):
 
     if response[0]['Engine'] not in ['aurora-postgresql','aurora','postgres','sqlserver-ex','sqlserver-se','sqlserver-web','sqlserver-ee']:
         if len(RDSlogs) < 2:
+            #verify instance state  
+            while response[0]['DBInstanceStatus'] not in ['available', 'stopped']:
+                try:
+                    response = rds.describe_db_instances(DBInstanceIdentifier = RDSInstanceName)['DBInstances']
+                    time.sleep(10)
+                except ClientError as e:
+                    responseCode = 400
+                    output = "Unexpected error: " + str(e)
+                except Exception as e:
+                    responseCode = 400
+                output = "Unexpected error: " + str(e)
+                
             #Apply all logs for db-instance        
             try:
                 if response[0]['Engine'] in ['mysql','mariadb']:

@@ -1,7 +1,7 @@
 '''
 Backup retention for AWS RDS database clusters
 '''
-
+import time
 from botocore.exceptions import ClientError
 
 def run_remediation(rds, RDSIdentifier):
@@ -19,16 +19,18 @@ def run_remediation(rds, RDSIdentifier):
         print(output)
 
     if response[0]['BackupRetentionPeriod'] < 7:
+        #verify cluster state
         while response[0]['Status'] not in ['available', 'stopped']:
             try:
                 response = rds.describe_db_clusters(DBClusterIdentifier = RDSIdentifier)['DBClusters']
+                time.sleep(10)
             except ClientError as e:
                 responseCode = 400
                 output = "Unexpected error: " + str(e)
             except Exception as e:
                 responseCode = 400
                 output = "Unexpected error: " + str(e)
-                
+            
         #Update Backup retention period for db-cluster                      
         try:
             result = rds.modify_db_cluster(
