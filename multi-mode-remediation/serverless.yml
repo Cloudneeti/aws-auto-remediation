@@ -1,14 +1,14 @@
-service: cn-aws-remediate
+service: cn-awsmultirem-functions
 
 provider:
   name: aws
   runtime: python3.7
-  stage: ${opt:env, 'cn-remediation'}
+  stage: ${opt:env, 'dev'}
   region: ${opt:region, 'us-east-1'}
   remediationversion: ${opt:remediationversion, '1.0'}
   memorySize: 3008
   deploymentBucket:
-    name: cn-rem-${self:provider.stage}
+    name: cn-awsrem-${self:provider.stage}
 
 functions:   
   remediation-invoker:
@@ -19,7 +19,7 @@ functions:
     events:
       - cloudwatchLog: 
           logGroup: 'cn-log-group'
-          filter: '{$.eventName="CreateTrail" || $.eventName="UpdateTrail" || $.eventName="CreateLoadBalancer" || $.eventName="ModifyLoadBalancerAttributes" || $.eventName="UpdateAccountPasswordPolicy" || $.eventName="DeleteAccountPasswordPolicy" || $.eventName="CreateStream" || $.eventName="StopStreamEncryption" || $.eventName="DisableEnhancedMonitoring" || $.eventName="CreateKey" || $.eventName="DisableKeyRotation" || $.eventName="CreateDBCluster" || $.eventName="ModifyDBCluster" || $.eventName="CreateDBInstance" || $.eventName="ModifyDBInstance" || $.eventName="CreateCluster" || $.eventName="ModifyCluster" || $.eventName="CreateBucket" || $.eventName="PutBucketVersioning" || $.eventName="DeleteBucketEncryption" || $.eventName="PutBucketAcl"}'
+          filter: '{$.eventName="CreateTrail" || $.eventName="UpdateTrail" || $.eventName="CreateLoadBalancer" || $.eventName="ModifyLoadBalancerAttributes" || $.eventName="UpdateAccountPasswordPolicy" || $.eventName="DeleteAccountPasswordPolicy" || $.eventName="CreateStream" || $.eventName="StopStreamEncryption" || $.eventName="DisableEnhancedMonitoring" || $.eventName="CreateKey" || $.eventName="DisableKeyRotation" || $.eventName="CreateDBCluster" || $.eventName="ModifyDBCluster" || $.eventName="CreateDBInstance" || $.eventName="ModifyDBInstance" || $.eventName="CreateCluster" || $.eventName="ModifyCluster" || $.eventName="CreateBucket" || $.eventName="PutBucketVersioning" || $.eventName="DeleteBucketEncryption" || $.eventName="PutBucketAcl"}' 
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:remediationversion}
@@ -36,7 +36,7 @@ resources:
         IncludeGlobalServiceEvents: true
         IsLogging: true
         IsMultiRegionTrail: true
-        S3BucketName: cn-rem-${self:provider.stage}
+        S3BucketName: cn-awsrem-${self:provider.stage}
         S3KeyPrefix: cn-ctlogs
         TrailName: cn-remediation-trail
         Tags: 

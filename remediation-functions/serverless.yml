@@ -1,14 +1,14 @@
-service: cn-aws-remediate
+service: cn-awsrem-functions
 
 provider:
   name: aws
   runtime: python3.7
-  stage: ${opt:env, 'cn-remediation'}
+  stage: ${opt:env, 'dev'}
   region: ${opt:region, 'us-east-1'}
   remediationversion: ${opt:remediationversion, '1.0'}
   memorySize: 3008
   deploymentBucket:
-    name: cn-rem-${self:provider.stage}
+    name: cn-awsrem-${self:provider.stage}
 
 functions:   
   orchestrator:
@@ -146,7 +146,7 @@ resources:
         IncludeGlobalServiceEvents: true
         IsLogging: true
         IsMultiRegionTrail: true
-        S3BucketName: cn-rem-${self:provider.stage}
+        S3BucketName: cn-awsrem-${self:provider.stage}
         S3KeyPrefix: cn-ctlogs
         TrailName: cn-remediation-trail
         Tags: 

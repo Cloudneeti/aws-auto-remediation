@@ -32,7 +32,7 @@
     Command to execute : bash deploy-remediation-framework.sh [-a <12-digit-account-id>] [-e <environment-prefix>] [-v <1.0>]
 
 .INPUTS
-    (-a)Account Id: 12-digit AWS account Id of the account where you want the remediation framework to be deployed
+    **Mandatory(-a)Account Id: 12-digit AWS account Id of the account where you want the remediation framework to be deployed
     (-e)Environment prefix: Enter any suitable prefix for your deployment
     (-v)Version: Enter the remediation framework version (Would be provided by Cloudneeti)
 
@@ -41,7 +41,8 @@
 '
 
 usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-e <environment-prefix>] [-v <1.0>]" 1>&2; exit 1; }
-
+env="dev"
+version="1.0"
 while getopts "a:e:v:" o; do
     case "${o}" in
         a)
@@ -85,7 +86,7 @@ CT_status=$?
 Lambda_det="$(aws lambda get-function --function-name cn-aws-remediate-orchestrator --region $aws_region 2>/dev/null)"
 Lambda_status=$?
 
-s3_detail="$(aws s3api get-bucket-versioning --bucket cn-rem-$env-$acc_sha 2>/dev/null)"
+s3_detail="$(aws s3api get-bucket-versioning --bucket cn-awsrem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
 
 if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 0 ]] || [[ "$Lambda_status" -eq 0 ]] || [[ "$s3_status" -eq 0 ]]; then
@@ -93,14 +94,8 @@ if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 
 
     if [[ "$s3_status" -eq 0 ]]; then
         echo "Redploying framework....."
-        if ( test ! -z "$env" && test ! -z "$version" )
-        then
-            serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $aws_region --remediationversion $version
-            lambda_status=$?
-        else
-            serverless deploy --env rem-acc-$acc_sha --aws-account-id $awsaccountid --region $aws_region --remediationversion 1.0
-            lambda_status=$?
-        fi
+        serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $aws_region --remediationversion $version
+        lambda_status=$?
 
         if [[ $lambda_status -eq 0 ]]; then
             echo "Successfully deployed remediation framework with latest updates!!"
@@ -115,27 +110,14 @@ if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 
 fi
 
 echo "Deploying remediation framework...."
-if ( test ! -z "$env" && test ! -z "$version" )
-then
-	aws cloudformation deploy --template-file deployment-bucket.yml --stack-name $env-$acc_sha --parameter-overrides Stack=$env-$acc_sha awsaccountid=$awsaccountid region=$aws_region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
-    bucket_status=$?
-    if [[ "$bucket_status" -eq 0 ]]; then
-	    serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $aws_region --remediationversion $version
-        lambda_status=$?
-    else
-        echo "Something went wrong! Please contact Cloudneeti support for more details"
-        exit 1
-    fi
+aws cloudformation deploy --template-file deployment-bucket.yml --stack-name cn-awsrem-$env-$acc_sha --parameter-overrides Stack=cn-awsrem-$env-$acc_sha awsaccountid=$awsaccountid region=$aws_region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+bucket_status=$?
+if [[ "$bucket_status" -eq 0 ]]; then
+    serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $aws_region --remediationversion $version
+    lambda_status=$?
 else
-	aws cloudformation deploy --template-file deployment-bucket.yml --stack-name rem-acc-$acc_sha --parameter-overrides Stack=rem-acc-$acc_sha awsaccountid=$awsaccountid region=$aws_region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
-    bucket_status=$?
-    if [[ "$bucket_status" -eq 0 ]]; then
-	    serverless deploy --env rem-acc-$acc_sha --aws-account-id $awsaccountid --region $aws_region --remediationversion 1.0
-        lambda_status=$?
-    else
-        echo "Something went wrong! Please contact Cloudneeti support for more details"
-        exit 1
-    fi
+    echo "Something went wrong! Please contact Cloudneeti support for more details"
+    exit 1
 fi
 
 if [[ $lambda_status -eq 0 ]]; then

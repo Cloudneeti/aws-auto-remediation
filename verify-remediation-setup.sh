@@ -34,6 +34,8 @@
 
 usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-e <environment-prefix>]" 1>&2; exit 1; }
 
+env="dev"
+version="1.0"
 while getopts "a:e:" o; do
     case "${o}" in
         a)
@@ -86,7 +88,7 @@ echo "Verifying Lambda deployment...."
 Lambda_det="$(aws lambda get-function --function-name cn-aws-remediate-orchestrator --region $aws_region)"
 Lambda_status=$?
 
-s3_detail="$(aws s3api get-bucket-versioning --bucket cn-rem-$env-$acc_sha 2>/dev/null)"
+s3_detail="$(aws s3api get-bucket-versioning --bucket cn-awsrem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
 
 if [[ "$orches_role" -ne 0 ]] && [[ "$Rem_role" -ne 0 ]] && [[ "$CT_status" -ne 0 ]] && [[ "$Lambda_status" -ne 0 ]] && [[ "$s3_status" -ne 0 ]]; then

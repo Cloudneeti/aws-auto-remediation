@@ -70,7 +70,7 @@ Perform below steps to deploy remediation framework on configured AWS account
 1. Open bash 
 2. Deploy remediation framework
 
-	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -e <environment> -v 1.0`
+	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -e <environment> -v <version>`
 
 	Pass AWS account id and the environment as dev/test/prod.
 
@@ -92,12 +92,19 @@ In case you want to use same remediation framework for remediation of multiple A
 3. Configure AWS account on account to be remediated
 
 	`# aws configure`
+   Enter the required inputs:
+   - AWS Access Key ID: Access key of any admin user of the account in consideration.
+   - AWS Secret Access Key: Secret Access Key of any admin user of the account in consideration
+   - Default region name: Programmatic region name where you want to deploy the framework. (eg: us-east-1)
+     Note: This region should be the same as that of the remediation framework region
+   - Default output format: json
+
 4. Switch to `multi-mode-remediation` directory
 
 	`# cd multi-mode-remediation`
 5. Configure multi-account remediation using below command
 
-	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment> -v 1.0`
+	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment> -v <version>`
 
    This command creates the required resources like Cloudtrail, Cloudwatch rules and roles required to perform cross-account remediation 
 6. Verify multi-account remediation setup
