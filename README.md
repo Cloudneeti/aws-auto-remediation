@@ -47,9 +47,9 @@ Following dependencies should be present on the machine before proceeding to onb
 
 Follow the below steps to set up remediation procedures
 
-1. Clone remediation repository
+1. Download and Unzip required package from the link below.
 
-	`# git clone https://github.com/Cloudneeti/aws-auto-remediation.git`
+	`https://github.com/Cloudneeti/aws-auto-remediation/releases`
 
 3. Change to remediation directory
 
