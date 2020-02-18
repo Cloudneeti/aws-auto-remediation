@@ -92,6 +92,7 @@ In case you want to use same remediation framework for remediation of multiple A
 3. Configure AWS account on account to be remediated
 
 	`# aws configure`
+
    Enter the required inputs:
    - AWS Access Key ID: Access key of any admin user of the account in consideration.
    - AWS Secret Access Key: Secret Access Key of any admin user of the account in consideration
