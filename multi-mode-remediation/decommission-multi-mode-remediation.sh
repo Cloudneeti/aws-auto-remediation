@@ -63,7 +63,7 @@ env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
 echo "Validating environment prefix..."
 sleep 5
 
-stack_detail="$(aws cloudformation describe-stacks --stack-name cn-awsmultirem-functions-$env-$acc_sha --region $aws_region 2>/dev/null)"
+stack_detail="$(aws cloudformation describe-stacks --stack-name cn-multirem-functions-$env-$acc_sha --region $aws_region 2>/dev/null)"
 stack_status=$?
 
 if [[ $stack_status -ne 0 ]]; then
@@ -71,20 +71,20 @@ if [[ $stack_status -ne 0 ]]; then
     exit 1
 fi
 
-s3_detail="$(aws s3api get-bucket-versioning --bucket cn-awsrem-$env-$acc_sha 2>/dev/null)"
+s3_detail="$(aws s3api get-bucket-versioning --bucket cn-rem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
 
 echo "Checking if the deployment bucket was correctly deleted... "
 
 if [[ $s3_status -eq 0 ]]; then
-    echo "Deployment bucket is still not deleted. Please delete cn-awsrem-$env-$acc_sha and try to re-run the script again."
+    echo "Deployment bucket is still not deleted. Please delete cn-rem-$env-$acc_sha and try to re-run the script again."
     exit 1
 fi
 
 echo "Deleting deployment stack..."
-aws cloudformation delete-stack --stack-name cn-awsmultirem-functions-$env-$acc_sha --region $aws_region 2>/dev/null
+aws cloudformation delete-stack --stack-name cn-multirem-functions-$env-$acc_sha --region $aws_region 2>/dev/null
 lambda_status=$?
-aws cloudformation delete-stack --stack-name cn-awsrem-$env-$acc_sha --region $aws_region 2>/dev/null
+aws cloudformation delete-stack --stack-name cn-rem-$env-$acc_sha --region $aws_region 2>/dev/null
 bucket_status=$?
 
 if [[ $lambda_status -eq 0 ]] && [[ $bucket_status -eq 0 ]]; then

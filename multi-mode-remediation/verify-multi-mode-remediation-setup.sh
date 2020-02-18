@@ -90,7 +90,7 @@ echo "Verifying Lambda deployment...."
 Lambda_det="$(aws lambda get-function --function-name cn-aws-remediate-relayfunction --region $aws_region 2>/dev/null)"
 Lambda_status=$?
 
-s3_detail="$(aws s3api get-bucket-versioning --bucket cn-awsrem-$env-$acc_sha 2>/dev/null)"
+s3_detail="$(aws s3api get-bucket-versioning --bucket cn-rem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
 
 if [[ "$relay_role" -ne 0 ]] && [[ "$Rem_role" -ne 0 ]] && [[ "$CT_status" -ne 0 ]] && [[ "$Lambda_status" -ne 0 ]] && [[ "$s3_status" -ne 0 ]]; then

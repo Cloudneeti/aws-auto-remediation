@@ -86,7 +86,7 @@ CT_status=$?
 Lambda_det="$(aws lambda get-function --function-name cn-aws-remediate-orchestrator --region $aws_region 2>/dev/null)"
 Lambda_status=$?
 
-s3_detail="$(aws s3api get-bucket-versioning --bucket cn-awsrem-$env-$acc_sha 2>/dev/null)"
+s3_detail="$(aws s3api get-bucket-versioning --bucket cn-rem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
 
 if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 0 ]] || [[ "$Lambda_status" -eq 0 ]] || [[ "$s3_status" -eq 0 ]]; then
@@ -110,7 +110,7 @@ if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 
 fi
 
 echo "Deploying remediation framework...."
-aws cloudformation deploy --template-file deployment-bucket.yml --stack-name cn-awsrem-$env-$acc_sha --parameter-overrides Stack=cn-awsrem-$env-$acc_sha awsaccountid=$awsaccountid region=$aws_region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+aws cloudformation deploy --template-file deployment-bucket.yml --stack-name cn-rem-$env-$acc_sha --parameter-overrides Stack=cn-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$aws_region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
 bucket_status=$?
 if [[ "$bucket_status" -eq 0 ]]; then
     serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $aws_region --remediationversion $version
