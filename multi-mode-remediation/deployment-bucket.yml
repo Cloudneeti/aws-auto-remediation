@@ -17,8 +17,7 @@ Resources:
         BucketName:
           Fn::Join:
           - ""
-          - - 'cn-rem-'
-            - !Ref Stack
+          - - !Ref Stack
         BucketEncryption:
             ServerSideEncryptionConfiguration:
                 - ServerSideEncryptionByDefault:
@@ -45,8 +44,7 @@ Resources:
       Bucket:
         Fn::Join:
         - ""
-        - - 'cn-rem-'
-          - !Ref Stack
+        - - !Ref Stack
       PolicyDocument:
         Statement:
           - Sid: CTBucketPolicy1
@@ -59,7 +57,7 @@ Resources:
             Resource:
               Fn::Join:
               - ""
-              - - 'arn:aws:s3:::cn-rem-'
+              - - 'arn:aws:s3:::'
                 - !Ref Stack
           - Sid: CTBucketPolicy2
             Action:
@@ -71,7 +69,7 @@ Resources:
             Resource:
               Fn::Join:
               - ""
-              - - 'arn:aws:s3:::cn-rem-'
+              - - 'arn:aws:s3:::'
                 - !Ref Stack
                 - '/cn-ctlogs/AWSLogs/'
                 - !Ref awsaccountid
@@ -126,7 +124,3 @@ Resources:
                   - ':'
                   - !Ref awsaccountid
                   - ':log-group:cn-log-group:*'
-
-
-
-

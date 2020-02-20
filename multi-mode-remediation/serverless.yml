@@ -1,9 +1,9 @@
-service: cn-aws-remediate
+service: cn-multirem-functions
 
 provider:
   name: aws
   runtime: python3.7
-  stage: ${opt:env, 'cn-remediation'}
+  stage: ${opt:env, 'dev'}
   region: ${opt:region, 'us-east-1'}
   remediationversion: ${opt:remediationversion, '1.0'}
   memorySize: 3008
