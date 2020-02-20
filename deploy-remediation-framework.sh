@@ -65,7 +65,6 @@ if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#a
 fi
 
 cd remediation-functions/
-
 aws_region="$(aws configure get region 2>/dev/null)"
 
 acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
@@ -137,6 +136,54 @@ else
         exit 1
     fi
 fi
+
+cd ..
+cd regional-deployment/
+echo "Configure Regional Deployments...."
+
+Regions=( "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
+RemediationRegion=( $aws_region )
+
+DeploymentRegion=()
+
+#Remove AWS_Region for remediation deployment
+for Region in "${Regions[@]}"; do
+    skip=
+    for DefaultRegion in "${RemediationRegion[@]}"; do
+        [[ $Region == $DefaultRegion ]] && { skip=1; break; }
+    done
+    [[ -n $skip ]] || DeploymentRegion+=("$Region")
+done
+
+declare -a DeploymentRegion
+
+for i in "${DeploymentRegion[@]}";
+do
+    echo "$i"
+    if ( test ! -z "$env" && test ! -z "$version" )
+    then
+        aws cloudformation deploy --template-file deployment-bucket.yml --stack-name $env-$acc_sha --parameter-overrides Stack=$env-$acc_sha awsaccountid=$awsaccountid region=$i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+        bucket_status=$?
+        if [[ "$bucket_status" -eq 0 ]]; then
+            serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $i --remediationversion $version
+            lambda_status=$?
+        else
+            echo "Something went wrong! Please contact Cloudneeti support for more details"
+            exit 1
+        fi
+    else
+        aws cloudformation deploy --template-file deployment-bucket.yml --stack-name rem-acc-$acc_sha --parameter-overrides Stack=rem-acc-$acc_sha awsaccountid=$awsaccountid region=$i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+        bucket_status=$?
+        if [[ "$bucket_status" -eq 0 ]]; then
+            serverless deploy --env rem-acc-$acc_sha --aws-account-id $awsaccountid --region $i --remediationversion 1.0
+            lambda_status=$?
+        else
+            echo "Something went wrong! Please contact Cloudneeti support for more details"
+            exit 1
+        fi
+    fi
+done
+
 
 if [[ $lambda_status -eq 0 ]]; then
     echo "Successfully deployed remediation framework!!"
