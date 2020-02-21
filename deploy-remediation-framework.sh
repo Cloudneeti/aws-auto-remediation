@@ -109,7 +109,7 @@ if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 
 fi
 
 echo "Deploying remediation framework...."
-aws cloudformation deploy --template-file deployment-bucket.yml --stack-name cn-rem-$env-$acc_sha --parameter-overrides Stack=cn-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$aws_region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+aws cloudformation deploy --template-file deployment-bucket.yml --stack-name cn-rem-$env-$acc_sha --parameter-overrides Stack=cn-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$aws_region --capabilities CAPABILITY_NAMED_IAM
 bucket_status=$?
 if [[ "$bucket_status" -eq 0 ]]; then
     serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $aws_region --remediationversion $version
@@ -142,27 +142,14 @@ declare -a DeploymentRegion
 for i in "${DeploymentRegion[@]}";
 do
     echo "$i"
-    if ( test ! -z "$env" && test ! -z "$version" )
-    then
-        aws cloudformation deploy --template-file deployment-bucket.yml --stack-name $env-$acc_sha --parameter-overrides Stack=$env-$acc_sha awsaccountid=$awsaccountid region=$i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
-        bucket_status=$?
-        if [[ "$bucket_status" -eq 0 ]]; then
-            serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $i --remediationversion $version
-            lambda_status=$?
-        else
-            echo "Something went wrong! Please contact Cloudneeti support for more details"
-            exit 1
-        fi
+    aws cloudformation deploy --template-file region-deployment-bucket.yml --stack-name cn-rem-$i-$env-$acc_sha --parameter-overrides Stack=cn-rem-$i-$env-$acc_sha awsaccountid=$awsaccountid region=$i --region $i --capabilities CAPABILITY_NAMED_IAM
+    bucket_status=$?
+    if [[ "$bucket_status" -eq 0 ]]; then
+        serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $i --remediationversion $version
+        lambda_status=$?
     else
-        aws cloudformation deploy --template-file deployment-bucket.yml --stack-name rem-acc-$acc_sha --parameter-overrides Stack=rem-acc-$acc_sha awsaccountid=$awsaccountid region=$i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
-        bucket_status=$?
-        if [[ "$bucket_status" -eq 0 ]]; then
-            serverless deploy --env rem-acc-$acc_sha --aws-account-id $awsaccountid --region $i --remediationversion 1.0
-            lambda_status=$?
-        else
-            echo "Something went wrong! Please contact Cloudneeti support for more details"
-            exit 1
-        fi
+        echo "Something went wrong! Please contact Cloudneeti support for more details"
+        exit 1
     fi
 done
 

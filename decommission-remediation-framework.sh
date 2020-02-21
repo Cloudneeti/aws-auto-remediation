@@ -60,17 +60,16 @@ aws_region="$(aws configure get region 2>/dev/null)"
 acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
 
 env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
-
 stack_detail="$(aws cloudformation describe-stacks --stack-name cn-rem-functions-$env-$acc_sha --region $aws_region 2>/dev/null)"
 stack_status=$?
 
 echo "Validating environment prefix..."
 sleep 5
-
+'
 if [[ $stack_status -ne 0 ]]; then
     echo "Invaild environment prefix. No relevant stack found. Please enter current environment prefix and try to re-run the script again."
     exit 1
-fi
+fi'
 
 echo "Checking if the remediation bucket has been deleted or not...."
 
@@ -90,6 +89,33 @@ aws cloudformation delete-stack --stack-name cn-rem-functions-$env-$acc_sha --re
 lambda_status=$?
 aws cloudformation delete-stack --stack-name cn-rem-$env-$acc_sha --region $aws_region 2>/dev/null
 bucket_status=$?
+
+echo "Deleting Regional Deployments...."
+
+Regions=( "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
+RemediationRegion=( $aws_region )
+
+DeploymentRegion=()
+
+#Remove AWS_Region for remediation deployment
+for Region in "${Regions[@]}"; do
+    skip=
+    for DefaultRegion in "${RemediationRegion[@]}"; do
+        [[ $Region == $DefaultRegion ]] && { skip=1; break; }
+    done
+    [[ -n $skip ]] || DeploymentRegion+=("$Region")
+done
+
+declare -a DeploymentRegion
+
+for i in "${DeploymentRegion[@]}";
+do
+    echo "$i"
+    aws cloudformation delete-stack --stack-name cn-rem-$i-$env-$acc_sha --region $i
+    lambda_status=$?
+    aws cloudformation delete-stack --stack-name cn-rem-functions-$env-$acc_sha --region $i
+    bucket_status=$?
+done
 
 if [[ $lambda_status -eq 0 ]] && [[ $bucket_status -eq 0 ]]; then
     echo "Successfully deleted deployment stack!"
