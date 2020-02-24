@@ -75,6 +75,7 @@ echo "Checking if the remediation framework already exists in the configured acc
 
 orches_role_det="$(aws iam get-role --role-name CN-Remediation-Invocation-Role 2>/dev/null)"
 orches_role=$?
+InvokerRole=$(echo $orches_role_det | jq '.Role.Arn')
 
 rem_role_det="$(aws iam get-role --role-name CN-Auto-Remediation-Role 2>/dev/null)"
 Rem_role=$?
@@ -87,37 +88,6 @@ Lambda_status=$?
 
 s3_detail="$(aws s3api get-bucket-versioning --bucket cn-rem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
-
-if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 0 ]] || [[ "$Lambda_status" -eq 0 ]] || [[ "$s3_status" -eq 0 ]]; then
-	echo "Remediation components already exist. Attempting to redploy framework with latest updates !"
-
-    if [[ "$s3_status" -eq 0 ]]; then
-        echo "Redploying framework....."
-        serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $aws_region --remediationversion $version
-        lambda_status=$?
-
-        if [[ $lambda_status -eq 0 ]]; then
-            echo "Successfully deployed remediation framework with latest updates!!"
-        else
-            echo "Something went wrong! Please contact Cloudneeti support for more details"
-        fi
-        exit 1
-    else
-        echo "Remediation components already exist with a different environment prefix. Please run verify-remediation-setup.sh for more details !"
-        exit 1
-    fi
-fi
-
-echo "Deploying remediation framework...."
-aws cloudformation deploy --template-file deployment-bucket.yml --stack-name cn-rem-$env-$acc_sha --parameter-overrides Stack=cn-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$aws_region --capabilities CAPABILITY_NAMED_IAM
-bucket_status=$?
-if [[ "$bucket_status" -eq 0 ]]; then
-    serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $aws_region --remediationversion $version
-    lambda_status=$?
-else
-    echo "Something went wrong! Please contact Cloudneeti support for more details"
-    exit 1
-fi
 
 cd ..
 cd regional-deployment/
@@ -139,17 +109,42 @@ done
 
 declare -a DeploymentRegion
 
-role_policy_document = "$(aws iam create-role --role-name CN-Invoker-Role --assume-role-policy-document {"Version": "2012-10-17", "Statement": [{"Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents", "cloudtrail:DescribeTrails", "cloudtrail:GetTrailStatus", "iam:Get*", "iam:List*"], "Resource": "*", "Effect": "Allow", "Sid": "AllowIAMForLambdaPolicy1"}, {"Action": ["sts:AssumeRole"], "Resource": ["arn:aws:iam::*:role/CN-Remediation-Invocation-Role"], "Effect": "Allow", "Sid": "AllowAssumeRoleForLambdaPolicy2"}]})"
-
-zip -rq cninvoker.zip invoker.py
+zip -r cninvoker.zip invoker.py
 
 for i in "${DeploymentRegion[@]}";
 do
-    Invoker = "$(aws lambda create-function --function-name cn-rem-$i-invoker --runtime python3.7 --zip-file fileb://cninvoker.zip --handler invoker.lambda_handler --role arn:aws:iam::$awsaccountid:role/CN-Invoker-Role --region $i)"
+    Invoker = "$(aws lambda create-function --function-name cn-rem-$i-invoker --runtime python3.7 --zip-file fileb://cninvoker.zip --handler invoker.lambda_handler --role $InvokerRole --region $i)"
     echo "$i"
+
+    aws events put-rule --name "cn-aws-rds-event-rule" --event-pattern "{\"source\":[\"aws.rds\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"rds.amazonaws.com\"],\"eventName\":[\"CreateDBCluster\",\"ModifyDBCluster\",\"CreateDBInstance\",\"ModifyDBInstance\",\"RemoveTagsFromResource\"]}}"
+
+    aws events put-targets --rule "cn-aws-rds-event-rule" --targets "Id"="1","Arn"=$Invoker
+    aws events put-rule --name "cn-aws-cloudtrail-event-rule" --event-pattern "{\"source\":[\"aws.cloudtrail\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"cloudtrail.amazonaws.com\"],\"eventName\":[\"CreateTrail\",\"UpdateTrail\"]}}"
+
+    aws events put-targets --rule "cn-aws-cloudtrail-event-rule" --targets "Id"="1","Arn"=$Invoker
+
+    aws events put-rule --name "cn-aws-kinesis-event-rule" --event-pattern "{\"source\":[\"aws.kinesis\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"kinesis.amazonaws.com\"],\"eventName\":[\"CreateStream\",\"DisableEnhancedMonitoring\"]}}"
+
+    aws events put-targets --rule "cn-aws-kinesis-event-rule" --targets "Id"="1","Arn"=$Invoker
+
+    aws events put-rule --name "cn-aws-kms-event-rule" --event-pattern "{\"source\":[\"aws.kms\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"kms.amazonaws.com\"],\"eventName\":[\"CreateKey\",\"DisableKeyRotation\"]}}"
+
+    aws events put-targets --rule "cn-aws-kms-event-rule" --targets "Id"="1","Arn"=$Invoker
+
+    aws events put-rule --name "cn-aws-elb-event-rule" --event-pattern "{\"source\":[\"aws.elasticloadbalancing\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"elasticloadbalancing.amazonaws.com\"],\"eventName\":[\"CreateLoadBalancer\",\"ModifyLoadBalancerAttributes\"]}}"
+
+    aws events put-targets --rule "cn-aws-elb-event-rule" --targets "Id"="1","Arn"=$Invoker
+
+    aws events put-rule --name "cn-aws-s3bucket-event-rule" --event-pattern "{\"source\":[\"aws.s3\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"s3.amazonaws.com\"],\"eventName\":[\"CreateBucket\",\"PutBucketVersioning\",\"DeleteBucketEncryption\",\"PutBucketAcl\"]}}"
+
+    aws events put-targets --rule "cn-aws-s3bucket-event-rule" --targets "Id"="1","Arn"=$Invoker
+
+    aws events put-rule --name "cn-aws-redshift-event-rule" --event-pattern "{\"source\":[\"aws.redshift\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"redshift.amazonaws.com\"],\"eventName\":[\"CreateCluster\",\"ModifyCluster\"]}}"
+
+    aws events put-targets --rule "cn-aws-redshift-event-rule" --targets "Id"="1","Arn"=$Invoker    
 done
 
-rm function.zip
+rm cninvoker.zip
 
 
 if [[ $lambda_status -eq 0 ]]; then
