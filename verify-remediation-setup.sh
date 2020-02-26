@@ -33,7 +33,11 @@
 '
 
 usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-e <environment-prefix>]" 1>&2; exit 1; }
+UNSET 2>/dev/null
+TRUE 2>/dev/null
+is_set=`head -n1 cnremediation.conf` 2>/dev/null
 
+echo "Configuration File : "`pwd`"/cnremediation.conf"
 env="dev"
 version="1.0"
 while getopts "a:e:" o; do
@@ -49,6 +53,43 @@ while getopts "a:e:" o; do
             ;;
     esac
 done
+
+if [[ $is_set == "SET" ]]
+then
+{
+    echo "Check older values for remediation framework from configuration file"
+}
+else
+{
+    echo "Use Configuration file?"
+    options=("TRUE" "FALSE" "QUIT")
+    select opt in "${options[@]}"
+    do
+        case $opt in
+            "TRUE")
+                echo "SET" > cnremediation.conf
+                echo "TRUE" >> cnremediation.conf
+                echo "Configuration Saved !!"
+                break;
+                ;;
+            "FALSE")
+                echo "SET" > cnremediation.conf
+                echo "FALSE" >> cnremediation.conf
+                echo "Configuration Saved !!"
+                break;
+                ;;
+            "QUIT")
+                echo "Seems like you have not made up your mind yet !"
+                echo "Please come back later."
+                break;
+                ;;
+            *) echo "invalid option"
+                ;;
+        esac
+    done
+}
+fi
+
 shift $((OPTIND-1))
 
 if [[ "$env" == "" ]] || [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]]; then

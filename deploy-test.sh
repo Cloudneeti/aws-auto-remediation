@@ -39,11 +39,10 @@
 .OUTPUTS
     None
 '
-
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-e <environment-prefix>] [-v <1.0>]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-e <environment-prefix>] [-v <1.0>] [-m <region1>] [-m <region2>] ..." 1>&2; exit 1; }
 env="dev"
 version="1.0"
-while getopts "a:e:v:" o; do
+while getopts "a:e:v:m:" o; do
     case "${o}" in
         a)
             awsaccountid=${OPTARG}
@@ -54,12 +53,22 @@ while getopts "a:e:v:" o; do
         v)
             version=${OPTARG}
             ;;
+		m) regionlist+=("$OPTARG");;
         *)
             usage
             ;;
     esac
 done
 shift $((OPTIND-1))
+Regions=( "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
+
+#Validating user input for custom regions
+selectedregions=" ${regionlist[*]}"                    # add framing blanks
+for value in ${Regions[@]}; do
+  if [[ $selectedregions =~ " $value " ]] ; then    # use $value as regexp
+    customregions+=($value)
+  fi
+done
 
 if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]]; then
     usage
@@ -73,10 +82,10 @@ env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
 
 echo "Checking if the remediation framework already exists in the configured account....."
 
-orches_role_det="$(aws iam get-role --role-name CN-Remediation-Invocation-Role 2>/dev/null)"
+orches_role_det="$(aws iam get-role --role-name CN-OrchesLambdaRole-rem-c92503c7d22f539c9a54ca06b75aabd8 2>/dev/null)"
 orches_role=$?
 InvokerRole=$(echo $orches_role_det | jq '.Role.Arn')
-
+InvokerRoleArn=${InvokerRole:1:-1}
 rem_role_det="$(aws iam get-role --role-name CN-Auto-Remediation-Role 2>/dev/null)"
 Rem_role=$?
 
@@ -92,56 +101,101 @@ s3_status=$?
 cd ..
 cd regional-deployment/
 echo "Configure Regional Deployments...."
-
-Regions=( "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
 RemediationRegion=( $aws_region )
 
-DeploymentRegion=()
-
 #Remove AWS_Region for remediation deployment
-for Region in "${Regions[@]}"; do
-    skip=
-    for DefaultRegion in "${RemediationRegion[@]}"; do
-        [[ $Region == $DefaultRegion ]] && { skip=1; break; }
-    done
-    [[ -n $skip ]] || DeploymentRegion+=("$Region")
-done
+DeploymentRegion=()
+if [[ "$regionlist" -eq 0 ]]; then
+	#Remove AWS_Region for remediation deployment
+	for Region in "${Regions[@]}"; do
+		skip=
+		for DefaultRegion in "${RemediationRegion[@]}"; do
+			[[ $Region == $DefaultRegion ]] && { skip=1; break; }
+		done
+		[[ -n $skip ]] || DeploymentRegion+=("$Region")
+	done
 
-declare -a DeploymentRegion
+	declare -a DeploymentRegion
+else
+	#Remove AWS_Region for remediation deployment
+	for Region in "${customregions[@]}"; do
+		skip=
+		for DefaultRegion in "${RemediationRegion[@]}"; do
+			[[ $Region == $DefaultRegion ]] && { skip=1; break; }
+		done
+		[[ -n $skip ]] || DeploymentRegion+=("$Region")
+	done
 
+	declare -a DeploymentRegion
+fi
+
+echo "${DeploymentRegion[*]}"
 zip -r cninvoker.zip invoker.py
 
 for i in "${DeploymentRegion[@]}";
 do
-    Invoker = "$(aws lambda create-function --function-name cn-rem-$i-invoker --runtime python3.7 --zip-file fileb://cninvoker.zip --handler invoker.lambda_handler --role $InvokerRole --region $i)"
+    Invoker="$(aws lambda create-function --function-name cn-rem-$i-invoker --runtime python3.7 --zip-file fileb://cninvoker.zip --handler invoker.lambda_handler --role $InvokerRoleArn --region $i --debug)"
     echo "$i"
+    Invokerfunction=$(echo $Invoker | jq '.FunctionArn')
+    InvokerFunctionArn=${Invokerfunction:1:-1}
 
-    aws events put-rule --name "cn-aws-rds-event-rule" --event-pattern "{\"source\":[\"aws.rds\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"rds.amazonaws.com\"],\"eventName\":[\"CreateDBCluster\",\"ModifyDBCluster\",\"CreateDBInstance\",\"ModifyDBInstance\",\"RemoveTagsFromResource\"]}}"
+    Rule1="$(aws events put-rule --region $i --name "cn-aws-rds-event-rule" --event-pattern "{\"source\":[\"aws.rds\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"rds.amazonaws.com\"],\"eventName\":[\"CreateDBCluster\",\"ModifyDBCluster\",\"CreateDBInstance\",\"ModifyDBInstance\",\"RemoveTagsFromResource\"]}}")"
 
-    aws events put-targets --rule "cn-aws-rds-event-rule" --targets "Id"="1","Arn"=$Invoker
-    aws events put-rule --name "cn-aws-cloudtrail-event-rule" --event-pattern "{\"source\":[\"aws.cloudtrail\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"cloudtrail.amazonaws.com\"],\"eventName\":[\"CreateTrail\",\"UpdateTrail\"]}}"
+    EventRule1=$(echo $Rule1 | jq '.RuleArn')
+    EventRule1arn=${EventRule1:1:-1}
 
-    aws events put-targets --rule "cn-aws-cloudtrail-event-rule" --targets "Id"="1","Arn"=$Invoker
+    Rule2="$(aws events put-rule --region $i --name "cn-aws-cloudtrail-event-rule" --event-pattern "{\"source\":[\"aws.cloudtrail\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"cloudtrail.amazonaws.com\"],\"eventName\":[\"CreateTrail\",\"UpdateTrail\"]}}")"
 
-    aws events put-rule --name "cn-aws-kinesis-event-rule" --event-pattern "{\"source\":[\"aws.kinesis\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"kinesis.amazonaws.com\"],\"eventName\":[\"CreateStream\",\"DisableEnhancedMonitoring\"]}}"
+    EventRule2=$(echo $Rule2 | jq '.RuleArn')
+    EventRule2arn=${EventRule2:1:-1}
 
-    aws events put-targets --rule "cn-aws-kinesis-event-rule" --targets "Id"="1","Arn"=$Invoker
+    Rule3="$(aws events put-rule --region $i --name "cn-aws-kinesis-event-rule" --event-pattern "{\"source\":[\"aws.kinesis\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"kinesis.amazonaws.com\"],\"eventName\":[\"CreateStream\",\"DisableEnhancedMonitoring\"]}}")"
 
-    aws events put-rule --name "cn-aws-kms-event-rule" --event-pattern "{\"source\":[\"aws.kms\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"kms.amazonaws.com\"],\"eventName\":[\"CreateKey\",\"DisableKeyRotation\"]}}"
+    EventRule3=$(echo $Rule3 | jq '.RuleArn')
+    EventRule3arn=${EventRule3:1:-1}
 
-    aws events put-targets --rule "cn-aws-kms-event-rule" --targets "Id"="1","Arn"=$Invoker
+    Rule4="$(aws events put-rule --region $i --name "cn-aws-kms-event-rule" --event-pattern "{\"source\":[\"aws.kms\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"kms.amazonaws.com\"],\"eventName\":[\"CreateKey\",\"DisableKeyRotation\"]}}")"
 
-    aws events put-rule --name "cn-aws-elb-event-rule" --event-pattern "{\"source\":[\"aws.elasticloadbalancing\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"elasticloadbalancing.amazonaws.com\"],\"eventName\":[\"CreateLoadBalancer\",\"ModifyLoadBalancerAttributes\"]}}"
+    EventRule4=$(echo $Rule4 | jq '.RuleArn')
+    EventRule4arn=${EventRule4:1:-1}
 
-    aws events put-targets --rule "cn-aws-elb-event-rule" --targets "Id"="1","Arn"=$Invoker
+    Rule5="$(aws events put-rule --region $i --name "cn-aws-elb-event-rule" --event-pattern "{\"source\":[\"aws.elasticloadbalancing\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"elasticloadbalancing.amazonaws.com\"],\"eventName\":[\"CreateLoadBalancer\",\"ModifyLoadBalancerAttributes\"]}}")"
 
-    aws events put-rule --name "cn-aws-s3bucket-event-rule" --event-pattern "{\"source\":[\"aws.s3\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"s3.amazonaws.com\"],\"eventName\":[\"CreateBucket\",\"PutBucketVersioning\",\"DeleteBucketEncryption\",\"PutBucketAcl\"]}}"
+    EventRule5=$(echo $Rule5 | jq '.RuleArn')
+    EventRule5arn=${EventRule5:1:-1}
 
-    aws events put-targets --rule "cn-aws-s3bucket-event-rule" --targets "Id"="1","Arn"=$Invoker
+    Rule6="$(aws events put-rule --region $i --name "cn-aws-s3bucket-event-rule" --event-pattern "{\"source\":[\"aws.s3\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"s3.amazonaws.com\"],\"eventName\":[\"CreateBucket\",\"PutBucketVersioning\",\"DeleteBucketEncryption\",\"PutBucketAcl\"]}}")"
 
-    aws events put-rule --name "cn-aws-redshift-event-rule" --event-pattern "{\"source\":[\"aws.redshift\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"redshift.amazonaws.com\"],\"eventName\":[\"CreateCluster\",\"ModifyCluster\"]}}"
+    EventRule6=$(echo $Rule6 | jq '.RuleArn')
+    EventRule6arn=${EventRule6:1:-1}
 
-    aws events put-targets --rule "cn-aws-redshift-event-rule" --targets "Id"="1","Arn"=$Invoker    
+    Rule7="$(aws events put-rule --region $i --name "cn-aws-redshift-event-rule" --event-pattern "{\"source\":[\"aws.redshift\"],\"detail-type\":[\"AWS API Call via CloudTrail\"],\"detail\":{\"eventSource\":[\"redshift.amazonaws.com\"],\"eventName\":[\"CreateCluster\",\"ModifyCluster\"]}}")"
+
+    EventRule7=$(echo $Rule7 | jq '.RuleArn')
+    EventRule7arn=${EventRule7:1:-1}
+
+    aws events put-targets --region $i --rule "cn-aws-rds-event-rule" --targets "Id"="1","Arn"=$InvokerFunctionArn
+
+    aws events put-targets --region $i --rule "cn-aws-cloudtrail-event-rule" --targets "Id"="1","Arn"=$InvokerFunctionArn
+
+    aws events put-targets --region $i --rule "cn-aws-kinesis-event-rule" --targets "Id"="1","Arn"=$InvokerFunctionArn
+
+    aws events put-targets --region $i --rule "cn-aws-kms-event-rule" --targets "Id"="1","Arn"=$InvokerFunctionArn
+
+    aws events put-targets --region $i --rule "cn-aws-elb-event-rule" --targets "Id"="1","Arn"=$InvokerFunctionArn
+
+    aws events put-targets --region $i --rule "cn-aws-s3bucket-event-rule" --targets "Id"="1","Arn"=$InvokerFunctionArn
+
+    aws events put-targets --region $i --rule "cn-aws-redshift-event-rule" --targets "Id"="1","Arn"=$InvokerFunctionArn
+
+    aws lambda add-permission --function-name cn-rem-$i-invoker --statement-id rdsrule --action lambda:InvokeFunction --principal events.amazonaws.com --source-arn $EventRule1arn --region $i
+    aws lambda add-permission --function-name cn-rem-$i-invoker --statement-id cloudtrailrule --action lambda:InvokeFunction --principal events.amazonaws.com --source-arn $EventRule2arn --region $i
+    aws lambda add-permission --function-name cn-rem-$i-invoker --statement-id kinesisrule --action lambda:InvokeFunction --principal events.amazonaws.com --source-arn $EventRule3arn --region $i
+    aws lambda add-permission --function-name cn-rem-$i-invoker --statement-id kmsrule --action lambda:InvokeFunction --principal events.amazonaws.com --source-arn $EventRule4arn --region $i
+    aws lambda add-permission --function-name cn-rem-$i-invoker --statement-id elbrule --action lambda:InvokeFunction --principal events.amazonaws.com --source-arn $EventRule5arn --region $i
+    aws lambda add-permission --function-name cn-rem-$i-invoker --statement-id s3bucketrule --action lambda:InvokeFunction --principal events.amazonaws.com --source-arn $EventRule6arn --region $i
+    aws lambda add-permission --function-name cn-rem-$i-invoker --statement-id redshiftrule --action lambda:InvokeFunction --principal events.amazonaws.com --source-arn $EventRule7arn --region $i
+
 done
 
 rm cninvoker.zip

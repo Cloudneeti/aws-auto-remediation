@@ -129,3 +129,37 @@ Resources:
                   - ':'
                   - !Ref awsaccountid
                   - ':log-group:cn-log-group:*'
+  CNLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CN-Auto-Remediation-Invoker
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: cn-lambda-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Sid: AllowIAMForLambdaPolicy
+              Effect: Allow
+              Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              - cloudtrail:DescribeTrails
+              - cloudtrail:GetTrailStatus
+              - iam:Get*
+              - iam:List*
+              Resource: "*"
+            - Sid: AllowAssumeRoleForLambdaPolicy
+              Effect: Allow
+              Action:
+              - sts:AssumeRole
+              Resource: 
+              - "arn:aws:iam::*:role/CN-Remediation-Invocation-Role"

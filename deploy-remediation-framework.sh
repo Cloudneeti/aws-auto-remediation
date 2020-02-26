@@ -1,49 +1,9 @@
 #!/bin/bash
 
-: '
-#SYNOPSIS
-    Deployment of Remediation Framework.
-.DESCRIPTION
-    This script will deploy all the services required for the remediation framework.
-.NOTES
-    Version: 1.0
-
-    # PREREQUISITE
-      - Install aws cli
-        Link : https://docs.aws.amazon.com/cli/latest/userguide/install-linux-al2017.html
-      - Install npm 
-        Installation commands: 
-            - sudo apt-get update
-            - sudo apt-get install nodejs
-            - sudo apt-get install npm
-      - Install serverless
-        Installation command:
-            - sudo npm install -g serverless
-      - Configure your aws account using the below command:
-        aws configure
-        Enter the required inputs:
-            AWS Access Key ID: Access key of any admin user of the account in consideration.
-            AWS Secret Access Key: Secret Access Key of any admin user of the account in consideration
-            Default region name: Programmatic region name where you want to deploy the framework (eg: us-east-1)
-            Default output format: json  
-      - Run this script in any bash shell (linux command prompt)
-
-.EXAMPLE
-    Command to execute : bash deploy-remediation-framework.sh [-a <12-digit-account-id>] [-e <environment-prefix>] [-v <1.0>]
-
-.INPUTS
-    **Mandatory(-a)Account Id: 12-digit AWS account Id of the account where you want the remediation framework to be deployed
-    (-e)Environment prefix: Enter any suitable prefix for your deployment
-    (-v)Version: Enter the remediation framework version (Would be provided by Cloudneeti)
-
-.OUTPUTS
-    None
-'
-
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-e <environment-prefix>] [-v <1.0>]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-e <environment-prefix>] [-v <1.0>] [-m <region1>] [-m <region2>] ..." 1>&2; exit 1; }
 env="dev"
 version="1.0"
-while getopts "a:e:v:" o; do
+while getopts "a:e:v:m:" o; do
     case "${o}" in
         a)
             awsaccountid=${OPTARG}
@@ -54,17 +14,29 @@ while getopts "a:e:v:" o; do
         v)
             version=${OPTARG}
             ;;
+		m) regionlist+=("$OPTARG");;
         *)
             usage
             ;;
     esac
 done
 shift $((OPTIND-1))
+Regions=( "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
 
+#Validating user input for custom regions
+selectedregions=" ${regionlist[*]}"                    # add framing blanks
+for value in ${Regions[@]}; do
+  if [[ $selectedregions =~ " $value " ]] ; then    # use $value as regexp to validate
+    customregions+=($value)
+  fi
+done
+
+#validate aws account-id
 if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]]; then
     usage
 fi
 
+#Verify deployment of remediation framework
 cd remediation-functions/
 aws_region="$(aws configure get region 2>/dev/null)"
 
@@ -88,6 +60,7 @@ Lambda_status=$?
 s3_detail="$(aws s3api get-bucket-versioning --bucket cn-rem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
 
+#Update existing remediation framework
 if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 0 ]] || [[ "$Lambda_status" -eq 0 ]] || [[ "$s3_status" -eq 0 ]]; then
 	echo "Remediation components already exist. Attempting to redploy framework with latest updates !"
 
@@ -108,6 +81,7 @@ if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 
     fi
 fi
 
+#Deploy framework from scrach
 echo "Deploying remediation framework...."
 aws cloudformation deploy --template-file deployment-bucket.yml --stack-name cn-rem-$env-$acc_sha --parameter-overrides Stack=cn-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$aws_region --capabilities CAPABILITY_NAMED_IAM
 bucket_status=$?
@@ -119,38 +93,42 @@ else
     exit 1
 fi
 
+#Regional deployments for framework
 cd ..
 cd regional-deployment/
 echo "Configure Regional Deployments...."
 
-Regions=( "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
 RemediationRegion=( $aws_region )
 
 DeploymentRegion=()
+if [[ "$regionlist" -eq 0 ]]; then
+	#Remove AWS_Region for remediation deployment
+	for Region in "${Regions[@]}"; do
+		skip=
+		for DefaultRegion in "${RemediationRegion[@]}"; do
+			[[ $Region == $DefaultRegion ]] && { skip=1; break; }
+		done
+		[[ -n $skip ]] || DeploymentRegion+=("$Region")
+	done
 
-#Remove AWS_Region for remediation deployment
-for Region in "${Regions[@]}"; do
-    skip=
-    for DefaultRegion in "${RemediationRegion[@]}"; do
-        [[ $Region == $DefaultRegion ]] && { skip=1; break; }
-    done
-    [[ -n $skip ]] || DeploymentRegion+=("$Region")
-done
+	declare -a DeploymentRegion
+else
+	#Remove AWS_Region for remediation deployment
+	for Region in "${customregions[@]}"; do
+		skip=
+		for DefaultRegion in "${RemediationRegion[@]}"; do
+			[[ $Region == $DefaultRegion ]] && { skip=1; break; }
+		done
+		[[ -n $skip ]] || DeploymentRegion+=("$Region")
+	done
 
-declare -a DeploymentRegion
-
-role_policy_document = "$(aws iam create-role --role-name CN-Invoker-Role --assume-role-policy-document {"Version": "2012-10-17", "Statement": [{"Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents", "cloudtrail:DescribeTrails", "cloudtrail:GetTrailStatus", "iam:Get*", "iam:List*"], "Resource": "*", "Effect": "Allow", "Sid": "AllowIAMForLambdaPolicy1"}, {"Action": ["sts:AssumeRole"], "Resource": ["arn:aws:iam::*:role/CN-Remediation-Invocation-Role"], "Effect": "Allow", "Sid": "AllowAssumeRoleForLambdaPolicy2"}]})"
-
-zip -rq cninvoker.zip invoker.py
+	declare -a DeploymentRegion
+fi
 
 for i in "${DeploymentRegion[@]}";
 do
-    Invoker = "$(aws lambda create-function --function-name cn-rem-$i-invoker --runtime python3.7 --zip-file fileb://cninvoker.zip --handler invoker.lambda_handler --role arn:aws:iam::$awsaccountid:role/CN-Invoker-Role --region $i)"
-    echo "$i"
+    aws cloudformation deploy --template-file deployment-bucket.yml --stack-name cn-rem-$env-$acc_sha --parameter-overrides Stack=cn-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$aws_region --capabilities CAPABILITY_NAMED_IAM
 done
-
-rm function.zip
-
 
 if [[ $lambda_status -eq 0 ]]; then
     echo "Successfully deployed remediation framework!!"

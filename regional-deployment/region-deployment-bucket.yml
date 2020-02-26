@@ -9,24 +9,348 @@ Parameters:
     region:
         Description: Region of deployment
         Type: String
+        Default: us-east-1
+
 Resources:
-  S3Bucket:
-    Type: AWS::S3::Bucket
+  LambdaFunction:
+    Type: AWS::Lambda::Function
     Properties:
-        BucketName:
-          Fn::Join:
-          - ""
-          - - !Ref Stack
-        BucketEncryption:
-            ServerSideEncryptionConfiguration:
-                - ServerSideEncryptionByDefault:
-                    SSEAlgorithm: AES256
-        VersioningConfiguration:
-            Status: Enabled
-        Tags: 
-          -
-            Key: "ServiceName"
-            Value: "auto-remediation-deployment-bucket"
-          -
-            Key: "Description"
-            Value: "Cloudneeti automatic remediation solution for making cloud resource compliant"
+      FunctionName: cn-aws-auto-remediate-invoker
+      Role: arn:aws:iam::254447551821:role/CN-OrchesLambdaRole-rem-c92503c7d22f539c9a54ca06b75aabd8
+      Runtime: python3.7
+      Handler: Index.lambda_handler
+      Timeout: 30 #seconds
+      MemorySize: 128 #max memory foot print
+      Code:
+        ZipFile:  |
+          import json
+          import boto3
+          import common
+          from botocore.exceptions import ClientError
+
+          def lambda_handler(event, context):
+              #regional-event customer account CW event
+              
+              try:
+                  cw_event_data = event['detail']
+              except:
+                  cw_event_data = ''
+
+              #trigger by cw logs
+              if cw_event_data:
+                  try:
+                      records = ""
+                      AWSAccId = cw_event_data["userIdentity"]["accountId"]
+                      EventName = cw_event_data["eventName"]
+                      EventSource = cw_event_data["userIdentity"]["arn"]
+                  except ClientError as e: 
+                      print(e)
+                      return {
+                          'statusCode': 401,
+                          'body': json.dumps(str(e))
+                      }
+                  except Exception as e:
+                      print(e)
+                      return {
+                          'statusCode': 401,
+                          'body': json.dumps(str(e))
+                      }
+
+                  # Invoke remediation orchestrator
+                  if "assumed-role/CN-Auto-Remediation-Role" not in str(EventSource):        
+                      try:  # common code
+                          remdiationfunc_rolearn = 'arn:aws:iam::' + AWSAccId + ':role/CN-Remediation-Invocation-Role'
+                          aws_access_key_id, aws_secret_access_key, aws_session_token = common.getCredentials(remdiationfunc_rolearn)
+                      except ClientError as e:
+                          print(e)
+                          return {
+                              'statusCode': 400,
+                              'body': json.dumps(str(e))
+                          }
+                      except Exception as e:
+                          print(e)
+                          return {
+                              'statusCode': 400,
+                              'body': json.dumps(str(e))
+                          }
+
+                      try:
+                          invokeLambda = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name='us-east-2')
+                          response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-orchestrator', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                          t = json.loads(response['Payload'].read())
+                          print(t['body'])
+                          return {
+                              'statusCode': 200,
+                              'body': json.dumps(t)
+                          }
+                      except ClientError as e:
+                          print(e)
+                          return {
+                              'statusCode': 400,
+                              'body': json.dumps(str(e))
+                          }
+                      except Exception as e:
+                          print(e)
+                          return {
+                              'statusCode': 400,
+                              'body': json.dumps(str(e))
+                          }
+                  #endregion
+                  
+                  #No Events
+                  else:
+                      print("Policies not configured for remediation")
+                      return {
+                          'statusCode': 200,
+                          'body': json.dumps("Policies not configured for remediation")
+                      }
+                  #endregion
+              
+              else:
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps("Invalid event source!")
+                  }
+  RDSEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: 'cn-aws-rds-event-rule'
+      Description: 'CloudWatch Event triggered on rds'
+      EventPattern:
+        source:
+          - "aws.rds"
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "rds.amazonaws.com"
+          eventName:
+            - "CreateDBCluster"
+            - "ModifyDBCluster"
+            - "CreateDBInstance"
+            - "ModifyDBInstance"
+            - "RemoveTagsFromResource"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "LambdaFunction"
+              - "Arn"
+          Id: "TargetFunctionV1"
+  PermissionForEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "LambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "RDSEventRule"
+          - "Arn"
+  CloudtrailEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: 'cn-aws-cloudtrail-event-rule'
+      Description: 'CloudWatch Event triggered on cloudtrail'
+      EventPattern:
+        source:
+          - "aws.cloudtrail"
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "cloudtrail.amazonaws.com"
+          eventName:
+            - "CreateTrail"
+            - "UpdateTrail"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "LambdaFunction"
+              - "Arn"
+          Id: "TargetFunctionV1"
+  PermissionForEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "LambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "CloudtrailEventRule"
+          - "Arn"
+  KinesisEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: 'cn-aws-kinesis-event-rule'
+      Description: 'CloudWatch Event triggered on kinesis'
+      EventPattern:
+        source:
+          - "aws.kinesis"
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "kinesis.amazonaws.com"
+          eventName:
+            - "CreateStream"
+            - "DisableEnhancedMonitoring"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "LambdaFunction"
+              - "Arn"
+          Id: "TargetFunctionV1"
+  PermissionForEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "LambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "KinesisEventRule"
+          - "Arn"
+  KMSEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: 'cn-aws-kms-event-rule'
+      Description: 'CloudWatch Event triggered on kms'
+      EventPattern:
+        source:
+          - "aws.kms"
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "kms.amazonaws.com"
+          eventName:
+            - "CreateKey"
+            - "DisableKeyRotation"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "LambdaFunction"
+              - "Arn"
+          Id: "TargetFunctionV1"
+  PermissionForEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "LambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "KMSEventRule"
+          - "Arn"
+  ELBEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: 'cn-aws-elb-event-rule'
+      Description: 'CloudWatch Event triggered on elb'
+      EventPattern:
+        source:
+          - "aws.elasticloadbalancing"
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "elasticloadbalancing.amazonaws.com"
+          eventName:
+            - "CreateLoadBalancer"
+            - "ModifyLoadBalancerAttributes"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "LambdaFunction"
+              - "Arn"
+          Id: "TargetFunctionV1"
+  PermissionForEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "LambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "ELBEventRule"
+          - "Arn"
+  S3EventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: 'cn-aws-s3bucket-event-rule'
+      Description: 'CloudWatch Event triggered on s3bucket'
+      EventPattern:
+        source:
+          - "aws.s3"
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "s3.amazonaws.com"
+          eventName:
+            - "CreateBucket"
+            - "PutBucketVersioning"
+            - "DeleteBucketEncryption"
+            - "PutBucketAcl"
+        Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "LambdaFunction"
+              - "Arn"
+          Id: "TargetFunctionV1"
+  PermissionForEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "LambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "S3EventRule"
+          - "Arn"
+  RedshiftEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: 'cn-aws-redshift-event-rule'
+      Description: 'CloudWatch Event triggered on redshift cluster'
+      EventPattern:
+        source:
+          - "aws.redshift"
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "redshift.amazonaws.com"
+          eventName:
+            - "CreateCluster"
+            - "ModifyCluster"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "LambdaFunction"
+              - "Arn"
+          Id: "TargetFunctionV1"
+  PermissionForEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "LambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "RedshiftEventRule"
+          - "Arn"
