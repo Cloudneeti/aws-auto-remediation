@@ -7,7 +7,6 @@
     This script will check the deployment status of the critical components of the remediation framework.
 .NOTES
     Version: 1.0
-
     # PREREQUISITE
       - Install aws cli
         Link : https://docs.aws.amazon.com/cli/latest/userguide/install-linux-al2017.html
@@ -21,26 +20,18 @@
             Default region name: Programmatic region name where you want to deploy the framework (eg: us-east-1)
             Default output format: json  
       - Run this script in any bash shell (linux command prompt)
-
 .EXAMPLE
     Command to execute : bash verify-remediation-setup.sh [-a <12-digit-account-id>] [-e <environment-prefix>]
 .INPUTS
     (-a)Account Id: 12-digit AWS account Id of the account for which you want to verify if remediation framework is deployed or not.
     (-e)Environment prefix: Enter any suitable prefix for your deployment
-
 .OUTPUTS
     None
 '
-
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-e <environment-prefix>]" 1>&2; exit 1; }
-UNSET 2>/dev/null
-TRUE 2>/dev/null
-is_set=`head -n1 cnremediation.conf` 2>/dev/null
-
-echo "Configuration File : "`pwd`"/cnremediation.conf"
+usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-e <environment-prefix>] [-v <1.0>] [-m <region1> -m <region2> ...]" 1>&2; exit 1; }
 env="dev"
 version="1.0"
-while getopts "a:e:" o; do
+while getopts "a:e:m:" o; do
     case "${o}" in
         a)
             awsaccountid=${OPTARG}
@@ -48,49 +39,23 @@ while getopts "a:e:" o; do
         e)
             env=${OPTARG}
             ;;
+		m) regionlist+=("$OPTARG");;
         *)
             usage
             ;;
     esac
 done
-
-if [[ $is_set == "SET" ]]
-then
-{
-    echo "Check older values for remediation framework from configuration file"
-}
-else
-{
-    echo "Use Configuration file?"
-    options=("TRUE" "FALSE" "QUIT")
-    select opt in "${options[@]}"
-    do
-        case $opt in
-            "TRUE")
-                echo "SET" > cnremediation.conf
-                echo "TRUE" >> cnremediation.conf
-                echo "Configuration Saved !!"
-                break;
-                ;;
-            "FALSE")
-                echo "SET" > cnremediation.conf
-                echo "FALSE" >> cnremediation.conf
-                echo "Configuration Saved !!"
-                break;
-                ;;
-            "QUIT")
-                echo "Seems like you have not made up your mind yet !"
-                echo "Please come back later."
-                break;
-                ;;
-            *) echo "invalid option"
-                ;;
-        esac
-    done
-}
-fi
-
 shift $((OPTIND-1))
+
+Regions=( "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
+
+#Validating user input for custom regions
+selectedregions=" ${regionlist[*]}"                    # add framing blanks
+for value in ${Regions[@]}; do
+  if [[ $selectedregions =~ " $value " ]] ; then    # use $value as regexp to validate
+    customregions+=($value)
+  fi
+done
 
 if [[ "$env" == "" ]] || [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]]; then
     usage
@@ -152,3 +117,62 @@ then
 else
    echo "Something went wrong!"
 fi
+
+echo "Verifying Regional Configuration...."
+
+RemediationRegion=( $aws_region )
+
+DeploymentRegion=()
+if [[ "$regionlist" -eq "All" ]]; then
+	#Remove AWS_Region from all regions
+	for Region in "${Regions[@]}"; do
+		skip=
+		for DefaultRegion in "${RemediationRegion[@]}"; do
+			[[ $Region == $DefaultRegion ]] && { skip=1; break; }
+		done
+		[[ -n $skip ]] || DeploymentRegion+=("$Region")
+	done
+
+	declare -a DeploymentRegion
+else
+	#Remove AWS_Region from custom region list
+	for Region in "${customregions[@]}"; do
+		skip=
+		for DefaultRegion in "${RemediationRegion[@]}"; do
+			[[ $Region == $DefaultRegion ]] && { skip=1; break; }
+		done
+		[[ -n $skip ]] || DeploymentRegion+=("$Region")
+	done
+
+	declare -a DeploymentRegion
+fi
+
+Invoker_rem_role_det="$(aws iam get-role --role-name CN-Auto-Remediation-Role)"
+Invoker_Rem_role=$?
+
+for i in "${DeploymentRegion[@]}";
+do
+    regional_stack_detail="$(aws cloudformation describe-stacks --stack-name cn-rem-$env-$i-$acc_sha --region $i 2>/dev/null)"
+    regional_stack_status=$?
+
+    Invoker_Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $i 2>/dev/null)"
+    Invoker_Lambda_status=$?
+
+    if [[ "$Invoker_Rem_role" -ne 0 ]]; then
+        echo "Remediation framework Role is not configured in region $i Please delete and redploy the framework"
+    elif [[ "$regional_stack_status" -ne 0 ]] && [[ "$Invoker_Lambda_status" -ne 0 ]] && [[ "$Invoker_Rem_role" -ne 0 ]];
+    then
+        echo "Remediation framework is not configured. Please delete and redploy the framework"
+    elif [[ "$Invoker_Lambda_status" -ne 0 ]];
+    then
+        echo "Remediation framework Invoker lambda function is not deployed in region $i. Please delete and redploy the framework"
+    elif [[ "$regional_stack_status" -ne 0 ]];
+    then
+        echo "Remediation framework stack is not deployed in region $i. Please delete and redploy the framework"
+    elif [[ "$regional_stack_status" -eq 0 ]] && [[ "$Invoker_Lambda_status" -eq 0 ]] && [[ "$Invoker_Rem_role" -eq 0 ]];
+    then
+        echo "Remediation framework is correctly deployed in region $i"
+    else
+        echo "Something went wrong!"
+    fi
+done

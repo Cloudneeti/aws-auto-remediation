@@ -1,8 +1,45 @@
 #!/bin/bash
 
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-e <environment-prefix>] [-v <1.0>] [-m <region1>] [-m <region2>] ..." 1>&2; exit 1; }
+: '
+#SYNOPSIS
+    Deployment of Remediation Framework.
+.DESCRIPTION
+    This script will deploy all the services required for the remediation framework.
+.NOTES
+    Version: 1.0
+    # PREREQUISITE
+      - Install aws cli
+        Link : https://docs.aws.amazon.com/cli/latest/userguide/install-linux-al2017.html
+      - Install npm 
+        Installation commands: 
+            - sudo apt-get update
+            - sudo apt-get install nodejs
+            - sudo apt-get install npm
+      - Install serverless
+        Installation command:
+            - sudo npm install -g serverless
+      - Configure your aws account using the below command:
+        aws configure
+        Enter the required inputs:
+            AWS Access Key ID: Access key of any admin user of the account in consideration.
+            AWS Secret Access Key: Secret Access Key of any admin user of the account in consideration
+            Default region name: Programmatic region name where you want to deploy the framework (eg: us-east-1)
+            Default output format: json  
+      - Run this script in any bash shell (linux command prompt)
+.EXAMPLE
+    Command to execute : bash deploy-remediation-framework.sh [-a <12-digit-account-id>] [-e <environment-prefix>] [-v <1.0>]
+.INPUTS
+    **Mandatory(-a)Account Id: 12-digit AWS account Id of the account where you want the remediation framework to be deployed
+    (-e)Environment prefix: Enter any suitable prefix for your deployment
+    (-v)Version: Enter the remediation framework version (Would be provided by Cloudneeti)
+.OUTPUTS
+    None
+'
+
+usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-e <environment-prefix>] [-v <1.0>] [-m <region1> -m <region2> ...]" 1>&2; exit 1; }
 env="dev"
 version="1.0"
+regionlist=('All')
 while getopts "a:e:v:m:" o; do
     case "${o}" in
         a)
@@ -83,7 +120,7 @@ fi
 
 #Deploy framework from scrach
 echo "Deploying remediation framework...."
-aws cloudformation deploy --template-file deployment-bucket.yml --stack-name cn-rem-$env-$acc_sha --parameter-overrides Stack=cn-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$aws_region --capabilities CAPABILITY_NAMED_IAM
+aws cloudformation deploy --template-file deployment-bucket.yml --stack-name cn-rem-$env-$acc_sha --parameter-overrides Stack=cn-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$aws_region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
 bucket_status=$?
 if [[ "$bucket_status" -eq 0 ]]; then
     serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $aws_region --remediationversion $version
@@ -101,8 +138,8 @@ echo "Configure Regional Deployments...."
 RemediationRegion=( $aws_region )
 
 DeploymentRegion=()
-if [[ "$regionlist" -eq 0 ]]; then
-	#Remove AWS_Region for remediation deployment
+if [[ "$regionlist" -eq "All" ]]; then
+	#Remove AWS_Region from all regions
 	for Region in "${Regions[@]}"; do
 		skip=
 		for DefaultRegion in "${RemediationRegion[@]}"; do
@@ -113,7 +150,7 @@ if [[ "$regionlist" -eq 0 ]]; then
 
 	declare -a DeploymentRegion
 else
-	#Remove AWS_Region for remediation deployment
+	#Remove AWS_Region from customer selected regions
 	for Region in "${customregions[@]}"; do
 		skip=
 		for DefaultRegion in "${RemediationRegion[@]}"; do
@@ -125,9 +162,10 @@ else
 	declare -a DeploymentRegion
 fi
 
+#Deploy Regional Stack
 for i in "${DeploymentRegion[@]}";
 do
-    aws cloudformation deploy --template-file deployment-bucket.yml --stack-name cn-rem-$env-$acc_sha --parameter-overrides Stack=cn-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$aws_region --capabilities CAPABILITY_NAMED_IAM
+    aws cloudformation deploy --template-file region-deployment-bucket.yml --stack-name cn-rem-$env-$i-$acc_sha --parameter-overrides Stack=cn-rem-$env-$i-$acc_sha awsaccountid=$awsaccountid region=$i remediationregion=$aws_region --region $i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
 done
 
 if [[ $lambda_status -eq 0 ]]; then

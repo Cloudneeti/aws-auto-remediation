@@ -33,10 +33,10 @@
     None
 '
 
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-e <environment-prefix>]" 1>&2; exit 1; }
-
+usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-e <environment-prefix>] [-v <1.0>] [-m <region1> -m <region2> ...]" 1>&2; exit 1; }
 env="dev"
-while getopts "a:e:" o; do
+version="1.0"
+while getopts "a:e:m:" o; do
     case "${o}" in
         a)
             awsaccountid=${OPTARG}
@@ -44,12 +44,23 @@ while getopts "a:e:" o; do
         e)
             env=${OPTARG}
             ;;
+		m) regionlist+=("$OPTARG");;
         *)
             usage
             ;;
     esac
 done
 shift $((OPTIND-1))
+
+Regions=( "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
+
+#Validating user input for custom regions
+selectedregions=" ${regionlist[*]}"                    # add framing blanks
+for value in ${Regions[@]}; do
+  if [[ $selectedregions =~ " $value " ]] ; then    # use $value as regexp to validate
+    customregions+=($value)
+  fi
+done
 
 if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]]; then
     usage
@@ -65,11 +76,11 @@ stack_status=$?
 
 echo "Validating environment prefix..."
 sleep 5
-'
+
 if [[ $stack_status -ne 0 ]]; then
     echo "Invaild environment prefix. No relevant stack found. Please enter current environment prefix and try to re-run the script again."
     exit 1
-fi'
+fi
 
 echo "Checking if the remediation bucket has been deleted or not...."
 
@@ -85,8 +96,14 @@ if [[ $s3_status -eq 0 ]]; then
 fi
 
 echo "Deleting deployment stack..."
+#remove termination protection from stack
+aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-rem-functions-$env-$acc_sha --region $aws_region 2>/dev/null
+aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-rem-$env-$acc_sha --region $aws_region 2>/dev/null
+
+#Delete remediation framework stack
 aws cloudformation delete-stack --stack-name cn-rem-functions-$env-$acc_sha --region $aws_region 2>/dev/null
 lambda_status=$?
+
 aws cloudformation delete-stack --stack-name cn-rem-$env-$acc_sha --region $aws_region 2>/dev/null
 bucket_status=$?
 
@@ -96,28 +113,40 @@ Regions=( "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-north
 RemediationRegion=( $aws_region )
 
 DeploymentRegion=()
+if [[ "$regionlist" -eq "All" ]]; then
+	#Remove AWS_Region from all regions
+	for Region in "${Regions[@]}"; do
+		skip=
+		for DefaultRegion in "${RemediationRegion[@]}"; do
+			[[ $Region == $DefaultRegion ]] && { skip=1; break; }
+		done
+		[[ -n $skip ]] || DeploymentRegion+=("$Region")
+	done
 
-#Remove AWS_Region for remediation deployment
-for Region in "${Regions[@]}"; do
-    skip=
-    for DefaultRegion in "${RemediationRegion[@]}"; do
-        [[ $Region == $DefaultRegion ]] && { skip=1; break; }
-    done
-    [[ -n $skip ]] || DeploymentRegion+=("$Region")
-done
+	declare -a DeploymentRegion
+else
+	#Remove AWS_Region from custom region list
+	for Region in "${customregions[@]}"; do
+		skip=
+		for DefaultRegion in "${RemediationRegion[@]}"; do
+			[[ $Region == $DefaultRegion ]] && { skip=1; break; }
+		done
+		[[ -n $skip ]] || DeploymentRegion+=("$Region")
+	done
 
-declare -a DeploymentRegion
+	declare -a DeploymentRegion
+fi
 
 for i in "${DeploymentRegion[@]}";
 do
-    echo "$i"
-    aws cloudformation delete-stack --stack-name cn-rem-$i-$env-$acc_sha --region $i
-    lambda_status=$?
-    aws cloudformation delete-stack --stack-name cn-rem-functions-$env-$acc_sha --region $i
-    bucket_status=$?
+    #remove termination protection
+    aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-rem-$env-$i-$acc_sha --region $i
+    #delete stack from other regions
+    aws cloudformation delete-stack --stack-name cn-rem-$env-$i-$acc_sha --region $i
+    Invoke_lambda_status=$?
 done
 
-if [[ $lambda_status -eq 0 ]] && [[ $bucket_status -eq 0 ]]; then
+if [[ $lambda_status -eq 0 ]]  && [[ $bucket_status -eq 0 ]] && [[ $Invoke_lambda_status -eq 0 ]]; then
     echo "Successfully deleted deployment stack!"
 else
     echo "Something went wrong! Please contact Cloudneeti support!"
