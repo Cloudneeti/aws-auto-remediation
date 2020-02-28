@@ -286,7 +286,8 @@ resources:
             - Effect: Allow
               Principal:
                 AWS:
-                  - "arn:aws:iam::${opt:aws-account-id}:root" 
+                  - "arn:aws:iam::${opt:aws-account-id}:root"
+                  - "arn:aws:iam::${opt:aws-account-id}:role/CN-Auto-Remediation-Invoker" 
               Action: sts:AssumeRole
         ManagedPolicyArns:
           - "arn:aws:iam::aws:policy/SecurityAudit"

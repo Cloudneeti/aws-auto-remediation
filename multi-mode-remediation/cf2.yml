@@ -51,28 +51,28 @@ Resources:
         - - !Ref Stack
       PolicyDocument:
         Statement:
-          - Sid: CTBucketPolicy1
+          - Sid: "CTBucketPolicy1"
             Action:
               - "s3:GetBucketAcl"
             Effect: "Allow"
             Principal:
               Service:
-                - cloudtrail.amazonaws.com
+                - "cloudtrail.amazonaws.com"
             Resource:
               Fn::Join:
-              - ""
+              - ''
               - - 'arn:aws:s3:::'
                 - !Ref Stack
-          - Sid: CTBucketPolicy2
+          - Sid: "CTBucketPolicy2"
             Action:
               - "s3:PutObject"
             Effect: "Allow"
             Principal:
               Service:
-                - cloudtrail.amazonaws.com
+                - "cloudtrail.amazonaws.com"
             Resource:
               Fn::Join:
-              - ""
+              - ''
               - - 'arn:aws:s3:::'
                 - !Ref Stack
                 - '/cn-ctlogs/AWSLogs/'
@@ -92,37 +92,37 @@ Resources:
     Properties:
       RoleName: CN-CloudwatchRole
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
-          - Effect: Allow
+          - Effect: "Allow"
             Principal:
               Service:
-                - cloudtrail.amazonaws.com
-            Action: sts:AssumeRole
+                - "cloudtrail.amazonaws.com"
+            Action: "sts:AssumeRole"
       Policies:
         - PolicyName: cn-cloudwatch-policy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
-            - Sid: CTCWPolicy1
-              Effect: Allow
+            - Sid: "CTCWPolicy1"
+              Effect: "Allow"
               Action:
               - "logs:CreateLogStream"
               Resource: 
                 Fn::Join:
-                - ""
+                - ''
                 - - 'arn:aws:logs:'
                   - !Ref region
                   - ':'
                   - !Ref awsaccountid
                   - ':log-group:cn-log-group:*'
-            - Sid: CTCWPolicy2
-              Effect: Allow
+            - Sid: "CTCWPolicy2"
+              Effect: "Allow"
               Action:
               - "logs:PutLogEvents"
               Resource: 
                 Fn::Join:
-                - ""
+                - ''
                 - - 'arn:aws:logs:'
                   - !Ref region
                   - ':'
@@ -132,13 +132,8 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: cn-aws-remediate-relayfunction
-      Role: 
-        Fn::Join:
-          - ""
-          - - 'arn:aws:iam::'
-            - !Ref awsaccountid
-            - ':'
-            - role/service-role/cn-aws-remediate-relayfunction-role-oub65q4u
+      Role: CNLambdaRole
+      DependsOn: CNLambdaRole
       Runtime: python3.7
       Handler: index.lambda_handler
       Timeout: 900 #seconds
@@ -474,3 +469,102 @@ Resources:
         Fn::GetAtt: 
           - "S3EventRule"
           - "Arn"
+  CNCloudTrail:
+    Type: AWS::CloudTrail::Trail
+    Properties:
+      IncludeGlobalServiceEvents: true
+      IsLogging: true
+      IsMultiRegionTrail: true
+      S3BucketName: 
+        Fn::Join:
+        - ""
+        - - !Ref Stack
+      S3KeyPrefix: cn-ctlogs
+      TrailName: cn-remediation-trail
+      Tags: 
+        -
+          Key: "ServiceName"
+          Value: "auto-remediation-trail"
+        -
+          Key: "Version"
+          Value: "2.0"
+        -
+          Key: "Description"
+          Value: "Cloudneeti automatic remediation solution for making cloud resource compliant"
+        -
+          Key: "Environment"
+          Value: "cn-remediation"
+  CloudneetiRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CN-Auto-Remediation-Role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              AWS:
+                Fn::Join:
+                - ""
+                - - "arn:aws:iam::"
+                  - !Ref awsaccountid
+                  - ":root" 
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/SecurityAudit"
+      Policies:
+      - PolicyName: cn-lambda-policy
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+          - Sid: AllowIAMForLambdaPolicy
+            Effect: Allow
+            Action:              
+            - "lambda:InvokeFunction"
+            - "cloudtrail:UpdateTrail"
+            - "elasticloadbalancing:ModifyLoadBalancerAttributes"
+            - "iam:UpdateAccountPasswordPolicy"
+            - "kinesis:StartStreamEncryption"
+            - "kinesis:EnableEnhancedMonitoring"
+            - "kms:EnableKeyRotation"
+            - "rds:ModifyDBCluster"
+            - "rds:ModifyDBInstance"
+            - "redshift:ModifyCluster"
+            - "s3:PutBucketVersioning"
+            - "s3:PutEncryptionConfiguration"
+            - "s3:PutBucketAcl"
+            Resource: "*"
+  CNLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CN-RelayFunctionRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: cn-lambda-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+            - Sid: "AllowIAMForLambdaPolicy"
+              Effect: "Allow"
+              Action:
+              - "logs:CreateLogGroup"
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+              - "cloudtrail:DescribeTrails"
+              - "cloudtrail:GetTrailStatus"
+              - "iam:Get*"
+              - "iam:List*"
+              Resource: "*"
+            - Sid: "AllowAssumeRoleForLambdaPolicy"
+              Effect: "Allow"
+              Action:
+              - "sts:AssumeRole"
+              Resource: 
+              - "arn:aws:iam::*:role/CN-Remediation-Invocation-Role"

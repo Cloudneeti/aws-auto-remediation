@@ -29,11 +29,11 @@ Resources:
             - role/CN-Auto-Remediation-Invoker
       Runtime: python3.7
       Handler: index.lambda_handler
-      Timeout: 30 #seconds
+      Timeout: 900 #seconds
       Environment:
         Variables: 
           referenceregion : !Ref remediationregion
-      MemorySize: 128 #max memory foot print
+      MemorySize: 3008 #max memory foot print
       Code:
         ZipFile:  |
           import os
@@ -61,18 +61,12 @@ Resources:
                       AWSAccId = cw_event_data["userIdentity"]["accountId"]
                       EventName = cw_event_data["eventName"]
                       EventSource = cw_event_data["userIdentity"]["arn"]
-                  except ClientError as e: 
+                  except ClientError as e:
                       print(e)
-                      return {
-                          'statusCode': 401,
-                          'body': json.dumps(str(e))
-                      }
+                      return {'statusCode': 400,'body': json.dumps(str(e))}
                   except Exception as e:
                       print(e)
-                      return {
-                          'statusCode': 401,
-                          'body': json.dumps(str(e))
-                      }
+                      return {'statusCode': 400,'body': json.dumps(str(e))}
 
                   # Invoke remediation orchestrator
                   if "assumed-role/CN-Auto-Remediation-Role" not in str(EventSource):        
@@ -80,7 +74,7 @@ Resources:
                           remdiationfunc_rolearn = 'arn:aws:iam::' + AWSAccId + ':role/CN-Remediation-Invocation-Role'
                           try:
                             sts_client = boto3.client('sts')
-                            response = sts_client.assume_role(RoleArn=roleArn,RoleSessionName=roleSessionName)
+                            response = sts_client.assume_role(RoleArn=remdiationfunc_rolearn,RoleSessionName='CN-RemSession')
                           except Exception as e:
                             print(e)
                             return {
@@ -92,17 +86,11 @@ Resources:
                           aws_secret_access_key=cred['SecretAccessKey']
                           aws_session_token=cred['SessionToken']
                       except ClientError as e:
-                          print(e)
-                          return {
-                              'statusCode': 400,
-                              'body': json.dumps(str(e))
-                          }
+                        print(e)
+                        return {'statusCode': 400,'body': json.dumps(str(e))}
                       except Exception as e:
-                          print(e)
-                          return {
-                              'statusCode': 400,
-                              'body': json.dumps(str(e))
-                          }
+                        print(e)
+                        return {'statusCode': 400,'body': json.dumps(str(e))}
 
                       try:
                           invokeLambda = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=runtime_region)
@@ -114,33 +102,21 @@ Resources:
                               'body': json.dumps(t)
                           }
                       except ClientError as e:
-                          print(e)
-                          return {
-                              'statusCode': 400,
-                              'body': json.dumps(str(e))
-                          }
+                        print(e)
+                        return {'statusCode': 400,'body': json.dumps(str(e))}
                       except Exception as e:
-                          print(e)
-                          return {
-                              'statusCode': 400,
-                              'body': json.dumps(str(e))
-                          }
+                        print(e)
+                        return {'statusCode': 400,'body': json.dumps(str(e))}
                   #endregion
                   
                   #No Events
                   else:
                       print("Policies not configured for remediation")
-                      return {
-                          'statusCode': 200,
-                          'body': json.dumps("Policies not configured for remediation")
-                      }
+                      return {statusCode': 200,'body': json.dumps("Policies not configured for remediation")}
                   #endregion
               
               else:
-                  return {
-                      'statusCode': 200,
-                      'body': json.dumps("Invalid event source!")
-                  }
+                  return {'statusCode': 200,'body': json.dumps("Invalid event source!")}
   RDSEventRule:
     Type: AWS::Events::Rule
     Properties:

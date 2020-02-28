@@ -45,7 +45,8 @@ usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-r <12-digit-account-id>] 
 
 env="dev"
 version="1.0"
-while getopts "a:r:e:v:" o; do
+regionlist=('All')
+while getopts "a:r:e:v:m:" o; do
     case "${o}" in
         a)
             awsaccountid=${OPTARG}
@@ -59,12 +60,23 @@ while getopts "a:r:e:v:" o; do
         v)
             version=${OPTARG}
             ;;
+        m) regionlist+=("$OPTARG");;
         *)
             usage
             ;;
     esac
 done
 shift $((OPTIND-1))
+
+Regions=( "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
+
+#Validating user input for custom regions
+selectedregions=" ${regionlist[*]}"                    # add framing blanks
+for value in ${Regions[@]}; do
+  if [[ $selectedregions =~ " $value " ]] ; then    # use $value as regexp to validate
+    customregions+=($value)
+  fi
+done
 
 if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ "$remawsaccountid" == "" ]] || ! [[ "$remawsaccountid" =~ ^[0-9]+$ ]] || [[ ${#remawsaccountid} != 12 ]]; then
     usage
@@ -89,9 +101,6 @@ CT_status=$?
 
 Lambda_det="$(aws lambda get-function --function-name cn-aws-remediate-relayfunction --region $aws_region 2>/dev/null)"
 Lambda_status=$?
-
-s3_detail="$(aws s3api get-bucket-versioning --bucket cn-rem-$env-$acc_sha 2>/dev/null)"
-s3_status=$?
 
 if [[ "$relay_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 0 ]] || [[ "$Lambda_status" -eq 0 ]] || [[ "$s3_status" -eq 0 ]]; then
 	echo "Remediation components already exist. Attempting to redploy framework with latest updates !"
