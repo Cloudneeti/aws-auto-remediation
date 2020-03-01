@@ -286,8 +286,7 @@ resources:
             - Effect: Allow
               Principal:
                 AWS:
-                  - "arn:aws:iam::${opt:aws-account-id}:root"
-                  - "arn:aws:iam::${opt:aws-account-id}:role/CN-Auto-Remediation-Invoker" 
+                  - "arn:aws:iam::${opt:aws-account-id}:root" 
               Action: sts:AssumeRole
         ManagedPolicyArns:
           - "arn:aws:iam::aws:policy/SecurityAudit"
@@ -324,6 +323,7 @@ resources:
               Principal:
                 AWS:
                   - "arn:aws:iam::079042248639:root"   # Add the Cloudneeti AWS Account ID
+                  - "arn:aws:iam::${opt:aws-account-id}:role/CN-Auto-Remediation-Invoker"
               Action: sts:AssumeRole
         Policies:
           - PolicyName: cn-lambda-policy

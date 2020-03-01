@@ -107,43 +107,69 @@ if [[ "$relay_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 0
 
     if [[ "$s3_status" -eq 0 ]]; then
         echo "Redploying framework....."
-        serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --rem-account-id $remawsaccountid --region $aws_region --remediationversion $version
-        lambda_status=$?
+        aws cloudformation deploy --template-file region-deployment-bucket.yml --stack-name cn-rem-$env-$i-$acc_sha --parameter-overrides Stack=cn-rem-$env-$i-$acc_sha awsaccountid=$awsaccountid region=$i remediationregion=$aws_region --region $i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
 
         if [[ $lambda_status -eq 0 ]]; then
             echo "Successfully deployed remediation framework with latest updates!!"
         else
             echo "Something went wrong! Please contact Cloudneeti support for more details"
         fi
-        exit 1
     else
         echo "Remediation components already exist with a different environment prefix. Please run verify-remediation-setup.sh for more details !"
         exit 1
     fi
+else
+    #Deploy framework from scrach
+    echo "Deploying remediation framework...."
+    aws cloudformation deploy --template-file region-deployment-bucket.yml --stack-name cn-rem-$env-$i-$acc_sha --parameter-overrides Stack=cn-rem-$env-$i-$acc_sha awsaccountid=$awsaccountid region=$i remediationregion=$aws_region --region $i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+
+    if [[ $lambda_status -eq 0 ]]; then
+        echo "Successfully deployed remediation framework with latest updates!!"
+    else
+        echo "Something went wrong! Please contact Cloudneeti support for more details"
+    fi
 fi
 
-aws cloudformation deploy --template-file deployment-bucket.yml --stack-name cn-rem-$env-$acc_sha --parameter-overrides Stack=cn-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$aws_region --capabilities CAPABILITY_NAMED_IAM
-bucket_status=$?
-if [[ "$bucket_status" -eq 0 ]]; then
-    serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --rem-account-id $remawsaccountid --region $aws_region --remediationversion $version
-    lambda_status=$?
+#Regional deployments for framework
+cd ..
+cd regional-deployment/
+echo "Configure Regional Deployments...."
+
+RemediationRegion=( $aws_region )
+
+DeploymentRegion=()
+if [[ "$regionlist" -eq "All" ]]; then
+    #Remove AWS_Region from all regions
+    for Region in "${Regions[@]}"; do
+        skip=
+        for DefaultRegion in "${RemediationRegion[@]}"; do
+            [[ $Region == $DefaultRegion ]] && { skip=1; break; }
+        done
+        [[ -n $skip ]] || DeploymentRegion+=("$Region")
+    done
+
+    declare -a DeploymentRegion
 else
-    echo "Something went wrong! Please contact Cloudneeti support for more details"
-    exit 1
+    #Remove AWS_Region from customer selected regions
+    for Region in "${customregions[@]}"; do
+        skip=
+        for DefaultRegion in "${RemediationRegion[@]}"; do
+            [[ $Region == $DefaultRegion ]] && { skip=1; break; }
+        done
+        [[ -n $skip ]] || DeploymentRegion+=("$Region")
+    done
+
+    declare -a DeploymentRegion
 fi
+
+#Deploy Regional Stack
+for i in "${DeploymentRegion[@]}";
+do
+    aws cloudformation deploy --template-file region-deployment-bucket.yml --stack-name cn-rem-$env-$i-$acc_sha --parameter-overrides Stack=cn-rem-$env-$i-$acc_sha awsaccountid=$awsaccountid region=$i remediationregion=$aws_region --region $i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+done
 
 if [[ $lambda_status -eq 0 ]]; then
     echo "Successfully deployed remediation framework!!"
 else
     echo "Something went wrong! Please contact Cloudneeti support for more details"
-fi
-
-echo "............."
-echo "Verifying if role in the remediation framework is correctly deployed or not!"
-rem_role="$(aws sts assume-role --role-arn arn:aws:iam::$remawsaccountid:role/CN-Remediation-Invocation-Role --role-session-name cn-session 2>/dev/null)"
-rem_role_status=$?
-if [[ $rem_role_status -ne 0 ]]; then
-    echo "The role in the account with remediation framework is not updated with the current account details! Please run update-remediation-role.sh to update the role so that remediation works correctly!"
-else
-    echo "Remediation account role is correctly updated!!"
 fi

@@ -111,23 +111,22 @@ if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 
         else
             echo "Something went wrong! Please contact Cloudneeti support for more details"
         fi
-        exit 1
     else
         echo "Remediation components already exist with a different environment prefix. Please run verify-remediation-setup.sh for more details !"
         exit 1
     fi
-fi
-
-#Deploy framework from scrach
-echo "Deploying remediation framework...."
-aws cloudformation deploy --template-file deployment-bucket.yml --stack-name cn-rem-$env-$acc_sha --parameter-overrides Stack=cn-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$aws_region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
-bucket_status=$?
-if [[ "$bucket_status" -eq 0 ]]; then
-    serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $aws_region --remediationversion $version
-    lambda_status=$?
 else
-    echo "Something went wrong! Please contact Cloudneeti support for more details"
-    exit 1
+    #Deploy framework from scrach
+    echo "Deploying remediation framework...."
+    aws cloudformation deploy --template-file deployment-bucket.yml --stack-name cn-rem-$env-$acc_sha --parameter-overrides Stack=cn-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$aws_region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+    bucket_status=$?
+    if [[ "$bucket_status" -eq 0 ]]; then
+        serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $aws_region --remediationversion $version
+        lambda_status=$?
+    else
+        echo "Something went wrong! Please contact Cloudneeti support for more details"
+        exit 1
+    fi
 fi
 
 #Regional deployments for framework
