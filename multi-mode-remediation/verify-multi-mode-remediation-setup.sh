@@ -37,23 +37,31 @@ usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-r <12-digit-account-id>] 
 
 env="dev"
 version="1.0"
-while getopts "a:r:e:" o; do
+while getopts "a:e:m:" o; do
     case "${o}" in
         a)
             awsaccountid=${OPTARG}
             ;;
-        r)
-            remawsaccountid=${OPTARG}
-            ;;
         e)
             env=${OPTARG}
             ;;
+		m) regionlist+=("$OPTARG");;
         *)
             usage
             ;;
     esac
 done
 shift $((OPTIND-1))
+
+Regions=( "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
+
+#Validating user input for custom regions
+selectedregions=" ${regionlist[*]}"                    # add framing blanks
+for value in ${Regions[@]}; do
+  if [[ $selectedregions =~ " $value " ]] ; then    # use $value as regexp to validate
+    customregions+=($value)
+  fi
+done
 
 if [[ "$env" == "" ]] || [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ "$remawsaccountid" == "" ]] || ! [[ "$remawsaccountid" =~ ^[0-9]+$ ]] || [[ ${#remawsaccountid} != 12 ]]; then
     usage
@@ -76,8 +84,8 @@ if [[ $stack_status -ne 0 ]]; then
 fi
 
 echo "Verifying role deployment...."
-relay_role_det="$(aws iam get-role --role-name CN-RelayFunctionRole 2>/dev/null)"
-relay_role=$?
+invoker_role_det="$(aws iam get-role --role-name CN-Auto-Remediation-Invoker 2>/dev/null)"
+invoker_role=$?
 
 rem_role_det="$(aws iam get-role --role-name CN-Auto-Remediation-Role 2>/dev/null)"
 Rem_role=$?
@@ -89,15 +97,15 @@ CT_status=$?
 CT_log="$(aws cloudtrail get-trail-status --name cn-remediation-trail --region $aws_region | jq -r '.IsLogging' 2>/dev/null)"
 
 echo "Verifying Lambda deployment...."
-Lambda_det="$(aws lambda get-function --function-name cn-aws-remediate-relayfunction --region $aws_region 2>/dev/null)"
+Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $aws_region 2>/dev/null)"
 Lambda_status=$?
 
 s3_detail="$(aws s3api get-bucket-versioning --bucket cn-rem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
 
-if [[ "$relay_role" -ne 0 ]] && [[ "$Rem_role" -ne 0 ]] && [[ "$CT_status" -ne 0 ]] && [[ "$Lambda_status" -ne 0 ]] && [[ "$s3_status" -ne 0 ]]; then
+if [[ "$invoker_role" -ne 0 ]] && [[ "$Rem_role" -ne 0 ]] && [[ "$CT_status" -ne 0 ]] && [[ "$Lambda_status" -ne 0 ]] && [[ "$s3_status" -ne 0 ]]; then
    echo "Remediation framework is not deployed"
-elif [[ "$relay_role" -ne 0 ]] || [[ "$Rem_role" -ne 0 ]];
+elif [[ "$invoker_role" -ne 0 ]] || [[ "$Rem_role" -ne 0 ]];
 then
    echo "Remediation framework roles are not deployed. Please delete and redploy the framework"
 elif [[ "$Lambda_status" -ne 0 ]];
@@ -109,12 +117,66 @@ then
 elif [[ "$s3_status" -ne 0 ]];
 then
    echo "Remediation framework s3-bucket is not deployed correctly or deleted. Please delete and redploy the framework"
-elif [[ "$relay_role" -eq 0 ]] && [[ "$Rem_role" -eq 0 ]] && [[ "$CT_status" -eq 0 ]] && [[ "$Lambda_status" -eq 0 ]] && [[ "$s3_status" -eq 0 ]];
+elif [[ "$invoker_role" -eq 0 ]] && [[ "$Rem_role" -eq 0 ]] && [[ "$CT_status" -eq 0 ]] && [[ "$Lambda_status" -eq 0 ]] && [[ "$s3_status" -eq 0 ]];
 then
    echo "Remediation framework is correctly deployed"
 else
    echo "Something went wrong!"
 fi
+
+echo "Verifying Regional Configuration...."
+
+RemediationRegion=( $aws_region )
+
+DeploymentRegion=()
+if [[ "$regionlist" -eq "All" ]]; then
+	#Remove AWS_Region from all regions
+	for Region in "${Regions[@]}"; do
+		skip=
+		for DefaultRegion in "${RemediationRegion[@]}"; do
+			[[ $Region == $DefaultRegion ]] && { skip=1; break; }
+		done
+		[[ -n $skip ]] || DeploymentRegion+=("$Region")
+	done
+
+	declare -a DeploymentRegion
+else
+	#Remove AWS_Region from custom region list
+	for Region in "${customregions[@]}"; do
+		skip=
+		for DefaultRegion in "${RemediationRegion[@]}"; do
+			[[ $Region == $DefaultRegion ]] && { skip=1; break; }
+		done
+		[[ -n $skip ]] || DeploymentRegion+=("$Region")
+	done
+
+	declare -a DeploymentRegion
+fi
+
+for i in "${DeploymentRegion[@]}";
+do
+    regional_stack_detail="$(aws cloudformation describe-stacks --stack-name cn-rem-$env-$i-$acc_sha --region $i 2>/dev/null)"
+    regional_stack_status=$?
+
+    Invoker_Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $i 2>/dev/null)"
+    Invoker_Lambda_status=$?
+
+    if [[ "$regional_stack_status" -ne 0 ]] && [[ "$Invoker_Lambda_status" -ne 0 ]];
+    then
+        echo "Remediation framework is not configured. Please redploy the framework with region $i as input"
+    elif [[ "$Invoker_Lambda_status" -ne 0 ]];
+    then
+        echo "Remediation framework Invoker lambda function is not deployed. Please redploy the framework with region $i as input"
+    elif [[ "$regional_stack_status" -ne 0 ]];
+    then
+        echo "Remediation framework stack is not deployed. Please redploy the framework with region $i as input"
+    elif [[ "$regional_stack_status" -eq 0 ]] && [[ "$Invoker_Lambda_status" -eq 0 ]] && [[ "$invoker_role" -eq 0 ]];
+    then
+        echo "Remediation framework is correctly deployed in region $i"
+    else
+        echo "Something went wrong!"
+    fi
+done
 
 echo "............."
 echo "Verifying if role in the remediation framework is correctly deployed or not!"

@@ -36,7 +36,8 @@
 usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-e <environment-prefix>] " 1>&2; exit 1; }
 
 env="dev"
-while getopts "a:e:" o; do
+version="1.0"
+while getopts "a:e:m:" o; do
     case "${o}" in
         a)
             awsaccountid=${OPTARG}
@@ -44,12 +45,23 @@ while getopts "a:e:" o; do
         e)
             env=${OPTARG}
             ;;
+		m) regionlist+=("$OPTARG");;
         *)
             usage
             ;;
     esac
 done
 shift $((OPTIND-1))
+
+Regions=( "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
+
+#Validating user input for custom regions
+selectedregions=" ${regionlist[*]}"                    # add framing blanks
+for value in ${Regions[@]}; do
+  if [[ $selectedregions =~ " $value " ]] ; then    # use $value as regexp to validate
+    customregions+=($value)
+  fi
+done
 
 if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]]; then
     usage
@@ -63,7 +75,7 @@ env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
 echo "Validating environment prefix..."
 sleep 5
 
-stack_detail="$(aws cloudformation describe-stacks --stack-name cn-multirem-functions-$env-$acc_sha --region $aws_region 2>/dev/null)"
+stack_detail="$(aws cloudformation describe-stacks --stack-name cn-rem-$env-$acc_sha --region $aws_region 2>/dev/null)"
 stack_status=$?
 
 if [[ $stack_status -ne 0 ]]; then
@@ -82,12 +94,59 @@ if [[ $s3_status -eq 0 ]]; then
 fi
 
 echo "Deleting deployment stack..."
-aws cloudformation delete-stack --stack-name cn-multirem-functions-$env-$acc_sha --region $aws_region 2>/dev/null
-lambda_status=$?
-aws cloudformation delete-stack --stack-name cn-rem-$env-$acc_sha --region $aws_region 2>/dev/null
-bucket_status=$?
+#remove termination protection from stack
+aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-rem-$env-$acc_sha --region $aws_region 2>/dev/null
 
-if [[ $lambda_status -eq 0 ]] && [[ $bucket_status -eq 0 ]]; then
+#delete main stack
+aws cloudformation delete-stack --stack-name cn-rem-$env-$acc_sha --region $aws_region 2>/dev/null
+Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $aws_region 2>/dev/null)"
+Lambda_status=$?
+
+echo "Deleting Regional Deployments...."
+
+RemediationRegion=( $aws_region )
+
+DeploymentRegion=()
+if [[ "$regionlist" -eq "All" ]]; then
+	#Remove AWS_Region from all regions
+	for Region in "${Regions[@]}"; do
+		skip=
+		for DefaultRegion in "${RemediationRegion[@]}"; do
+			[[ $Region == $DefaultRegion ]] && { skip=1; break; }
+		done
+		[[ -n $skip ]] || DeploymentRegion+=("$Region")
+	done
+
+	declare -a DeploymentRegion
+else
+	#Remove AWS_Region from custom region list
+	for Region in "${customregions[@]}"; do
+		skip=
+		for DefaultRegion in "${RemediationRegion[@]}"; do
+			[[ $Region == $DefaultRegion ]] && { skip=1; break; }
+		done
+		[[ -n $skip ]] || DeploymentRegion+=("$Region")
+	done
+
+	declare -a DeploymentRegion
+fi
+
+for i in "${DeploymentRegion[@]}";
+do
+    stack_detail="$(aws cloudformation describe-stacks --stack-name cn-rem-$env-$i-$acc_sha --region $i 2>/dev/null)"
+    stack_status=$?
+    if [[ $stack_status -ne 0 ]]; then
+        echo "No deployment exists in region $i"
+    else
+        #remove termination protection
+        aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-rem-$env-$i-$acc_sha --region $i 2>/dev/null
+        #delete stack from other regions
+        aws cloudformation delete-stack --stack-name cn-rem-$env-$i-$acc_sha --region $i 2>/dev/null
+    fi
+done
+
+
+if [[ $Lambda_status -eq 0 ]] && [[ $bucket_status -eq 0 ]]; then
     echo "Successfully deleted deployment stack!"
 else
     echo "Something went wrong! Please contact Cloudneeti support!"

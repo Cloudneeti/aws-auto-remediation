@@ -147,7 +147,7 @@ else
 	declare -a DeploymentRegion
 fi
 
-Invoker_rem_role_det="$(aws iam get-role --role-name CN-Auto-Remediation-Role)"
+Invoker_rem_role_det="$(aws iam get-role --role-name CN-Auto-Remediation-Invoker)"
 Invoker_Rem_role=$?
 
 for i in "${DeploymentRegion[@]}";

@@ -90,8 +90,8 @@ env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
 
 echo "Checking if the remediation is already enabled for the account....."
 
-relay_role_det="$(aws iam get-role --role-name CN-RelayFunctionRole 2>/dev/null)"
-relay_role=$?
+invoker_role_det="$(aws iam get-role --role-name CN-Auto-Remediation-Invoker 2>/dev/null)"
+invoker_role=$?
 
 rem_role_det="$(aws iam get-role --role-name CN-Auto-Remediation-Role 2>/dev/null)"
 Rem_role=$?
@@ -99,17 +99,18 @@ Rem_role=$?
 CT_det="$(aws cloudtrail get-trail-status --name cn-remediation-trail --region $aws_region 2>/dev/null)"
 CT_status=$?
 
-Lambda_det="$(aws lambda get-function --function-name cn-aws-remediate-relayfunction --region $aws_region 2>/dev/null)"
+Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $aws_region 2>/dev/null)"
 Lambda_status=$?
 
-if [[ "$relay_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 0 ]] || [[ "$Lambda_status" -eq 0 ]] || [[ "$s3_status" -eq 0 ]]; then
+if [[ "$invoker_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 0 ]] || [[ "$Lambda_status" -eq 0 ]] || [[ "$s3_status" -eq 0 ]]; then
 	echo "Remediation components already exist. Attempting to redploy framework with latest updates !"
-
+    #Redeploy framework
     if [[ "$s3_status" -eq 0 ]]; then
         echo "Redploying framework....."
-        aws cloudformation deploy --template-file region-deployment-bucket.yml --stack-name cn-rem-$env-$i-$acc_sha --parameter-overrides Stack=cn-rem-$env-$i-$acc_sha awsaccountid=$awsaccountid region=$i remediationregion=$aws_region --region $i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+        aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name cn-rem-$env-$acc_sha --parameter-overrides Stack=cn-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$aws_region remediationregion=$aws_region --region $aws_region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+        Lambda_status=$?
 
-        if [[ $lambda_status -eq 0 ]]; then
+        if [[ $Lambda_status -eq 0 ]]; then
             echo "Successfully deployed remediation framework with latest updates!!"
         else
             echo "Something went wrong! Please contact Cloudneeti support for more details"
@@ -121,7 +122,8 @@ if [[ "$relay_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 0
 else
     #Deploy framework from scrach
     echo "Deploying remediation framework...."
-    aws cloudformation deploy --template-file region-deployment-bucket.yml --stack-name cn-rem-$env-$i-$acc_sha --parameter-overrides Stack=cn-rem-$env-$i-$acc_sha awsaccountid=$awsaccountid region=$i remediationregion=$aws_region --region $i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+    aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name cn-rem-$env-$acc_sha --parameter-overrides Stack=cn-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$i remediationregion=$aws_region --region $aws_region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+    Lambda_status=$?
 
     if [[ $lambda_status -eq 0 ]]; then
         echo "Successfully deployed remediation framework with latest updates!!"
@@ -168,7 +170,7 @@ do
     aws cloudformation deploy --template-file region-deployment-bucket.yml --stack-name cn-rem-$env-$i-$acc_sha --parameter-overrides Stack=cn-rem-$env-$i-$acc_sha awsaccountid=$awsaccountid region=$i remediationregion=$aws_region --region $i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
 done
 
-if [[ $lambda_status -eq 0 ]]; then
+if [[ $Lambda_status -eq 0 ]]; then
     echo "Successfully deployed remediation framework!!"
 else
     echo "Something went wrong! Please contact Cloudneeti support for more details"

@@ -157,7 +157,7 @@ Resources:
     Type: AWS::Lambda::Function
     DependsOn: CNLambdaRole
     Properties:
-      FunctionName: cn-aws-remediate-relayfunction
+      FunctionName: cn-aws-auto-remediate-invoker
       Role: 
         Fn::Join:
         - ''
