@@ -256,43 +256,6 @@ Resources:
                 except:
                     IsVerified = False
                 return IsVerified
-  RDSEventRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Name: "cn-aws-rds-event-rule"
-      Description: "CloudWatch Event triggered on rds"
-      EventPattern:
-        source:
-          - "aws.rds"
-        detail-type:
-          - "AWS API Call via CloudTrail"
-        detail:
-          eventSource:
-            - "rds.amazonaws.com"
-          eventName:
-            - "CreateDBCluster"
-            - "ModifyDBCluster"
-            - "CreateDBInstance"
-            - "ModifyDBInstance"
-            - "RemoveTagsFromResource"
-      Targets: 
-        - 
-          Arn: 
-            Fn::GetAtt: 
-              - "LambdaFunction"
-              - "Arn"
-          Id: "TargetFunctionV1"
-  PermissionForRDSEventsToInvokeLambda: 
-    Type: AWS::Lambda::Permission
-    Properties: 
-      FunctionName: 
-        Ref: "LambdaFunction"
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn: 
-        Fn::GetAtt: 
-          - "RDSEventRule"
-          - "Arn"
   CloudtrailEventRule:
     Type: AWS::Events::Rule
     Properties:
@@ -326,6 +289,40 @@ Resources:
       SourceArn: 
         Fn::GetAtt: 
           - "CloudtrailEventRule"
+          - "Arn"
+  ELBEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: "cn-aws-elb-event-rule"
+      Description: "CloudWatch Event triggered on elb"
+      EventPattern:
+        source:
+          - "aws.elasticloadbalancing"
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "elasticloadbalancing.amazonaws.com"
+          eventName:
+            - "CreateLoadBalancer"
+            - "ModifyLoadBalancerAttributes"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "LambdaFunction"
+              - "Arn"
+          Id: "TargetFunctionV1"
+  PermissionForELBEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "LambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "ELBEventRule"
           - "Arn"
   KinesisEventRule:
     Type: AWS::Events::Rule
@@ -395,22 +392,25 @@ Resources:
         Fn::GetAtt: 
           - "KMSEventRule"
           - "Arn"
-  ELBEventRule:
+  RDSEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-elb-event-rule"
-      Description: "CloudWatch Event triggered on elb"
+      Name: "cn-aws-rds-event-rule"
+      Description: "CloudWatch Event triggered on rds"
       EventPattern:
         source:
-          - "aws.elasticloadbalancing"
+          - "aws.rds"
         detail-type:
           - "AWS API Call via CloudTrail"
         detail:
           eventSource:
-            - "elasticloadbalancing.amazonaws.com"
+            - "rds.amazonaws.com"
           eventName:
-            - "CreateLoadBalancer"
-            - "ModifyLoadBalancerAttributes"
+            - "CreateDBCluster"
+            - "ModifyDBCluster"
+            - "CreateDBInstance"
+            - "ModifyDBInstance"
+            - "RemoveTagsFromResource"
       Targets: 
         - 
           Arn: 
@@ -418,7 +418,7 @@ Resources:
               - "LambdaFunction"
               - "Arn"
           Id: "TargetFunctionV1"
-  PermissionForELBEventsToInvokeLambda: 
+  PermissionForRDSEventsToInvokeLambda: 
     Type: AWS::Lambda::Permission
     Properties: 
       FunctionName: 
@@ -427,7 +427,7 @@ Resources:
       Principal: "events.amazonaws.com"
       SourceArn: 
         Fn::GetAtt: 
-          - "ELBEventRule"
+          - "RDSEventRule"
           - "Arn"
   RedshiftEventRule:
     Type: AWS::Events::Rule
