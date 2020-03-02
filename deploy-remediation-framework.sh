@@ -164,11 +164,16 @@ else
 	declare -a DeploymentRegion
 fi
 
-#Deploy Regional Stack
-for i in "${DeploymentRegion[@]}";
-do
-    aws cloudformation deploy --template-file region-deployment-bucket.yml --stack-name cn-rem-$env-$i-$acc_sha --parameter-overrides Stack=cn-rem-$env-$i-$acc_sha awsaccountid=$awsaccountid region=$i remediationregion=$aws_region --region $i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
-done
+if [[ "$bucket_status" -eq 0 ]]; then
+    #Deploy Regional Stack
+    for i in "${DeploymentRegion[@]}";
+    do
+        aws cloudformation deploy --template-file region-deployment-bucket.yml --stack-name cn-rem-$env-$i-$acc_sha --parameter-overrides Stack=cn-rem-$env-$i-$acc_sha awsaccountid=$awsaccountid region=$i remediationregion=$aws_region --region $i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+    done
+else
+    echo "Something went wrong! Please contact Cloudneeti support for more details"
+    exit 1
+fi
 
 if [[ $lambda_status -eq 0 ]]; then
     echo "Successfully deployed remediation framework!!"

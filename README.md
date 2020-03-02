@@ -7,14 +7,14 @@ This remediation solution is designed to continuously perform remediation in nea
 
 ### How it works
 
-The remediation framework uses CloudTrail, CloudWatch log group, the remediation lambda functions, and the appropriate IAM roles.
+The remediation framework uses Cloudwatch event rules, CloudTrail, CloudWatch log group, the remediation lambda functions, and the appropriate IAM roles.
 
 ![localremediation.png](images/localremediation.png)
 
 1. AWS account administrator creates/updates/reconfigure resources in aws account
-2. CloudTrail and CloudWatch logs group collects the events occurred in AWS account
-3. CloudWatch triggered the auto-remediation invoker in near real-time
-4. Auto-remediation invoker lambda calls the appropriate remediation functions present in the remediation framework
+2. CloudTrail and CloudWatch event bus collects the events occurred in AWS account and trigger appropriate event rule.
+3. CloudWatch event rule trigger the auto-remediation invoker in near real-time in its region
+4. Auto-remediation invoker lambda calls the orchestrator which then call appropriate remediation functions present in the remediation framework
 5. Remediation functions setup required security configuration on the resources
 
 This auto-remediation solution supports multi-account remediation as well. Here, we are providing cross-account access roles to execute the remediation functions present in remediation framework account.
@@ -68,15 +68,23 @@ Follow the below steps to set up remediation procedures
 ### Provision Remediation Framework
 Perform below steps to deploy remediation framework on configured AWS account
 1. Open bash 
-2. Deploy remediation framework
+2. Deploy remediation framework in selected regions or in all regions
 
-	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -e <environment> -v <version>`
+	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -e <environment> -v <version> -m <Region 1> -m <Region 2> ..`
+
+	OR
+
+	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -e <environment> -v <version> -m <All>`
 
 	Pass AWS account id and the environment as dev/test/prod.
 
 3. Verify remediation framework setup
 
-	`# bash verify-remediation-setup.sh -a <12-digit-account-id> -e <environment>`
+	`# bash verify-remediation-setup.sh -a <12-digit-account-id> -e <environment> -m <Region 1> -m <Region 2> ..`
+
+	OR
+
+	`# bash verify-remediation-setup.sh -a <12-digit-account-id> -e <environment> -m <All>`
 
 ### Configure Multi-Account Remediation
 
@@ -103,14 +111,22 @@ In case you want to use same remediation framework for remediation of multiple A
 4. Switch to `multi-mode-remediation` directory
 
 	`# cd multi-mode-remediation`
-5. Configure multi-account remediation using below command
+5. Configure multi-account remediation using below commands to deploy in specific or all regions
 
-	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment> -v <version>`
+	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment> -v <version> -m <Region 1> -m <Region 2> ..`
 
-   This command creates the required resources like Cloudtrail, Cloudwatch rules and roles required to perform cross-account remediation 
+	OR
+
+	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment> -v <version> -m <All>`
+
+   This command creates the required resources like Cloudtrail, Cloudwatch event rules, Remediation functions and roles required to perform cross-account remediation 
 6. Verify multi-account remediation setup
 
-	`# bash verify-multi-mode-remediation-setup.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment>`
+	`# bash verify-multi-mode-remediation-setup.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment> -m <Region 1> -m <Region 2> ..`
+
+	OR
+
+	`# bash verify-multi-mode-remediation-setup.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment> -m <All>`
 
 ## Configure remediation on Cloudneeti Account
 
