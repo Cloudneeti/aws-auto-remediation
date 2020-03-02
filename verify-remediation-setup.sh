@@ -158,9 +158,7 @@ do
     Invoker_Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $i 2>/dev/null)"
     Invoker_Lambda_status=$?
 
-    if [[ "$Invoker_Rem_role" -ne 0 ]]; then
-        echo "Remediation framework Role is not configured in region $i Please delete and redploy the framework"
-    elif [[ "$regional_stack_status" -ne 0 ]] && [[ "$Invoker_Lambda_status" -ne 0 ]] && [[ "$Invoker_Rem_role" -ne 0 ]];
+    if [[ "$regional_stack_status" -ne 0 ]] && [[ "$Invoker_Lambda_status" -ne 0 ]];
     then
         echo "Remediation framework is not configured. Please delete and redploy the framework"
     elif [[ "$Invoker_Lambda_status" -ne 0 ]];

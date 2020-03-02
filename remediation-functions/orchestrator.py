@@ -531,7 +531,7 @@ def lambda_handler(event, context):
             
             try:
                 invokeLambda = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=runtime_region)
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-relayfunction', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'cn-aws-auto-remediate-invoker', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 RelayAccess = json.loads(response['Payload'].read())
             except:
                 RelayAccess = False                

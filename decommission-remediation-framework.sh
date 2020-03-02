@@ -109,7 +109,6 @@ bucket_status=$?
 
 echo "Deleting Regional Deployments...."
 
-Regions=( "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
 RemediationRegion=( $aws_region )
 
 DeploymentRegion=()
@@ -143,10 +142,9 @@ do
     aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-rem-$env-$i-$acc_sha --region $i
     #delete stack from other regions
     aws cloudformation delete-stack --stack-name cn-rem-$env-$i-$acc_sha --region $i
-    Invoke_lambda_status=$?
 done
 
-if [[ $lambda_status -eq 0 ]]  && [[ $bucket_status -eq 0 ]] && [[ $Invoke_lambda_status -eq 0 ]]; then
+if [[ $lambda_status -eq 0 ]]  && [[ $bucket_status -eq 0 ]]; then
     echo "Successfully deleted deployment stack!"
 else
     echo "Something went wrong! Please contact Cloudneeti support!"
