@@ -72,7 +72,7 @@ aws_region="$(aws configure get region 2>/dev/null)"
 acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
 env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
 
-stack_detail="$(aws cloudformation describe-stacks --stack-name cn-rem-$env-$acc_sha --region $aws_region 2>/dev/null)"
+stack_detail="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$acc_sha --region $aws_region 2>/dev/null)"
 stack_status=$?
 
 echo "Validating environment prefix..."
@@ -100,7 +100,7 @@ echo "Verifying Lambda deployment...."
 Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $aws_region 2>/dev/null)"
 Lambda_status=$?
 
-s3_detail="$(aws s3api get-bucket-versioning --bucket cn-rem-$env-$acc_sha 2>/dev/null)"
+s3_detail="$(aws s3api get-bucket-versioning --bucket cn-multirem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
 
 if [[ "$invoker_role" -ne 0 ]] && [[ "$Rem_role" -ne 0 ]] && [[ "$CT_status" -ne 0 ]] && [[ "$Lambda_status" -ne 0 ]] && [[ "$s3_status" -ne 0 ]]; then
@@ -155,7 +155,7 @@ fi
 
 for i in "${DeploymentRegion[@]}";
 do
-    regional_stack_detail="$(aws cloudformation describe-stacks --stack-name cn-rem-$env-$i-$acc_sha --region $i 2>/dev/null)"
+    regional_stack_detail="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$i-$acc_sha --region $i 2>/dev/null)"
     regional_stack_status=$?
 
     Invoker_Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $i 2>/dev/null)"

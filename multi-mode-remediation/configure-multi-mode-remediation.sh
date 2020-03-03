@@ -176,15 +176,14 @@ if [[ "$s3_status" -eq 0 ]]; then
     for i in "${DeploymentRegion[@]}";
     do
         aws cloudformation deploy --template-file region-deployment-bucket.yml --stack-name cn-multirem-$env-$i-$acc_sha --parameter-overrides Stack=cn-rem-$env-$i-$acc_sha awsaccountid=$awsaccountid region=$i remediationregion=$aws_region --region $i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+        Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $i 2>/dev/null)"
+        Lambda_status=$?
+        if [[ "$Lambda_status" -eq 0 ]]; then
+            echo "Successfully configured region $i in remediation framework"
+        else
+            echo "Failed to configure region $i in remediation framework"
+        fi
     done
-    
-    Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $i 2>/dev/null)"
-    Lambda_status=$?
-    if [[ "$Lambda_status" -eq 0 ]]; then
-        echo "Successfully configured region $i in remediation framework"
-    else
-        echo "Failed to configure region $i in remediation framework"
-    fi
 else
     echo "Something went wrong! Please contact Cloudneeti support for more details"
 fi

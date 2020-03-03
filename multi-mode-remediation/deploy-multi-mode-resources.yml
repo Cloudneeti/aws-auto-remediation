@@ -51,28 +51,28 @@ Resources:
         - - !Ref Stack
       PolicyDocument:
         Statement:
-          - Sid: "CTBucketPolicy1"
+          - Sid: CTBucketPolicy1
             Action:
               - "s3:GetBucketAcl"
             Effect: "Allow"
             Principal:
               Service:
-                - "cloudtrail.amazonaws.com"
+                - cloudtrail.amazonaws.com
             Resource:
               Fn::Join:
-              - ''
+              - ""
               - - 'arn:aws:s3:::'
                 - !Ref Stack
-          - Sid: "CTBucketPolicy2"
+          - Sid: CTBucketPolicy2
             Action:
               - "s3:PutObject"
             Effect: "Allow"
             Principal:
               Service:
-                - "cloudtrail.amazonaws.com"
+                - cloudtrail.amazonaws.com
             Resource:
               Fn::Join:
-              - ''
+              - ""
               - - 'arn:aws:s3:::'
                 - !Ref Stack
                 - '/cn-ctlogs/AWSLogs/'
@@ -130,6 +130,7 @@ Resources:
                   - ':log-group:cn-log-group:*'
   CNCloudTrail:
     Type: AWS::CloudTrail::Trail
+    DependsOn: S3Bucket
     Properties:
       IncludeGlobalServiceEvents: true
       IsLogging: true

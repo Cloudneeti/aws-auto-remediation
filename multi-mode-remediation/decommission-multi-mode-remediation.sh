@@ -75,7 +75,7 @@ env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
 echo "Validating environment prefix..."
 sleep 5
 
-stack_detail="$(aws cloudformation describe-stacks --stack-name cn-rem-$env-$acc_sha --region $aws_region 2>/dev/null)"
+stack_detail="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$acc_sha --region $aws_region 2>/dev/null)"
 stack_status=$?
 
 if [[ $stack_status -ne 0 ]]; then
@@ -83,22 +83,22 @@ if [[ $stack_status -ne 0 ]]; then
     exit 1
 fi
 
-s3_detail="$(aws s3api get-bucket-versioning --bucket cn-rem-$env-$acc_sha 2>/dev/null)"
+s3_detail="$(aws s3api get-bucket-versioning --bucket cn-multirem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
 
 echo "Checking if the deployment bucket was correctly deleted... "
 
 if [[ $s3_status -eq 0 ]]; then
-    echo "Deployment bucket is still not deleted. Please delete cn-rem-$env-$acc_sha and try to re-run the script again."
+    echo "Deployment bucket is still not deleted. Please delete cn-multirem-$env-$acc_sha and try to re-run the script again."
     exit 1
 fi
 
 echo "Deleting deployment stack..."
 #remove termination protection from stack
-aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-rem-$env-$acc_sha --region $aws_region 2>/dev/null
+aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-multirem-$env-$acc_sha --region $aws_region 2>/dev/null
 
 #delete main stack
-aws cloudformation delete-stack --stack-name cn-rem-$env-$acc_sha --region $aws_region 2>/dev/null
+aws cloudformation delete-stack --stack-name cn-multirem-$env-$acc_sha --region $aws_region 2>/dev/null
 Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $aws_region 2>/dev/null)"
 Lambda_status=$?
 
@@ -133,15 +133,15 @@ fi
 
 for i in "${DeploymentRegion[@]}";
 do
-    stack_detail="$(aws cloudformation describe-stacks --stack-name cn-rem-$env-$i-$acc_sha --region $i 2>/dev/null)"
+    stack_detail="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$i-$acc_sha --region $i 2>/dev/null)"
     stack_status=$?
     if [[ $stack_status -ne 0 ]]; then
         echo "No deployment exists in region $i"
     else
         #remove termination protection
-        aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-rem-$env-$i-$acc_sha --region $i 2>/dev/null
+        aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-multirem-$env-$i-$acc_sha --region $i 2>/dev/null
         #delete stack from other regions
-        aws cloudformation delete-stack --stack-name cn-rem-$env-$i-$acc_sha --region $i 2>/dev/null
+        aws cloudformation delete-stack --stack-name cn-multirem-$env-$i-$acc_sha --region $i 2>/dev/null
     fi
 done
 
