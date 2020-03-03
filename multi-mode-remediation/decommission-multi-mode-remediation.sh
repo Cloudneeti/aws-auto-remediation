@@ -95,10 +95,10 @@ fi
 
 echo "Deleting deployment stack..."
 #remove termination protection from stack
-aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-multirem-$env-$acc_sha --region $aws_region 2>/dev/null
+aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-multirem-$env-$acc_sha --region $aws_region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
 
 #delete main stack
-aws cloudformation delete-stack --stack-name cn-multirem-$env-$acc_sha --region $aws_region 2>/dev/null
+aws cloudformation delete-stack --stack-name cn-multirem-$env-$acc_sha --region $aws_region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
 Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $aws_region 2>/dev/null)"
 Lambda_status=$?
 
@@ -118,6 +118,10 @@ if [[ "$regionlist" -eq "All" ]]; then
 	done
 
 	declare -a DeploymentRegion
+elif [[ "$regionlist" -eq "NA" ]]; then
+    #For null pass(Single region)
+    echo "End of operation as NA input recieved"
+    exit 1
 else
 	#Remove AWS_Region from custom region list
 	for Region in "${customregions[@]}"; do
@@ -139,9 +143,9 @@ do
         echo "No deployment exists in region $i"
     else
         #remove termination protection
-        aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-multirem-$env-$i-$acc_sha --region $i 2>/dev/null
+        aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-multirem-$env-$i-$acc_sha --region $i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
         #delete stack from other regions
-        aws cloudformation delete-stack --stack-name cn-multirem-$env-$i-$acc_sha --region $i 2>/dev/null
+        aws cloudformation delete-stack --stack-name cn-multirem-$env-$i-$acc_sha --region $i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
     fi
 done
 

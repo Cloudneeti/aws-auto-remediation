@@ -110,7 +110,7 @@ if [[ "$invoker_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq
     #Redeploy framework
     if [[ "$s3_status" -eq 0 ]]; then
         echo "Redploying framework....."
-        aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name cn-multirem-$env-$acc_sha --parameter-overrides Stack=cn-multirem-$env-$acc_sha awsaccountid=$awsaccountid region=$aws_region remediationregion=$aws_region --region $aws_region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+        aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name cn-multirem-$env-$acc_sha --parameter-overrides Stack=cn-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$remawsaccountid region=$aws_region remediationregion=$aws_region --region $aws_region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
         Lambda_status=$?
 
         if [[ $Lambda_status -eq 0 ]]; then
@@ -126,7 +126,7 @@ if [[ "$invoker_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq
 else
     #Deploy framework from scrach
     echo "Deploying remediation framework...."
-    aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name cn-multirem-$env-$acc_sha --parameter-overrides Stack=cn-multirem-$env-$acc_sha awsaccountid=$awsaccountid region=$i remediationregion=$aws_region --region $aws_region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+    aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name cn-multirem-$env-$acc_sha --parameter-overrides Stack=cn-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$remawsaccountid region=$i remediationregion=$aws_region --region $aws_region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
     Lambda_status=$?
 
     if [[ $lambda_status -eq 0 ]]; then
@@ -156,6 +156,10 @@ if [[ "$regionlist" -eq "All" ]]; then
     done
 
     declare -a DeploymentRegion
+elif [[ "$regionlist" -eq "NA" ]]; then
+    #For null pass(Single region)
+    echo "End of operation as NA input recieved"
+    exit 1
 else
     #Remove AWS_Region from customer selected regions
     for Region in "${customregions[@]}"; do
@@ -175,7 +179,7 @@ if [[ "$s3_status" -eq 0 ]]; then
     #Deploy Regional Stack
     for i in "${DeploymentRegion[@]}";
     do
-        aws cloudformation deploy --template-file region-deployment-bucket.yml --stack-name cn-multirem-$env-$i-$acc_sha --parameter-overrides Stack=cn-rem-$env-$i-$acc_sha awsaccountid=$awsaccountid region=$i remediationregion=$aws_region --region $i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+        aws cloudformation deploy --template-file region-deployment-multiacc.yml --stack-name cn-multirem-$env-$i-$acc_sha --parameter-overrides Stack=cn-rem-$env-$i-$acc_sha awsaccountid=$awsaccountid region=$i remediationregion=$aws_region --region $i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
         Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $i 2>/dev/null)"
         Lambda_status=$?
         if [[ "$Lambda_status" -eq 0 ]]; then

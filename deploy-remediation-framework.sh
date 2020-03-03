@@ -51,7 +51,8 @@ while getopts "a:e:v:m:" o; do
         v)
             version=${OPTARG}
             ;;
-		m) regionlist+=("$OPTARG");;
+		m) regionlist=${OPTARG}
+            ;;
         *)
             usage
             ;;
@@ -61,11 +62,13 @@ shift $((OPTIND-1))
 Regions=( "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
 
 #Validating user input for custom regions
-selectedregions=" ${regionlist[*]}"                    # add framing blanks
-for value in ${Regions[@]}; do
-  if [[ $selectedregions =~ " $value " ]] ; then    # use $value as regexp to validate
-    customregions+=($value)
-  fi
+validated_regions=()
+for i in "${Regions[@]}"; do
+    for j in "${regionlist[@]}"; do
+        if [[ $i == $j ]]; then
+            validated_regions+=("$i")
+        fi
+    done
 done
 
 #validate aws account-id
@@ -151,9 +154,13 @@ if [[ "$regionlist" -eq "All" ]]; then
 	done
 
 	declare -a DeploymentRegion
+elif [[ "$regionlist" -eq "NA" ]]; then
+    #For null pass(Single region)
+    echo "End of operation as NA input recieved"
+    exit 1
 else
 	#Remove AWS_Region from customer selected regions
-	for Region in "${customregions[@]}"; do
+	for Region in "${validated_regions[@]}"; do
 		skip=
 		for DefaultRegion in "${RemediationRegion[@]}"; do
 			[[ $Region == $DefaultRegion ]] && { skip=1; break; }
@@ -169,6 +176,13 @@ if [[ "$bucket_status" -eq 0 ]]; then
     for i in "${DeploymentRegion[@]}";
     do
         aws cloudformation deploy --template-file region-deployment-bucket.yml --stack-name cn-rem-$env-$i-$acc_sha --parameter-overrides Stack=cn-rem-$env-$i-$acc_sha awsaccountid=$awsaccountid region=$i remediationregion=$aws_region --region $i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+        Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $i 2>/dev/null)"
+        Lambda_status=$?
+        if [[ "$Lambda_status" -eq 0 ]]; then
+            echo "Successfully configured region $i in remediation framework"
+        else
+            echo "Failed to configure region $i in remediation framework"
+        fi
     done
 else
     echo "Something went wrong! Please contact Cloudneeti support for more details"

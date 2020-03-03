@@ -97,14 +97,14 @@ fi
 
 echo "Deleting deployment stack..."
 #remove termination protection from stack
-aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-rem-functions-$env-$acc_sha --region $aws_region 2>/dev/null
-aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-rem-$env-$acc_sha --region $aws_region 2>/dev/null
+aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-rem-functions-$env-$acc_sha --region $aws_region
+aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-rem-$env-$acc_sha --region $aws_region
 
 #Delete remediation framework stack
-aws cloudformation delete-stack --stack-name cn-rem-functions-$env-$acc_sha --region $aws_region 2>/dev/null
+aws cloudformation delete-stack --stack-name cn-rem-functions-$env-$acc_sha --region $aws_region
 lambda_status=$?
 
-aws cloudformation delete-stack --stack-name cn-rem-$env-$acc_sha --region $aws_region 2>/dev/null
+aws cloudformation delete-stack --stack-name cn-rem-$env-$acc_sha --region $aws_region
 bucket_status=$?
 
 echo "Deleting Regional Deployments...."
@@ -123,6 +123,10 @@ if [[ "$regionlist" -eq "All" ]]; then
 	done
 
 	declare -a DeploymentRegion
+elif [[ "$regionlist" -eq "NA" ]]; then
+    #For null pass(Single region)
+    echo "End of operation as NA input recieved"
+    exit 1
 else
 	#Remove AWS_Region from custom region list
 	for Region in "${customregions[@]}"; do

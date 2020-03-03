@@ -134,6 +134,10 @@ if [[ "$regionlist" -eq "All" ]]; then
 	done
 
 	declare -a DeploymentRegion
+elif [[ "$regionlist" -eq "NA" ]]; then
+    #For null pass(Single region)
+    echo "End of operation as NA input recieved"
+    exit 1
 else
 	#Remove AWS_Region from custom region list
 	for Region in "${customregions[@]}"; do

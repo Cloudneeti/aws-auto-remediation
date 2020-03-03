@@ -6,6 +6,9 @@ Parameters:
     awsaccountid:
         Description: AWS Account ID
         Type: String
+    remaccountid:
+        Description: AWS Account ID
+        Type: String
     region:
         Description: Region of deployment
         Type: String
@@ -180,83 +183,88 @@ Resources:
           import os
 
           def getCredentials(roleArn, roleSessionName='CN-RemSession'):
-              sts_client = boto3.client('sts')
-              try:
-                  response = sts_client.assume_role(RoleArn=roleArn,RoleSessionName=roleSessionName)
-              except Exception as e:
-                  return print("Error when getting AssumeRole "+e)
-              cred = response['Credentials']
-              return cred['AccessKeyId'], cred['SecretAccessKey'], cred['SessionToken']
+            sts_client = boto3.client('sts')
+            try:
+                response = sts_client.assume_role(RoleArn=roleArn,RoleSessionName=roleSessionName)
+            except Exception as e:
+                return print("Error when getting AssumeRole "+e)
+            cred = response['Credentials']
+            return cred['AccessKeyId'], cred['SecretAccessKey'], cred['SessionToken']
 
           def lambda_handler(event, context):
-              #multi-event customer account CW event
-              try:
-                  runtime_region = os.environ['AWS_REGION']
-              except:
-                  runtime_region = 'us-east-1'
+            #multi-event customer account CW event
+            try:
+              runtime_region = os.environ['AWS_REGION']
+            except:
+              runtime_region = 'us-east-1'
 
-              try:
-                  cw_event_data = event['detail']
-              except:
-                  cw_event_data = ''
+            try:
+              cw_event_data = event['detail']
+            except:
+              cw_event_data = ''
 
-              #multi-account verify access
-              try:
-                  VerifyAccess = json.loads(event['body'])['VerifyAccess']
-                  print(VerifyAccess)
-              except:
-                  VerifyAccess = '' 
+            #multi-account verify access
+            try:
+              VerifyAccess = json.loads(event['body'])['VerifyAccess']
+              print(VerifyAccess)
+            except:
+              VerifyAccess = '' 
 
-              #trigger by cw logs
-              if cw_event_data:
+            #trigger by cw logs
+            if cw_event_data:
+              try:
+                AWSAccId = cw_event_data["userIdentity"]["accountId"]
+                EventName = cw_event_data["eventName"]
+                EventSource = cw_event_data["userIdentity"]["arn"]
+              except ClientError as e:
+                print(e)
+              except Exception as e: 
+                print(e)
+
+              if "assumed-role/CN-Auto-Remediation-Role" not in str(EventSource):
                 try:
-                    AWSAccId = cw_event_data["userIdentity"]["accountId"]
+                  iam = boto3.client("iam")
+                  role_det = iam.get_role(RoleName='CN-Auto-Remediation-Role')['Role']['AssumeRolePolicyDocument']['Statement']
+                  for i in range(len(role_det)):
+                    if AWSAccId not in str(role_det[i]['Principal']):
+                      RemAccDet = role_det[i]['Principal']['AWS']
+                      RemAccId = (RemAccDet.split('arn:aws:iam::')[1]).split(':root')[0]
+                      break
                 except ClientError as e:
-                    print(e)
-                except Exception as e: 
-                    print(e)
-
-                try:
-                    iam = boto3.client("iam")
-                    role_det = iam.get_role(RoleName='CN-Auto-Remediation-Role')['Role']['AssumeRolePolicyDocument']['Statement']
-                    for i in range(len(role_det)):
-                        if AWSAccId not in str(role_det[i]['Principal']):
-                            RemAccDet = role_det[i]['Principal']['AWS']
-                            RemAccId = (RemAccDet.split('arn:aws:iam::')[1]).split(':root')[0]
-                            break
-                except ClientError as e:
-                    return {'statusCode': 400,'body': json.dumps(str(e))}
+                  return {'statusCode': 400,'body': json.dumps(str(e))}
                 except Exception as e:
-                    return {'statusCode': 400,'body': json.dumps(str(e))}
+                  return {'statusCode': 400,'body': json.dumps(str(e))}
                         
                 try:  # common code
-                    remdiationfunc_rolearn = 'arn:aws:iam::' + RemAccId + ':role/CN-Remediation-Invocation-Role'
-                    aws_access_key_id, aws_secret_access_key, aws_session_token = getCredentials(remdiationfunc_rolearn)
+                  remdiationfunc_rolearn = 'arn:aws:iam::' + RemAccId + ':role/CN-Remediation-Invocation-Role'
+                  aws_access_key_id, aws_secret_access_key, aws_session_token = getCredentials(remdiationfunc_rolearn)
                 except ClientError as e:
-                    return {'statusCode': 400,'body': json.dumps(str(e))}
+                  return {'statusCode': 400,'body': json.dumps(str(e))}
                 except Exception as e:
-                    return {'statusCode': 400,'body': json.dumps(str(e))}
+                  return {'statusCode': 400,'body': json.dumps(str(e))}
 
                 try:
-                    invokeLambda = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=runtime_region)
-                    response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-orchestrator', InvocationType = 'RequestResponse', Payload = json.dumps(event))
-                    t = json.loads(response['Payload'].read())
-                    print(t['body'])
-                    return {
-                        'statusCode': 200,
-                        'body': json.dumps(t)
-                    }
+                  invokeLambda = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=runtime_region)
+                  response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-orchestrator', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                  t = json.loads(response['Payload'].read())
+                  print(t['body'])
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps(t)
+                  }
                 except ClientError as e:
-                    return {'statusCode': 400,'body': json.dumps(str(e))}
+                  return {'statusCode': 400,'body': json.dumps(str(e))}
                 except Exception as e:
-                    return {'statusCode': 400,'body': json.dumps(str(e))}
-              elif VerifyAccess:       
-                IsVerified = True 
-                try:  # common code 
-                    CustAccID = json.loads(event['body'])['RemediationAWSAccountId']
-                except:
-                    IsVerified = False
-                return IsVerified
+                  return {'statusCode': 400,'body': json.dumps(str(e))}
+              else:
+                return {'statusCode': 200,'body': json.dumps("Resource already remediated")}
+            elif VerifyAccess:       
+              IsVerified = True 
+              try:  # common code 
+                CustAccID = json.loads(event['body'])['RemediationAWSAccountId']
+              except:
+                IsVerified = False
+              return IsVerified
   CloudtrailEventRule:
     Type: AWS::Events::Rule
     Properties:
@@ -547,7 +555,7 @@ Resources:
                 Fn::Join:
                 - ""
                 - - "arn:aws:iam::"
-                  - !Ref awsaccountid
+                  - !Ref remaccountid
                   - ":root" 
             Action: "sts:AssumeRole"
       ManagedPolicyArns:
