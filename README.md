@@ -33,21 +33,27 @@ Following dependencies should be present on the machine before proceeding to onb
 -  AWS Command Line Interface (CLI) is a unified tool to manage your AWS services 
 
 	Install AWS CLI following steps present [here](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html)
+
 - Nodejs
 
 	Download the latest stable version of Nodejs from [here](https://nodejs.org/en/download) and install it on the workstation.
+
 - Serverless CLI tool to manage AWS deployments
 
 	Execute the below command to install a serverless module,
 
 	`# npm install –g serverless`
 
+- JQ for linux terminal
+
+	`#https://stedolan.github.io/jq/download/`
+
 
 ## Onboarding Steps
 
 Follow the below steps to set up remediation procedures
 
-1. Download and Unzip required package from the link below.
+1. Download and Unzip latest package from the link below.
 
 	`https://github.com/Cloudneeti/aws-auto-remediation/releases`
 
@@ -67,24 +73,24 @@ Follow the below steps to set up remediation procedures
 
 ### Provision Remediation Framework
 Perform below steps to deploy remediation framework on configured AWS account
-1. Open bash 
+1. Open bash terminal
 2. Deploy remediation framework in selected regions or in all regions
 
-	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -e <environment> -v <version> -m <Region 1> -m <Region 2> ..`
+	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -e <environment> -v <version> -m <list of regions where remediation is to be enabled>`
 
 	OR
 
-	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -e <environment> -v <version> -m <All>`
+	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -e <environment> -v <version> -m <all>`
 
 	Pass AWS account id and the environment as dev/test/prod.
 
 3. Verify remediation framework setup
 
-	`# bash verify-remediation-setup.sh -a <12-digit-account-id> -e <environment> -m <Region 1> -m <Region 2> ..`
+	`# bash verify-remediation-setup.sh -a <12-digit-account-id> -e <environment> -m <list of regions where remediation is enabled>`
 
 	OR
 
-	`# bash verify-remediation-setup.sh -a <12-digit-account-id> -e <environment> -m <All>`
+	`# bash verify-remediation-setup.sh -a <12-digit-account-id> -e <environment> -m <all>`
 
 ### Configure Multi-Account Remediation
 
@@ -113,20 +119,20 @@ In case you want to use same remediation framework for remediation of multiple A
 	`# cd multi-mode-remediation`
 5. Configure multi-account remediation using below commands to deploy in specific or all regions
 
-	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment> -v <version> -m <Region 1> -m <Region 2> ..`
+	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment> -v <version> -m <list of regions where remediation is to be enabled>`
 
 	OR
 
-	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment> -v <version> -m <All>`
+	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment> -v <version> -m <all>`
 
    This command creates the required resources like Cloudtrail, Cloudwatch event rules, Remediation functions and roles required to perform cross-account remediation 
 6. Verify multi-account remediation setup
 
-	`# bash verify-multi-mode-remediation-setup.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment> -m <Region 1> -m <Region 2> ..`
+	`# bash verify-multi-mode-remediation-setup.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment> -m <list of regions where remediation is enabled>`
 
 	OR
 
-	`# bash verify-multi-mode-remediation-setup.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment> -m <All>`
+	`# bash verify-multi-mode-remediation-setup.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment> -m <all>`
 
 ## Configure remediation on Cloudneeti Account
 

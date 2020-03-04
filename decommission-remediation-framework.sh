@@ -23,17 +23,20 @@
       - Run this script in any bash shell (linux command prompt)
 
 .EXAMPLE
-    Command to execute : bash decommission-remediation-framework.sh [-a <12-digit-account-id>] [-e <environment-prefix>]
+    Command to execute : bash decommission-remediation-framework.sh [-a <12-digit-account-id>] [-e <environment-prefix>] [-m <list of regions where remediation is enabled>]
 
 .INPUTS
     **Mandatory(-a)Account Id: 12-digit AWS account Id of the account where the remediation framework is deployed
     (-e)Environment prefix: Enter any suitable prefix for your deployment
+    (-m)Region list: Comma seperated list(with no spaces) of the regions where the remediation is enabled(eg: us-east-1,us-east-2)
+        **Pass "all" if you have enabled remediation in all other available regions
+        **Pass "na" if you do not have enabled remediation in any other region
 
 .OUTPUTS
     None
 '
 
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-e <environment-prefix>] [-v <1.0>] [-m <region1> -m <region2> ...]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-e <environment-prefix>] [-v <1.0>] [-m <list of regions where remediation is enabled>]" 1>&2; exit 1; }
 env="dev"
 version="1.0"
 while getopts "a:e:m:" o; do
@@ -65,11 +68,12 @@ IFS=, read -a input_regions <<<"${regionlist}"
 printf -v ips ',"%s"' "${input_regions[@]}"
 ips="${ips:1}"
 
-input_regions=($(echo "${input_regions[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
-
 if [[ $regionlist == "all" ]]; then
     input_regions=("${Valid_values[@]:1:15}")
 fi
+
+
+input_regions=($(echo "${input_regions[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
 
 #Validating user input for custom regions  
 validated_regions=()
@@ -96,10 +100,10 @@ stack_status=$?
 echo "Validating environment prefix..."
 sleep 5
 
-if [[ $stack_status -ne 0 ]]; then
-    echo "Invaild environment prefix. No relevant stack found. Please enter current environment prefix and try to re-run the script again."
-    exit 1
-fi
+#if [[ $stack_status -ne 0 ]]; then
+#    echo "Invaild environment prefix. No relevant stack found. Please enter current environment prefix and try to re-run the script again."
+#    exit 1
+#fi
 
 echo "Checking if the remediation bucket has been deleted or not...."
 
