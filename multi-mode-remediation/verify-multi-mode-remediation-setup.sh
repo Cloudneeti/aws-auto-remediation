@@ -23,17 +23,20 @@
             AWS Secret Access Key: Secret Access Key of any admin user of the account in consideration
             Default region name: Programmatic region name where you want to deploy the framework (eg: us-east-1)
             Default output format: json  
-      - Command to execute : bash verify-multi-mode-remediation-setup.sh [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-e <environment-prefix>]
+      - Command to execute : bash verify-multi-mode-remediation-setup.sh [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-e <environment-prefix>] [-m <list of regions where remediation is enabled>]
 
 .INPUTS
-    (-a)New AWS Account Id: 12-digit AWS Account Id of the account which is newly added to use the remediation framework
-    (-r)Remediation Account Id: 12-digit AWS account Id of the account where the remediation framework is deployed
+    **Mandatory(-a)New AWS Account Id: 12-digit AWS Account Id of the account which is newly added to use the remediation framework
+    **Mandatory(-r)Remediation Account Id: 12-digit AWS account Id of the account where the remediation framework is deployed
     (-e)Environment prefix: Enter any suitable prefix for your deployment
+    (-m)Region list: Comma seperated list(with no spaces) of the regions where the remediation enabled(eg: us-east-1,us-east-2)
+        **Pass "all" if you have enabled remediation in all other available regions
+        **Pass "na" if you do not have enabled remediation in any other region
 
 .OUTPUTS
     None
 '
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-e <environment-prefix>] " 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-e <environment-prefix>] [-m <list of regions where remediation is enabled>]" 1>&2; exit 1; }
 
 env="dev"
 version="1.0"
@@ -45,22 +48,41 @@ while getopts "a:e:m:" o; do
         e)
             env=${OPTARG}
             ;;
-		m) regionlist+=("$OPTARG");;
+		m) regionlist=${OPTARG}
+            ;;
         *)
             usage
             ;;
     esac
 done
 shift $((OPTIND-1))
+Valid_values=( "na" "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
 
-Regions=( "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
+#Verify input for regional deployment
+if [[ $regionlist == "na" ]]; then
+    input_regions=${Valid_values[0]}
+else
+    input_regions="${regionlist[@]}"
+fi
 
-#Validating user input for custom regions
-selectedregions=" ${regionlist[*]}"                    # add framing blanks
-for value in ${Regions[@]}; do
-  if [[ $selectedregions =~ " $value " ]] ; then    # use $value as regexp to validate
-    customregions+=($value)
-  fi
+IFS=, read -a input_regions <<<"${regionlist}"
+printf -v ips ',"%s"' "${input_regions[@]}"
+ips="${ips:1}"
+
+input_regions=($(echo "${input_regions[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+
+if [[ $regionlist == "all" ]]; then
+    input_regions=("${Valid_values[@]:1:15}")
+fi
+
+#Validating user input for custom regions  
+validated_regions=()
+for i in "${Valid_values[@]}"; do
+    for j in "${input_regions[@]}"; do
+        if [[ $i == $j ]]; then
+            validated_regions+=("$i")
+        fi
+    done
 done
 
 if [[ "$env" == "" ]] || [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ "$remawsaccountid" == "" ]] || ! [[ "$remawsaccountid" =~ ^[0-9]+$ ]] || [[ ${#remawsaccountid} != 12 ]]; then
@@ -126,61 +148,38 @@ fi
 
 echo "Verifying Regional Configuration...."
 
-RemediationRegion=( $aws_region )
+if [[ "$validated_regions" -ne "na" ]]; then
+    #Verify Regional Stack
+    if [[ "$i" != "$aws_region" ]]; then
+        for i in "${validated_regions[@]}";
+        do
+            regional_stack_detail="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$i-$acc_sha --region $i 2>/dev/null)"
+            regional_stack_status=$?
 
-DeploymentRegion=()
-if [[ "$regionlist" -eq "All" ]]; then
-	#Remove AWS_Region from all regions
-	for Region in "${Regions[@]}"; do
-		skip=
-		for DefaultRegion in "${RemediationRegion[@]}"; do
-			[[ $Region == $DefaultRegion ]] && { skip=1; break; }
-		done
-		[[ -n $skip ]] || DeploymentRegion+=("$Region")
-	done
+            Invoker_Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $i 2>/dev/null)"
+            Invoker_Lambda_status=$?
 
-	declare -a DeploymentRegion
-elif [[ "$regionlist" -eq "NA" ]]; then
-    #For null pass(Single region)
-    echo "End of operation as NA input recieved"
-    exit 1
+            if [[ "$regional_stack_status" -ne 0 ]] && [[ "$Invoker_Lambda_status" -ne 0 ]];
+            then
+                echo "Remediation framework is not configured. Please redploy the framework with region $i as input"
+            elif [[ "$Invoker_Lambda_status" -ne 0 ]];
+            then
+                echo "Remediation framework Invoker lambda function is not deployed. Please redploy the framework with region $i as input"
+            elif [[ "$regional_stack_status" -ne 0 ]];
+            then
+                echo "Remediation framework stack is not deployed. Please redploy the framework with region $i as input"
+            elif [[ "$regional_stack_status" -eq 0 ]] && [[ "$Invoker_Lambda_status" -eq 0 ]] && [[ "$invoker_role" -eq 0 ]];
+            then
+                echo "Remediation framework is correctly deployed in region $i"
+            else
+                echo "Something went wrong!"
+            fi
+        done
+    fi
 else
-	#Remove AWS_Region from custom region list
-	for Region in "${customregions[@]}"; do
-		skip=
-		for DefaultRegion in "${RemediationRegion[@]}"; do
-			[[ $Region == $DefaultRegion ]] && { skip=1; break; }
-		done
-		[[ -n $skip ]] || DeploymentRegion+=("$Region")
-	done
-
-	declare -a DeploymentRegion
+    echo "Regional Deployments deletion skipped with input na!.."
 fi
 
-for i in "${DeploymentRegion[@]}";
-do
-    regional_stack_detail="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$i-$acc_sha --region $i 2>/dev/null)"
-    regional_stack_status=$?
-
-    Invoker_Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $i 2>/dev/null)"
-    Invoker_Lambda_status=$?
-
-    if [[ "$regional_stack_status" -ne 0 ]] && [[ "$Invoker_Lambda_status" -ne 0 ]];
-    then
-        echo "Remediation framework is not configured. Please redploy the framework with region $i as input"
-    elif [[ "$Invoker_Lambda_status" -ne 0 ]];
-    then
-        echo "Remediation framework Invoker lambda function is not deployed. Please redploy the framework with region $i as input"
-    elif [[ "$regional_stack_status" -ne 0 ]];
-    then
-        echo "Remediation framework stack is not deployed. Please redploy the framework with region $i as input"
-    elif [[ "$regional_stack_status" -eq 0 ]] && [[ "$Invoker_Lambda_status" -eq 0 ]] && [[ "$invoker_role" -eq 0 ]];
-    then
-        echo "Remediation framework is correctly deployed in region $i"
-    else
-        echo "Something went wrong!"
-    fi
-done
 
 echo "............."
 echo "Verifying if role in the remediation framework is correctly deployed or not!"

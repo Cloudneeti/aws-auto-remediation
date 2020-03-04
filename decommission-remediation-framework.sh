@@ -44,22 +44,41 @@ while getopts "a:e:m:" o; do
         e)
             env=${OPTARG}
             ;;
-		m) regionlist+=("$OPTARG");;
+		m) regionlist=${OPTARG}
+            ;;
         *)
             usage
             ;;
     esac
 done
 shift $((OPTIND-1))
+Valid_values=( "na" "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
 
-Regions=( "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
+#Verify input for regional deployment
+if [[ $regionlist == "na" ]]; then
+    input_regions=${Valid_values[0]}
+else
+    input_regions="${regionlist[@]}"
+fi
 
-#Validating user input for custom regions
-selectedregions=" ${regionlist[*]}"                    # add framing blanks
-for value in ${Regions[@]}; do
-  if [[ $selectedregions =~ " $value " ]] ; then    # use $value as regexp to validate
-    customregions+=($value)
-  fi
+IFS=, read -a input_regions <<<"${regionlist}"
+printf -v ips ',"%s"' "${input_regions[@]}"
+ips="${ips:1}"
+
+input_regions=($(echo "${input_regions[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+
+if [[ $regionlist == "all" ]]; then
+    input_regions=("${Valid_values[@]:1:15}")
+fi
+
+#Validating user input for custom regions  
+validated_regions=()
+for i in "${Valid_values[@]}"; do
+    for j in "${input_regions[@]}"; do
+        if [[ $i == $j ]]; then
+            validated_regions+=("$i")
+        fi
+    done
 done
 
 if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]]; then
@@ -109,44 +128,21 @@ bucket_status=$?
 
 echo "Deleting Regional Deployments...."
 
-RemediationRegion=( $aws_region )
-
-DeploymentRegion=()
-if [[ "$regionlist" -eq "All" ]]; then
-	#Remove AWS_Region from all regions
-	for Region in "${Regions[@]}"; do
-		skip=
-		for DefaultRegion in "${RemediationRegion[@]}"; do
-			[[ $Region == $DefaultRegion ]] && { skip=1; break; }
-		done
-		[[ -n $skip ]] || DeploymentRegion+=("$Region")
-	done
-
-	declare -a DeploymentRegion
-elif [[ "$regionlist" -eq "NA" ]]; then
-    #For null pass(Single region)
-    echo "End of operation as NA input recieved"
-    exit 1
+if [[ "$validated_regions" -ne "na" ]]; then
+    if [[ "$bucket_status" -eq 0 ]]; then
+    #Deploy Regional Stack
+        for i in "${validated_regions[@]}"; do
+            if [[ "$i" != "$aws_region" ]]; then
+                #remove termination protection
+                aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-rem-$env-$i-$acc_sha --region $i
+                #delete stack from other regions
+                aws cloudformation delete-stack --stack-name cn-rem-$env-$i-$acc_sha --region $i
+            fi
+        done
+    fi
 else
-	#Remove AWS_Region from custom region list
-	for Region in "${customregions[@]}"; do
-		skip=
-		for DefaultRegion in "${RemediationRegion[@]}"; do
-			[[ $Region == $DefaultRegion ]] && { skip=1; break; }
-		done
-		[[ -n $skip ]] || DeploymentRegion+=("$Region")
-	done
-
-	declare -a DeploymentRegion
+    echo "Regional Deployments skipped with input na!.."
 fi
-
-for i in "${DeploymentRegion[@]}";
-do
-    #remove termination protection
-    aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-rem-$env-$i-$acc_sha --region $i
-    #delete stack from other regions
-    aws cloudformation delete-stack --stack-name cn-rem-$env-$i-$acc_sha --region $i
-done
 
 if [[ $lambda_status -eq 0 ]]  && [[ $bucket_status -eq 0 ]]; then
     echo "Successfully deleted deployment stack!"

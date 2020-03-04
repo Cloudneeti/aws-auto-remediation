@@ -53,7 +53,7 @@ Resources:
           def lambda_handler(event, context):
             #multi-event customer account CW event
             try:
-              runtime_region = os.environ['AWS_REGION']
+              runtime_region = os.environ['remediationregion']
             except:
               runtime_region = 'us-east-1'
 
