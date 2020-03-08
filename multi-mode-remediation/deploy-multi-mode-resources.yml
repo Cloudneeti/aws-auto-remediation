@@ -47,6 +47,7 @@ Resources:
             Value: "Cloudneeti automatic remediation solution for making cloud resource compliant"
   CTBucketPolicy:
     Type: AWS::S3::BucketPolicy
+    DependsOn: S3Bucket
     Properties: 
       Bucket:
         Fn::Join:
@@ -133,7 +134,7 @@ Resources:
                   - ':log-group:cn-log-group:*'
   CNCloudTrail:
     Type: AWS::CloudTrail::Trail
-    DependsOn: S3Bucket
+    DependsOn: CTBucketPolicy
     Properties:
       IncludeGlobalServiceEvents: true
       IsLogging: true
