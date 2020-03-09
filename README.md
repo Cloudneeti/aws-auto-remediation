@@ -14,7 +14,7 @@ The remediation framework uses Cloudwatch event rules, CloudTrail, CloudWatch lo
 1. AWS account administrator creates/updates/reconfigure resources in aws account
 2. CloudTrail and CloudWatch event bus collects the events occurred in AWS account and trigger appropriate event rule.
 3. CloudWatch event rule trigger the auto-remediation invoker in near real-time in its region
-4. Auto-remediation invoker lambda calls the orchestrator which then call appropriate remediation functions present in the remediation framework
+4. Form diifferent aws region Auto-remediation-invoker lambda calls the orchestrator which then call appropriate remediation functions present in the remediation framework 
 5. Remediation functions setup required security configuration on the resources
 
 This auto-remediation solution supports multi-account remediation as well. Here, we are providing cross-account access roles to execute the remediation functions present in remediation framework account.
@@ -46,7 +46,7 @@ Following dependencies should be present on the machine before proceeding to onb
 
 - JQ for linux terminal
 
-	`#https://stedolan.github.io/jq/download/`
+	`https://stedolan.github.io/jq/download/`
 
 
 ## Onboarding Steps
@@ -68,7 +68,7 @@ Follow the below steps to set up remediation procedures
    Enter the required inputs:
    - AWS Access Key ID: Access key of any admin user of the account in consideration.
    - AWS Secret Access Key: Secret Access Key of any admin user of the account in consideration
-   - Default region name: Programmatic region name where you want to deploy the framework (eg: us-east-1)
+   - Default region name: AWS region name (eg: us-east-1)
    - Default output format: json
 
 ### Provision Remediation Framework
@@ -76,21 +76,22 @@ Perform below steps to deploy remediation framework on configured AWS account
 1. Open bash terminal
 2. Deploy remediation framework in selected regions or in all regions
 
-	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -e <environment> -v <version> -m <list of regions where remediation is to be enabled>`
+	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <1.0> -s <list of regions where remediation is to enabled>`
 
 	OR
 
-	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -e <environment> -v <version> -m <all>`
+	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <1.0> -s <all>`
 
 	Pass AWS account id and the environment as dev/test/prod.
+    Note: Primary region for multi account deployment should be the same as that of the remediation framework primary region for single account deployment
 
 3. Verify remediation framework setup
 
-	`# bash verify-remediation-setup.sh -a <12-digit-account-id> -e <environment> -m <list of regions where remediation is enabled>`
+	`# bash verify-remediation-setup.sh -a <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -s <list of regions where remediation is enabled>`
 
 	OR
 
-	`# bash verify-remediation-setup.sh -a <12-digit-account-id> -e <environment> -m <all>`
+	`# bash verify-remediation-setup.sh -a <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -s <all>`
 
 ### Configure Multi-Account Remediation
 
@@ -110,29 +111,29 @@ In case you want to use same remediation framework for remediation of multiple A
    Enter the required inputs:
    - AWS Access Key ID: Access key of any admin user of the account in consideration.
    - AWS Secret Access Key: Secret Access Key of any admin user of the account in consideration
-   - Default region name: Programmatic region name where you want to deploy the framework. (eg: us-east-1)
-     Note: This region should be the same as that of the remediation framework region
+   - Default region name: AWS region name (eg: us-east-1)
    - Default output format: json
 
 4. Switch to `multi-mode-remediation` directory
 
 	`# cd multi-mode-remediation`
 5. Configure multi-account remediation using below commands to deploy in specific or all regions
+	Note: Primary region for multi account deployment should be the same as that of the remediation framework primary region for single account deployment
 
-	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment> -v <version> -m <list of regions where remediation is to be enabled>`
+	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <1.0> -s <list of regions where remediation is to enabled>`
 
 	OR
 
-	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment> -v <version> -m <all>`
+	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <1.0> -s <all>`
 
    This command creates the required resources like Cloudtrail, Cloudwatch event rules, Remediation functions and roles required to perform cross-account remediation 
 6. Verify multi-account remediation setup
 
-	`# bash verify-multi-mode-remediation-setup.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment> -m <list of regions where remediation is enabled>`
+	`# bash verify-multi-mode-remediation-setup.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -s <list of regions where remediation is enabled>`
 
 	OR
 
-	`# bash verify-multi-mode-remediation-setup.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment> -m <all>`
+	`# bash verify-multi-mode-remediation-setup.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -s <all>`
 
 ## Configure remediation on Cloudneeti Account
 

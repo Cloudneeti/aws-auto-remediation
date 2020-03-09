@@ -24,7 +24,7 @@
         Enter the required inputs: 
             AWS Access Key ID: Access key of any admin user of the account in consideration.
             AWS Secret Access Key: Secret Access Key of any admin user of the account in consideration
-            Default region name: Programmatic region name where you want to deploy the framework (eg: us-east-1)
+            Default region name: AWS region name (eg: us-east-1)
             Default output format: json  
       - Run this script in any bash shell (linux command prompt)
 
