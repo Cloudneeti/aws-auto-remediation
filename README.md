@@ -44,7 +44,7 @@ Following dependencies should be present on the machine before proceeding to onb
 
 	`# npm install –g serverless`
 
-- JQ for linux terminal
+- JQ for bash terminal
 
 	`https://stedolan.github.io/jq/download/`
 
