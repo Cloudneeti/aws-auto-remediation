@@ -76,6 +76,8 @@ Perform below steps to deploy remediation framework on configured AWS account
 1. Open bash terminal
 2. Deploy remediation framework in selected regions or in all regions
 
+	Note: Primary region for multi account deployment should be the same as that of the remediation framework primary region for single account deployment
+
 	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <1.0> -s <list of regions where auto-remediation is to be enabled>`
 
 	OR
@@ -83,8 +85,6 @@ Perform below steps to deploy remediation framework on configured AWS account
 	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <1.0> -s <all>`
 
 	Pass AWS account id and the environment as dev/test/prod.
-    
-	Note: Primary region for multi account deployment should be the same as that of the remediation framework primary region for single account deployment
 
 3. Verify remediation framework setup
 
