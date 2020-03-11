@@ -29,7 +29,7 @@
       - Run this script in any bash shell (linux command prompt)
 
 .EXAMPLE
-    Command to execute : bash configure-multi-mode-remediation.sh [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v <1.0>] [-s <list of regions where remediation is to enabled>]
+    Command to execute : bash configure-multi-mode-remediation.sh [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v <1.0>] [-s <list of regions where auto-remediation is to enabled>]
 
 .INPUTS
     **Mandatory(-a)Account Id: 12-digit AWS account Id of the account for which you want to enable the remediation
@@ -37,18 +37,18 @@
     **Mandatory(-p)AWS Region: Region where you want to deploy all major components of remediation framework
     (-e)Environment prefix: Enter any suitable prefix for your deployment
     (-v)Version: Enter the remediation framework version (Would be provided by Cloudneeti)
-    (-s)Region list: Comma seperated list(with no spaces) of the regions where the remediation is to be enabled(eg: us-east-1,us-east-2)
-        **Pass "all" if you want to enable remediation in all other available regions
-        **Pass "na" if you do not want to enable remediation in any other region
+    (-s)Region list: Comma seperated list(with no spaces) of the regions where the auto-remediation is to be enabled(eg: us-east-1,us-east-2)
+        **Pass "all" if you want to enable auto-remediation in all other available regions
+        **Pass "na" if you do not want to enable auto-remediation in any other region
 .OUTPUTS
     None
 '
 
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v <1.0>] [-s <list of regions where remediation is to enabled>]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v <1.0>] [-s <list of regions where auto-remediation is to enabled>]" 1>&2; exit 1; }
 
 env="dev"
 version="1.0"
-secondaryregions=('all')
+secondaryregions=('na')
 while getopts "a:r:p:e:v:s:" o; do
     case "${o}" in
         a)

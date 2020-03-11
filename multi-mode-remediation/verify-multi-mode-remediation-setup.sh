@@ -23,24 +23,24 @@
             AWS Secret Access Key: Secret Access Key of any admin user of the account in consideration
             Default region name: AWS region name (eg: us-east-1)
             Default output format: json  
-      - Command to execute : bash verify-multi-mode-remediation-setup.sh [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions where remediation is enabled>]
+      - Command to execute : bash verify-multi-mode-remediation-setup.sh [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions where auto-remediation is to be verified>]
 
 .INPUTS
     **Mandatory(-a)New AWS Account Id: 12-digit AWS Account Id of the account which is newly added to use the remediation framework
     **Mandatory(-r)Remediation Account Id: 12-digit AWS account Id of the account where the remediation framework is deployed
     **Mandatory(-p)AWS Region: Region where you want to deploy all major components of remediation framework
     (-e)Environment prefix: Enter any suitable prefix for your deployment
-    (-s)Region list: Comma seperated list(with no spaces) of the regions where the remediation is to be verified(eg: us-east-1,us-east-2)
-        **Pass "all" if you want to verify remediation in all other available regions
-        **Pass "na" if you do not want to verify remediation in any other region
+    (-s)Region list: Comma seperated list(with no spaces) of the regions where the auto-remediation is to be verified(eg: us-east-1,us-east-2)
+        **Pass "all" if you want to verify auto-remediation in all other available regions
+        **Pass "na" if you do not want to verify auto-remediation in any other region
 .OUTPUTS
     None
 '
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions where remediation is enabled>]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions where auto-remediation is to be verified>]" 1>&2; exit 1; }
 
 env="dev"
 version="1.0"
-secondaryregions=('all')
+secondaryregions=('na')
 while getopts "a:r:p:e:s:" o; do
     case "${o}" in
         a)
