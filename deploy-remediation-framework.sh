@@ -149,7 +149,7 @@ if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 
 else
     #Deploy framework from scratch
     echo "Deploying remediation framework...."
-    aws cloudformation deploy --template-file deployment-bucket.yml --stack-name cn-rem-$env-$acc_sha --parameter-overrides Stack=cn-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+    aws cloudformation deploy --template-file deployment-bucket.yml --stack-name cn-rem-$env-$acc_sha --parameter-overrides Stack=cn-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$primary_deployment --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
     s3_status=$?
     if [[ "$s3_status" -eq 0 ]]; then
         serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $primary_deployment --remediationversion $version

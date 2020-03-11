@@ -9,7 +9,6 @@ Parameters:
     region:
         Description: Region of deployment
         Type: String
-        Default: us-east-1
 Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
@@ -45,6 +44,7 @@ Resources:
             Value: "Cloudneeti automatic remediation solution for making cloud resource compliant"
   CTBucketPolicy:
     Type: AWS::S3::BucketPolicy
+    DependsOn: S3Bucket
     Properties: 
       Bucket:
         Fn::Join:
