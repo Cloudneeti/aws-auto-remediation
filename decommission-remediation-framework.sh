@@ -18,31 +18,41 @@
         Enter the required inputs:
             AWS Access Key ID: Access key of any admin user of the account in consideration.
             AWS Secret Access Key: Secret Access Key of any admin user of the account in consideration
-            Default region name: Programmatic region name where you want to deploy the framework (eg: us-east-1)
+            Default region name: AWS region name (eg: us-east-1)
             Default output format: json  
       - Run this script in any bash shell (linux command prompt)
 
 .EXAMPLE
-    Command to execute : bash decommission-remediation-framework.sh [-a <12-digit-account-id>] [-e <environment-prefix>]
+    Command to execute : bash decommission-remediation-framework.sh [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>]
 
 .INPUTS
-    **Mandatory(-a)Account Id: 12-digit AWS account Id of the account where the remediation framework is deployed
+    **Mandatory(-a)Account Id: 12-digit AWS account Id of the account where you want the remediation framework to be deployed
+    **Mandatory(-p)AWS Region: Region where you want to deploy all major resources of remediation framework
     (-e)Environment prefix: Enter any suitable prefix for your deployment
+    (-s)Region list: Comma seperated list(with no spaces) of the regions from where the auto-remediation is to be decommissioned(eg: us-east-1,us-east-2)
+        **Pass "all" if you want to decommission auto-remediation from all other available regions
+        **Pass "na" if you do not want to decommission auto-remediation from any other region
 
 .OUTPUTS
     None
 '
 
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-e <environment-prefix>]" 1>&2; exit 1; }
-
+usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>]" 1>&2; exit 1; }
 env="dev"
-while getopts "a:e:" o; do
+version="1.0"
+secondaryregions=('na')
+while getopts "a:p:e:s:" o; do
     case "${o}" in
         a)
             awsaccountid=${OPTARG}
             ;;
+        p)
+            primaryregion=${OPTARG}
+            ;;
         e)
             env=${OPTARG}
+            ;;
+        s) secondaryregions=${OPTARG}
             ;;
         *)
             usage
@@ -50,18 +60,45 @@ while getopts "a:e:" o; do
     esac
 done
 shift $((OPTIND-1))
+valid_values=( "na" "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
 
-if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]]; then
+#Verify input for regional deployment
+if [[ $secondaryregions == "na" ]]; then
+    valid_regions=${valid_values[0]}
+elif [[ $secondaryregions == "all" ]]; then
+    valid_regions=("${valid_values[@]:1:15}")
+else
+    valid_regions="${secondaryregions[@]}"
+fi
+
+IFS=, read -a valid_regions <<<"${valid_regions[@]}"
+printf -v ips ',"%s"' "${valid_regions[@]}"
+ips="${ips:1}"
+valid_regions=($(echo "${valid_regions[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+
+#Validating user input for custom regions  
+secondary_regions=()
+for i in "${valid_values[@]}"; do
+    for j in "${valid_regions[@]}"; do
+        if [[ $i == $j ]]; then
+            secondary_regions+=("$i")
+        fi
+    done
+    if [[ $i != "na" ]] && [[ $primaryregion == $i ]]; then
+        primary_deployment=$primaryregion
+    fi
+done
+
+
+#validate aws account-id and region
+if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ $primary_deployment == "" ]]; then
     usage
 fi
 
-aws_region="$(aws configure get region 2>/dev/null)"
-
 acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
-
 env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
 
-stack_detail="$(aws cloudformation describe-stacks --stack-name cn-rem-functions-$env-$acc_sha --region $aws_region 2>/dev/null)"
+stack_detail="$(aws cloudformation describe-stacks --stack-name cn-rem-functions-$env-$acc_sha --region $primary_deployment 2>/dev/null)"
 stack_status=$?
 
 echo "Validating environment prefix..."
@@ -81,17 +118,45 @@ echo "Checking if the deployment bucket was correctly deleted... "
 sleep 5
 
 if [[ $s3_status -eq 0 ]]; then
-    echo "Deployment bucket is still not deleted. Please delete cn-rem-$env-$acc_sha and try to re-run the script again."
+    echo "Deployment bucket is still not deleted. Please delete bucket cn-rem-$env-$acc_sha and try to re-run the script again."
     exit 1
 fi
 
 echo "Deleting deployment stack..."
-aws cloudformation delete-stack --stack-name cn-rem-functions-$env-$acc_sha --region $aws_region 2>/dev/null
+#remove termination protection from stack
+aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-rem-functions-$env-$acc_sha --region $primary_deployment 2>/dev/null
+aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-rem-$env-$acc_sha --region $primary_deployment 2>/dev/null
+
+#Delete remediation framework stack
+aws cloudformation delete-stack --stack-name cn-rem-functions-$env-$acc_sha --region $primary_deployment 2>/dev/null
 lambda_status=$?
-aws cloudformation delete-stack --stack-name cn-rem-$env-$acc_sha --region $aws_region 2>/dev/null
+
+aws cloudformation delete-stack --stack-name cn-rem-$env-$acc_sha --region $primary_deployment 2>/dev/null
 bucket_status=$?
 
-if [[ $lambda_status -eq 0 ]] && [[ $bucket_status -eq 0 ]]; then
+echo "Deleting Regional Deployments...."
+
+if [[ "$secondary_regions" -ne "na" ]]; then
+    #Delete Regional Stack
+    for i in "${secondary_regions[@]}"; do
+        if [[ "$i" != "$primary_deployment" ]]; then
+            stack_detail="$(aws cloudformation describe-stacks --stack-name cn-rem-$env-$i-$acc_sha --region $i 2>/dev/null)"
+            stack_status=$?
+            if [[ $stack_status -eq 0 ]]; then
+                #remove termination protection
+                aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-rem-$env-$i-$acc_sha --region $i 2>/dev/null
+                #delete stack from other regions
+                aws cloudformation delete-stack --stack-name cn-rem-$env-$i-$acc_sha --region $i 2>/dev/null
+            else
+                echo "Region $i is not configured in remediation framework"
+            fi
+        fi
+    done
+else
+    echo "Regional Deployments skipped with input na!.."
+fi
+
+if [[ $lambda_status -eq 0 ]]  && [[ $bucket_status -eq 0 ]]; then
     echo "Successfully deleted deployment stack!"
 else
     echo "Something went wrong! Please contact Cloudneeti support!"
