@@ -9,7 +9,7 @@ This remediation solution is designed to continuously perform remediation in nea
 
 The remediation framework uses Cloudwatch event rules, CloudTrail, CloudWatch log group, the remediation lambda functions, and the appropriate IAM roles.
 
-![localremediation.png](images/localremediation.png)
+![localremediation.jpg](images/localremediation.jpg)
 
 1. AWS account administrator creates/updates/reconfigure resources in aws account
 2. CloudTrail and CloudWatch event bus collects the events occurred in AWS account and trigger appropriate event rule.
@@ -19,7 +19,7 @@ The remediation framework uses Cloudwatch event rules, CloudTrail, CloudWatch lo
 
 This auto-remediation solution supports multi-account remediation as well. Here, we are providing cross-account access roles to execute the remediation functions present in remediation framework account.
 
-![multiaccountremediation.png](images/multiaccountremediation.png)
+![multiaccountremediation.jpg](images/multiaccountremediation.jpg)
 
 Use Cloudneeti to configure remediation policies on the AWS account. You can manually trigger remediation of existing resources from Cloudneeti portal. Remediation framework always remediates resources whenever somebody creates new resources or updates the existing resources. 
 
