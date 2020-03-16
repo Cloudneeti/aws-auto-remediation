@@ -9,6 +9,7 @@ import hashlib
 from botocore.exceptions import ClientError
 import gzip
 import base64
+import os
 
 def lambda_handler(event, context):
     cloudtrail_list = ["CTMultiRegionTrail", "CTLogFileValidation","CTIsLogging"]
@@ -41,6 +42,11 @@ def lambda_handler(event, context):
     except:
         runtime_region = 'us-east-1'
         
+    try:
+        runtime_region = os.environ['AWS_REGION']
+    except:
+        runtime_region = 'us-east-1'
+
     try:
         policy_list = json.loads(event['body'])['RemediationPolicies']
         policy_flag = 1
@@ -941,7 +947,7 @@ def lambda_handler(event, context):
             
             try:
                 invokeLambda = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=runtime_region)
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-relayfunction', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'cn-aws-auto-remediate-invoker', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 RelayAccess = json.loads(response['Payload'].read())
             except:
                 RelayAccess = False                

@@ -6,6 +6,9 @@ Parameters:
     awsaccountid:
         Description: AWS Account ID
         Type: String
+    region:
+        Description: Region of deployment
+        Type: String
 Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
@@ -13,8 +16,7 @@ Resources:
         BucketName:
           Fn::Join:
           - ""
-          - - 'cn-rem-'
-            - !Ref Stack
+          - - !Ref Stack
         BucketEncryption:
             ServerSideEncryptionConfiguration:
                 - ServerSideEncryptionByDefault:
@@ -42,12 +44,12 @@ Resources:
             Value: "Cloudneeti automatic remediation solution for making cloud resource compliant"
   CTBucketPolicy:
     Type: AWS::S3::BucketPolicy
+    DependsOn: S3Bucket
     Properties: 
       Bucket:
         Fn::Join:
         - ""
-        - - 'cn-rem-'
-          - !Ref Stack
+        - - !Ref Stack
       PolicyDocument:
         Statement:
           - Sid: CTBucketPolicy1
@@ -60,7 +62,7 @@ Resources:
             Resource:
               Fn::Join:
               - ""
-              - - 'arn:aws:s3:::cn-rem-'
+              - - 'arn:aws:s3:::'
                 - !Ref Stack
           - Sid: CTBucketPolicy2
             Action:
@@ -72,7 +74,7 @@ Resources:
             Resource:
               Fn::Join:
               - ""
-              - - 'arn:aws:s3:::cn-rem-'
+              - - 'arn:aws:s3:::'
                 - !Ref Stack
                 - '/cn-ctlogs/AWSLogs/'
                 - !Ref awsaccountid
@@ -110,7 +112,9 @@ Resources:
               Resource: 
                 Fn::Join:
                 - ""
-                - - 'arn:aws:logs:us-east-1:'
+                - - 'arn:aws:logs:'
+                  - !Ref region
+                  - ':'
                   - !Ref awsaccountid
                   - ':log-group:cn-log-group:*'
             - Sid: CTCWPolicy2
@@ -120,10 +124,42 @@ Resources:
               Resource: 
                 Fn::Join:
                 - ""
-                - - 'arn:aws:logs:us-east-1:'
+                - - 'arn:aws:logs:'
+                  - !Ref region
+                  - ':'
                   - !Ref awsaccountid
                   - ':log-group:cn-log-group:*'
-
-
-
-
+  CNLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CN-Auto-Remediation-Invoker
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: cn-lambda-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Sid: AllowIAMForLambdaPolicy
+              Effect: Allow
+              Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              - cloudtrail:DescribeTrails
+              - cloudtrail:GetTrailStatus
+              - iam:Get*
+              - iam:List*
+              Resource: "*"
+            - Sid: AllowAssumeRoleForLambdaPolicy
+              Effect: Allow
+              Action:
+              - sts:AssumeRole
+              Resource: 
+              - "arn:aws:iam::*:role/CN-Remediation-Invocation-Role"

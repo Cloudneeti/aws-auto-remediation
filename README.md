@@ -7,14 +7,14 @@ This remediation solution is designed to continuously perform remediation in nea
 
 ### How it works
 
-The remediation framework uses CloudTrail, CloudWatch log group, the remediation lambda functions, and the appropriate IAM roles.
+The remediation framework uses Cloudwatch event rules, CloudTrail, CloudWatch log group, the remediation lambda functions, and the appropriate IAM roles.
 
 ![localremediation.png](images/localremediation.png)
 
 1. AWS account administrator creates/updates/reconfigure resources in aws account
-2. CloudTrail and CloudWatch logs group collects the events occurred in AWS account
-3. CloudWatch triggered the auto-remediation invoker in near real-time
-4. Auto-remediation invoker lambda calls the appropriate remediation functions present in the remediation framework
+2. CloudTrail and CloudWatch event bus collects the events occurred in AWS account and trigger appropriate event rule.
+3. CloudWatch event rule trigger the auto-remediation invoker in near real-time in its region
+4. Form diifferent aws region Auto-remediation-invoker lambda calls the orchestrator which then call appropriate remediation functions present in the remediation framework 
 5. Remediation functions setup required security configuration on the resources
 
 This auto-remediation solution supports multi-account remediation as well. Here, we are providing cross-account access roles to execute the remediation functions present in remediation framework account.
@@ -33,23 +33,29 @@ Following dependencies should be present on the machine before proceeding to onb
 -  AWS Command Line Interface (CLI) is a unified tool to manage your AWS services 
 
 	Install AWS CLI following steps present [here](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html)
+
 - Nodejs
 
 	Download the latest stable version of Nodejs from [here](https://nodejs.org/en/download) and install it on the workstation.
+
 - Serverless CLI tool to manage AWS deployments
 
 	Execute the below command to install a serverless module,
 
 	`# npm install –g serverless`
 
+- JQ for bash terminal
+
+	`https://stedolan.github.io/jq/download/`
+
 
 ## Onboarding Steps
 
 Follow the below steps to set up remediation procedures
 
-1. Clone remediation repository
+1. Download and Unzip latest package from the link below.
 
-	`# git clone https://github.com/Cloudneeti/aws-auto-remediation.git`
+	`https://github.com/Cloudneeti/aws-auto-remediation/releases`
 
 3. Change to remediation directory
 
@@ -62,21 +68,31 @@ Follow the below steps to set up remediation procedures
    Enter the required inputs:
    - AWS Access Key ID: Access key of any admin user of the account in consideration.
    - AWS Secret Access Key: Secret Access Key of any admin user of the account in consideration
-   - Default region name: Programmatic region name where you want to deploy the framework (eg: us-east-1)
+   - Default region name: AWS region name (eg: us-east-1)
    - Default output format: json
 
 ### Provision Remediation Framework
 Perform below steps to deploy remediation framework on configured AWS account
-1. Open bash 
-2. Deploy remediation framework
+1. Open bash terminal
+2. Deploy remediation framework in selected regions or in all regions
 
-	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -e <environment> -v 1.0`
+	Note: Primary region for multi account deployment should be the same as that of the remediation framework primary region for single account deployment
+
+	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <1.0> -s <list of regions where auto-remediation is to be enabled>`
+
+	OR
+
+	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <1.0> -s <all>`
 
 	Pass AWS account id and the environment as dev/test/prod.
 
 3. Verify remediation framework setup
 
-	`# bash verify-remediation-setup.sh -a <12-digit-account-id> -e <environment>`
+	`# bash verify-remediation-setup.sh -a <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -s <list of regions where auto-remediation is to be verified>`
+
+	OR
+
+	`# bash verify-remediation-setup.sh -a <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -s <all>`
 
 ### Configure Multi-Account Remediation
 
@@ -92,17 +108,34 @@ In case you want to use same remediation framework for remediation of multiple A
 3. Configure AWS account on account to be remediated
 
 	`# aws configure`
+
+   Enter the required inputs:
+   - AWS Access Key ID: Access key of any admin user of the account in consideration.
+   - AWS Secret Access Key: Secret Access Key of any admin user of the account in consideration
+   - Default region name: AWS region name (eg: us-east-1)
+   - Default output format: json
+
 4. Switch to `multi-mode-remediation` directory
 
 	`# cd multi-mode-remediation`
-5. Configure multi-account remediation using below command
+5. Configure multi-account remediation using below commands to deploy in specific or all regions
+	
+	Note: Primary region for multi account deployment should be the same as that of the remediation framework primary region for single account deployment
 
-	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment> -v 1.0`
+	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <1.0> -s <list of regions where auto-remediation is to enabled>`
 
-   This command creates the required resources like Cloudtrail, Cloudwatch rules and roles required to perform cross-account remediation 
+	OR
+
+	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <1.0> -s <all>`
+
+   This command creates the required resources like Cloudtrail, Cloudwatch event rules, Remediation functions and roles required to perform cross-account remediation 
 6. Verify multi-account remediation setup
 
-	`# bash verify-multi-mode-remediation-setup.sh -a <12-digit-account-id> -r <remediation-framework-account-id> -e <environment>`
+	`# bash verify-multi-mode-remediation-setup.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -s <list of regions where auto-remediation is to be verified>`
+
+	OR
+
+	`# bash verify-multi-mode-remediation-setup.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -s <all>`
 
 ## Configure remediation on Cloudneeti Account
 

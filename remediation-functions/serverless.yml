@@ -1,10 +1,11 @@
-service: cn-aws-remediate
+service: cn-rem-functions
 
 provider:
   name: aws
   runtime: python3.7
-  stage: ${opt:env, 'cn-remediation'}
+  stage: ${opt:env, 'dev'}
   region: ${opt:region, 'us-east-1'}
+  remediationversion: ${opt:remediationversion, '1.0'}
   memorySize: 3008
   deploymentBucket:
     name: cn-rem-${self:provider.stage}
@@ -256,7 +257,7 @@ functions:
                 - StopDeliveryStreamEncryption
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '1.0'}
+      Version: ${opt:remediationversion}
       Description: Cloudneeti automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'cn-remediation'}
 
@@ -267,7 +268,7 @@ functions:
     role: CNLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '1.0'}
+      Version: ${opt:remediationversion}
       Description: Cloudneeti automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'cn-remediation'}
 
@@ -278,7 +279,7 @@ functions:
     role: CNLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '1.0'}
+      Version: ${opt:remediationversion}
       Description: Cloudneeti automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'cn-remediation'}
 
@@ -289,7 +290,7 @@ functions:
     role: CNLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '1.0'}
+      Version: ${opt:remediationversion}
       Description: Cloudneeti automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'cn-remediation'}
 
@@ -300,7 +301,7 @@ functions:
     role: CNLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '1.0'}
+      Version: ${opt:remediationversion}
       Description: Cloudneeti automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'cn-remediation'}
 
@@ -311,7 +312,7 @@ functions:
     role: CNLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '1.0'}
+      Version: ${opt:remediationversion}
       Description: Cloudneeti automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'cn-remediation'}
 
@@ -322,7 +323,7 @@ functions:
     role: CNLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '1.0'}
+      Version: ${opt:remediationversion}
       Description: Cloudneeti automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'cn-remediation'}
 
@@ -333,7 +334,7 @@ functions:
     role: CNLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '1.0'}
+      Version: ${opt:remediationversion}
       Description: Cloudneeti automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'cn-remediation'}
 
@@ -344,7 +345,7 @@ functions:
     role: CNLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '1.0'}
+      Version: ${opt:remediationversion}
       Description: Cloudneeti automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'cn-remediation'}
 
@@ -355,7 +356,7 @@ functions:
     role: CNLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '1.0'}
+      Version: ${opt:remediationversion}
       Description: Cloudneeti automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'cn-remediation'}
 
@@ -366,7 +367,7 @@ functions:
     role: CNLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '1.0'}
+      Version: ${opt:remediationversion}
       Description: Cloudneeti automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'cn-remediation'}
 
@@ -529,7 +530,7 @@ resources:
     CNCloudTrail:
       Type: AWS::CloudTrail::Trail
       Properties: 
-        CloudWatchLogsLogGroupArn: "arn:aws:logs:us-east-1:${opt:aws-account-id}:log-group:cn-log-group:*"
+        CloudWatchLogsLogGroupArn: "arn:aws:logs:${opt:region}:${opt:aws-account-id}:log-group:cn-log-group:*"
         CloudWatchLogsRoleArn: "arn:aws:iam::${opt:aws-account-id}:role/CN-CloudwatchRole"
         IncludeGlobalServiceEvents: true
         IsLogging: true
@@ -543,7 +544,7 @@ resources:
             Value: "auto-remediation-trail"
           -
             Key: "Version"
-            Value: "${opt:version, '1.0'}"
+            Value: "${opt:remediationversion}"
           -
             Key: "Description"
             Value: "Cloudneeti automatic remediation solution for making cloud resource compliant"
@@ -616,6 +617,7 @@ resources:
               Principal:
                 AWS:
                   - "arn:aws:iam::079042248639:root"   # Add the Cloudneeti AWS Account ID
+                  - "arn:aws:iam::${opt:aws-account-id}:role/CN-Auto-Remediation-Invoker"
               Action: sts:AssumeRole
         Policies:
           - PolicyName: cn-lambda-policy
@@ -626,6 +628,7 @@ resources:
                 Effect: Allow
                 Action:
                 - lambda:InvokeFunction
+                - lambda:GetFunction
                 Resource: "*"
     CNLambdaRole:
       Type: AWS::IAM::Role
@@ -652,7 +655,10 @@ resources:
                 - logs:PutLogEvents
                 - cloudtrail:DescribeTrails
                 - cloudtrail:GetTrailStatus
-                - s3:*
+                - s3:ListAllMyBuckets
+                - s3:GetObject
+                - s3:PutObject
+                - s3:GetBucketVersioning
                 - lambda:InvokeFunction
                 Resource: "*"
               - Sid: AllowAssumeRoleForLambdaPolicy
