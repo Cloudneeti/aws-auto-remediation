@@ -1,1 +1,1 @@
-__all__ = [ "neptuneinstance_minorversionupgrade"]
+__all__ = [ "neptuneinstance_minorversionupgrade","neptuneinstance_copytagstosnapshot","neptuneinstance_disable_public_access"]

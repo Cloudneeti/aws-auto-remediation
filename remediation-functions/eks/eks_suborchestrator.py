@@ -1,16 +1,15 @@
 '''
-Route53 service domain name sub-orchestrator function
+eks sub-orchestrator function
 '''
 
 import json
 import boto3
 import common
 from botocore.exceptions import ClientError
-from route53_domain import *
+from eks import *
 
 def lambda_handler(event, context):
     global aws_access_key_id, aws_secret_access_key, aws_session_token, CustAccID, Region
-    route53_domain_list = ["DomainRegistrantPrivacy","DomainTransferLock","DomainAutoRenew","DomainTechAdminPrivacy"]
     
     try:
         PolicyId = json.loads(event["body"])["PolicyId"]
@@ -38,7 +37,7 @@ def lambda_handler(event, context):
 
         try:
             Region = event["Region"]
-            DomainName = event["DomainName"]
+            EKSClusterName = event["EKSClusterName"]
             records_json = json.loads(event["policies"])
             records = records_json["RemediationPolicies"]
         except:
@@ -46,7 +45,7 @@ def lambda_handler(event, context):
 
         try:
             # Establish a session with the portal
-            route53domains = boto3.client('route53domains', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)  
+            eks = boto3.client('eks', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)  
         except ClientError as e:
             print(e)
             return {  
@@ -60,9 +59,9 @@ def lambda_handler(event, context):
                 'body': str(e)
             }
         
-        if set(route53_domain_list).intersection(set(records)):
+        if "EKSClusterLogging" in str(records):
             try:
-                route53domain_techadmin_privacy.run_remediation(route53domains,DomainName)
+                eks_controlplanlogging.run_remediation(eks,EKSClusterName)
             except ClientError as e:
                 print(e)
                 return {  
@@ -76,11 +75,11 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }   
         
-        print('remediated-' + DomainName)
+        print('remediated-' + EKSClusterName)
         #returning the output Array in json format
         return {  
             'statusCode': 200,
-            'body': json.dumps('remediated-' + DomainName)
+            'body': json.dumps('remediated-' + EKSClusterName)
         }
 
     else:
@@ -104,13 +103,13 @@ def lambda_handler(event, context):
         try:
             Region_name = json.loads(event["body"])["Region"]
             Region = common.getRegionName(Region_name)
-            DomainName = json.loads(event["body"])["ResourceName"]
+            EKSClusterName = json.loads(event["body"])["ResourceName"]
         except:
             Region = ""
 
         try:
             # Establish a session with the portal
-            route53domains = boto3.client('route53domains', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)  
+            eks = boto3.client('eks', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)  
         except ClientError as e:
             print(e)
             return {  
@@ -125,15 +124,15 @@ def lambda_handler(event, context):
             }
 
         try:
-            if PolicyId in route53_domain_list:  
-                responseCode,output = route53domain_techadmin_privacy.run_remediation(route53domains,DomainName)
+            if PolicyId == "EKSClusterLogging":  
+                responseCode,output = eks_controlplanlogging.run_remediation(eks,EKSClusterName)
         
         except ClientError as e:
             responseCode = 400
-            output = "Unable to remediate bucket: " + str(e)
+            output = "Unable to remediate EKS Cluster: " + str(e)
         except Exception as e:
             responseCode = 400
-            output = "Unable to remediate KMS Key: " + str(e)
+            output = "Unable to remediate EKS Cluster: " + str(e)
 
             # returning the output Array in json format
         return {  

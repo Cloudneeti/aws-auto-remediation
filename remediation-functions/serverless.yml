@@ -226,6 +226,34 @@ functions:
               eventName:
                 - CreateQueue
                 - SetQueueAttributes
+      - cloudwatchEvent:
+          name: 'cn-aws-route53domain-event-rule'
+          description: 'CloudWatch Event triggered on route53 domain'
+          event:
+            source:
+              - aws.route53
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - route53.amazonaws.com
+              eventName:
+                - DisableDomainAutoRenew
+                - DisableDomainTransferLock
+                - UpdateDomainContact
+      - cloudwatchEvent:
+          name: 'cn-aws-kinesis-firehose-event-rule'
+          description: 'CloudWatch Event triggered on kinesis firhose'
+          event:
+            source:
+              - aws.firehose
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - firehose.amazonaws.com
+              eventName:
+                - StopDeliveryStreamEncryption
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}
@@ -440,6 +468,61 @@ functions:
       Version: ${opt:version, '1.0'}
       Description: Cloudneeti automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'cn-remediation'}
+  
+  docdb_instance:
+    handler: docdb_instance/documentdbinstance_suborchestrator.lambda_handler
+    name: cn-aws-remediate-documentdb-instance
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+  
+  docdb_cluster:
+    handler: docdb_cluster/documentdbcluster_suborchestrator.lambda_handler
+    name: cn-aws-remediate-documentdb-cluster
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+
+  route53_domain:
+    handler: route53_domain/route53domain_suborchestrator.lambda_handler
+    name: cn-aws-remediate-route53-domain
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+
+  fsx_windows:
+    handler: fsx_windows/fsx_windows_suborchestrator.lambda_handler
+    name: cn-aws-remediate-fsx-windows
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+  
+  kinesis_firehose:
+    handler: kinesis_firehose/kinesis_firehose_suborchestrator.lambda_handler
+    name: cn-aws-remediate-kinesis-firehose
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
     
 resources:
   Resources:
@@ -517,6 +600,10 @@ resources:
               - cloudformation:UpdateTerminationProtection
               - config:PutConfigurationRecorder
               - sqs:SetQueueAttributes
+              - route53domains:EnableDomainAutoRenew
+              - route53domains:UpdateDomainContactPrivacy
+              - route53domains:EnableDomainTransferLock
+              - firehose:StartDeliveryStreamEncryption
               Resource: "*"
     CNOrchestratorRole:
       Type: AWS::IAM::Role

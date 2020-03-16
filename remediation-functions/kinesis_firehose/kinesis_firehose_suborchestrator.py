@@ -1,16 +1,15 @@
 '''
-Route53 service domain name sub-orchestrator function
+docdb cluster sub-orchestrator function
 '''
 
 import json
 import boto3
 import common
 from botocore.exceptions import ClientError
-from route53_domain import *
+from kinesis_firehose import *
 
 def lambda_handler(event, context):
     global aws_access_key_id, aws_secret_access_key, aws_session_token, CustAccID, Region
-    route53_domain_list = ["DomainRegistrantPrivacy","DomainTransferLock","DomainAutoRenew","DomainTechAdminPrivacy"]
     
     try:
         PolicyId = json.loads(event["body"])["PolicyId"]
@@ -38,7 +37,7 @@ def lambda_handler(event, context):
 
         try:
             Region = event["Region"]
-            DomainName = event["DomainName"]
+            delivery_stream_name = event["StreamName"]
             records_json = json.loads(event["policies"])
             records = records_json["RemediationPolicies"]
         except:
@@ -46,7 +45,7 @@ def lambda_handler(event, context):
 
         try:
             # Establish a session with the portal
-            route53domains = boto3.client('route53domains', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)  
+            kinesis_firehose = boto3.client('firehose', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)  
         except ClientError as e:
             print(e)
             return {  
@@ -59,10 +58,16 @@ def lambda_handler(event, context):
                 'statusCode': 400,
                 'body': str(e)
             }
-        
-        if set(route53_domain_list).intersection(set(records)):
+
+        if "KinesisFirehoseEncryption" in str(records):
             try:
-                route53domain_techadmin_privacy.run_remediation(route53domains,DomainName)
+                kinesis_firehose_default_encryption.run_remediation(kinesis_firehose,delivery_stream_name)
+                print('remediated-' + delivery_stream_name)
+                #returning the output Array in json format
+                return {  
+                    'statusCode': 200,
+                    'body': json.dumps('remediated-' + delivery_stream_name)
+                }
             except ClientError as e:
                 print(e)
                 return {  
@@ -74,14 +79,7 @@ def lambda_handler(event, context):
                 return {
                     'statusCode': 400,
                     'body': str(e)
-                }   
-        
-        print('remediated-' + DomainName)
-        #returning the output Array in json format
-        return {  
-            'statusCode': 200,
-            'body': json.dumps('remediated-' + DomainName)
-        }
+                }
 
     else:
         print("CN-portal triggered remediation")
@@ -104,13 +102,13 @@ def lambda_handler(event, context):
         try:
             Region_name = json.loads(event["body"])["Region"]
             Region = common.getRegionName(Region_name)
-            DomainName = json.loads(event["body"])["ResourceName"]
+            delivery_stream_name = json.loads(event["body"])["ResourceName"]
         except:
             Region = ""
 
         try:
             # Establish a session with the portal
-            route53domains = boto3.client('route53domains', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)  
+            kinesis_firehose = boto3.client('firehose', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)  
         except ClientError as e:
             print(e)
             return {  
@@ -125,17 +123,17 @@ def lambda_handler(event, context):
             }
 
         try:
-            if PolicyId in route53_domain_list:  
-                responseCode,output = route53domain_techadmin_privacy.run_remediation(route53domains,DomainName)
+            if PolicyId == "KinesisFirehoseEncryption":  
+                responseCode,output = kinesis_firehose_default_encryption.run_remediation(kinesis_firehose,delivery_stream_name)
         
         except ClientError as e:
             responseCode = 400
-            output = "Unable to remediate bucket: " + str(e)
+            output = "Unable to remediate kinesis firehose: " + str(e)
         except Exception as e:
             responseCode = 400
-            output = "Unable to remediate KMS Key: " + str(e)
+            output = "Unable to remediate kinesis firehose: " + str(e)
 
-            # returning the output Array in json format
+        # returning the output Array in json format
         return {  
             'statusCode': responseCode,
             'body': output

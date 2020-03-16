@@ -1,0 +1,1 @@
+__all__ = ["kinesis_firehose_default_encryption"]

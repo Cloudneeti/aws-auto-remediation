@@ -1,19 +1,17 @@
 '''
-neptune auto version upgrade
+docdb AutoMinor VersionUpgrade
 '''
-
+import time
 from botocore.exceptions import ClientError
 
-def run_remediation(neptune, cluster_name):
+def run_remediation(docdb,docdb_instancename):
     print("Executing remediation")            
-    backup = True
+    version_upgrade = False
     
-    #verify value for current backup retention 
+    #Verify current AutoMinor VersionUpgrade for cluster
     try:
-        response = neptune.describe_db_clusters(DBClusterIdentifier = cluster_name)['DBClusters']
-        backupretention = response[0]['BackupRetentionPeriod']
-        if backupretention < 7:
-            backup = False
+        response = docdb.describe_db_instances(DBInstanceIdentifier = docdb_instancename)['DBInstances']
+        version_upgrade = response[0]['AutoMinorVersionUpgrade']
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
@@ -21,22 +19,23 @@ def run_remediation(neptune, cluster_name):
         responseCode = 400
         output = "Unexpected error: " + str(e)
 
-    if not backup:
-        #verify instance state  
+    if not version_upgrade:
+        #verify cluster state  
         while response[0]['Status'] not in ['available', 'stopped']:
             try:
-                response = neptune.describe_db_clusters(DBClusterIdentifier = cluster_name)['DBClusters']
+                response = docdb.describe_db_instances(DBInstanceIdentifier = docdb_instancename)['DBInstances']
+                time.sleep(10)
             except ClientError as e:
                 responseCode = 400
                 output = "Unexpected error: " + str(e)
             except Exception as e:
                 responseCode = 400
                 output = "Unexpected error: " + str(e)
-        #Update current backup retention          
+        #Apply AutoMinor VersionUpgrade to cluster                  
         try:
-            result = neptune.modify_db_cluster(
-                        DBClusterIdentifier = cluster_name,
-                        BackupRetentionPeriod = 7,
+            result = docdb.modify_db_instance(
+                        DBInstanceIdentifier = docdb_instancename,
+                        AutoMinorVersionUpgrade = True,
                         ApplyImmediately = True
                     )
 
@@ -44,7 +43,7 @@ def run_remediation(neptune, cluster_name):
             if responseCode >= 400:
                 output = "Unexpected error: %s \n" % str(result)
             else:
-                output = "backup retention is now enabled for neptune cluster : %s \n" % cluster_name
+                output = "AutoMinor VersionUpgrade is now enabled for docdb cluster : %s \n" % docdb_instancename
                     
         except ClientError as e:
             responseCode = 400
@@ -56,7 +55,7 @@ def run_remediation(neptune, cluster_name):
             print(output)
     else:
         responseCode = 200
-        output='Backup retention is already enabled for neptune-instance : '+ instance_name
+        output='AutoMinor VersionUpgrade is already enabled for docdb cluster : '+ docdb_instancename
         print(output)
 
     print(str(responseCode)+'-'+output)

@@ -1,12 +1,12 @@
 '''
-neptune instance sub-orchestrator function
+docdb cluster sub-orchestrator function
 '''
 
 import json
 import boto3
 import common
 from botocore.exceptions import ClientError
-from neptune_instance import *
+from docdb_cluster import *
 
 def lambda_handler(event, context):
     global aws_access_key_id, aws_secret_access_key, aws_session_token, CustAccID, Region
@@ -37,7 +37,7 @@ def lambda_handler(event, context):
 
         try:
             Region = event["Region"]
-            neptune_name = event["NeptuneInstanceName"]
+            docdb_clustername = event["DocdbClusterName"]
             records_json = json.loads(event["policies"])
             records = records_json["RemediationPolicies"]
         except:
@@ -45,7 +45,7 @@ def lambda_handler(event, context):
 
         try:
             # Establish a session with the portal
-            neptune = boto3.client('neptune', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)  
+            docdb = boto3.client('docdb', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)  
         except ClientError as e:
             print(e)
             return {  
@@ -59,10 +59,10 @@ def lambda_handler(event, context):
                 'body': str(e)
             }
 
-        if "NeptuneAutoMinorVersionUpgrade" in str(records):
+        if "DocDBDeletionProtection" in str(records):
             try:
-                neptuneinstance_minorversionupgrade.run_remediation(neptune,neptune_name)
-                print('remediated-' + neptune_name)
+                documentdb_cluster_deletion_protection.run_remediation(docdb,docdb_clustername)
+                print('remediated-' + docdb_clustername)
             except ClientError as e:
                 print(e)
                 return {  
@@ -76,10 +76,10 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
         
-        if "NeptuneCpoyTagsToSnapshots" in str(records):
+        if "BackupRetentionPeriod" in str(records):
             try:
-                neptuneinstance_copytagstosnapshot.run_remediation(neptune,neptune_name)
-                print('remediated-' + neptune_name)
+                documentdb_cluster_backup_retention.run_remediation(docdb,docdb_clustername)
+                print('remediated-' + docdb_clustername)
             except ClientError as e:
                 print(e)
                 return {  
@@ -93,10 +93,10 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
         
-        if "NeptunePrivateAccess" in str(records):
+        if "DocdbCloudWatchLogsEnabled" in str(records):    
             try:
-                neptuneinstance_disable_public_access.run_remediation(neptune,neptune_name)
-                print('remediated-' + neptune_name)
+                documentdb_cluster_logexport.run_remediation(docdb,docdb_clustername)
+                print('remediated-' + docdb_clustername)
             except ClientError as e:
                 print(e)
                 return {  
@@ -110,10 +110,27 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
         
+        if "DocdbStorageEncrypted" in str(records):    
+            try:
+                documentdb_cluster_defaultencryption.run_remediation(docdb,docdb_clustername)
+                print('remediated-' + docdb_clustername)
+            except ClientError as e:
+                print(e)
+                return {  
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+            except Exception as e:
+                print(e)
+                return {
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+
         #returning the output Array in json format
         return {  
             'statusCode': 200,
-            'body': json.dumps('remediated-' + neptune_name)
+            'body': json.dumps('remediated-' + docdb_clustername)
         }
 
 
@@ -138,13 +155,13 @@ def lambda_handler(event, context):
         try:
             Region_name = json.loads(event["body"])["Region"]
             Region = common.getRegionName(Region_name)
-            neptune_name = json.loads(event["body"])["ResourceName"]
+            docdb_clustername = json.loads(event["body"])["ResourceName"]
         except:
             Region = ""
 
         try:
             # Establish a session with the portal
-            neptune = boto3.client('neptune', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)  
+            docdb = boto3.client('docdb', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token,region_name=Region)  
         except ClientError as e:
             print(e)
             return {  
@@ -159,21 +176,24 @@ def lambda_handler(event, context):
             }
 
         try:
-            if PolicyId == "NeptuneAutoMinorVersionUpgrade":  
-                responseCode,output = neptuneinstance_minorversionupgrade.run_remediation(neptune,neptune_name)
-                
-            if PolicyId == "NeptuneCpoyTagsToSnapshots":  
-                responseCode,output = neptuneinstance_copytagstosnapshot.run_remediation(neptune,neptune_name)
-                
-            if PolicyId == "NeptunePrivateAccess":  
-                responseCode,output = neptuneinstance_disable_public_accessw.run_remediation(neptune,neptune_name)
+            if PolicyId == "DocdbStorageEncrypted":  
+                responseCode,output = documentdb_cluster_defaultencryption.run_remediation(docdb,docdb_clustername)
+            
+            if PolicyId == "BackupRetentionPeriod":  
+                responseCode,output = documentdb_cluster_backup_retention.run_remediation(docdb,docdb_clustername)
+            
+            if PolicyId == "DocdbCloudWatchLogsEnabled":  
+                responseCode,output = documentdb_cluster_logexport.run_remediation(docdb,docdb_clustername)
+            
+            if PolicyId == "DocDBDeletionProtection":  
+                responseCode,output = documentdb_cluster_deletion_protection.run_remediation(docdb,docdb_clustername)
         
         except ClientError as e:
             responseCode = 400
-            output = "Unable to remediate neptune: " + str(e)
+            output = "Unable to remediate docdb cluster: " + str(e)
         except Exception as e:
             responseCode = 400
-            output = "Unable to remediate neptune: " + str(e)
+            output = "Unable to remediate docdb cluster: " + str(e)
 
         # returning the output Array in json format
         return {  

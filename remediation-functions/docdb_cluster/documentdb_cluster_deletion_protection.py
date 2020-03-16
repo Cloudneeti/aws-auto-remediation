@@ -1,19 +1,17 @@
 '''
-neptune auto version upgrade
+docdb deletion protection
 '''
-
+import time
 from botocore.exceptions import ClientError
 
-def run_remediation(neptune, cluster_name):
+def run_remediation(docdb,docdb_clustername):
     print("Executing remediation")            
-    backup = True
+    deletionprotection = False
     
-    #verify value for current backup retention 
+    #Verify current deletion protection for cluster
     try:
-        response = neptune.describe_db_clusters(DBClusterIdentifier = cluster_name)['DBClusters']
-        backupretention = response[0]['BackupRetentionPeriod']
-        if backupretention < 7:
-            backup = False
+        response = docdb.describe_db_clusters(DBClusterIdentifier = docdb_clustername)['DBClusters']
+        deletionprotection = response[0]['DeletionProtection']
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
@@ -21,22 +19,24 @@ def run_remediation(neptune, cluster_name):
         responseCode = 400
         output = "Unexpected error: " + str(e)
 
-    if not backup:
-        #verify instance state  
+    if not deletionprotection:
+        #verify cluster state  
         while response[0]['Status'] not in ['available', 'stopped']:
             try:
-                response = neptune.describe_db_clusters(DBClusterIdentifier = cluster_name)['DBClusters']
+                response = docdb.describe_db_clusters(DBClusterIdentifier = docdb_clustername)['DBClusters']
+                time.sleep(10)
             except ClientError as e:
                 responseCode = 400
                 output = "Unexpected error: " + str(e)
             except Exception as e:
                 responseCode = 400
                 output = "Unexpected error: " + str(e)
-        #Update current backup retention          
+        
+        #Apply deletion protection to cluster                  
         try:
-            result = neptune.modify_db_cluster(
-                        DBClusterIdentifier = cluster_name,
-                        BackupRetentionPeriod = 7,
+            result = docdb.modify_db_cluster(
+                        DBClusterIdentifier = docdb_clustername,
+                        DeletionProtection = True,
                         ApplyImmediately = True
                     )
 
@@ -44,7 +44,7 @@ def run_remediation(neptune, cluster_name):
             if responseCode >= 400:
                 output = "Unexpected error: %s \n" % str(result)
             else:
-                output = "backup retention is now enabled for neptune cluster : %s \n" % cluster_name
+                output = "Deletion protection is now enabled for docdb cluster : %s \n" % docdb_clustername
                     
         except ClientError as e:
             responseCode = 400
@@ -56,7 +56,7 @@ def run_remediation(neptune, cluster_name):
             print(output)
     else:
         responseCode = 200
-        output='Backup retention is already enabled for neptune-instance : '+ instance_name
+        output='Deletion protection is already enabled for docdb cluster : '+ docdb_clustername
         print(output)
 
     print(str(responseCode)+'-'+output)

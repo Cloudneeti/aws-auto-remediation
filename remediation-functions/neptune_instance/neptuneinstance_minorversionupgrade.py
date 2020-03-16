@@ -52,6 +52,10 @@ def run_remediation(neptune, instance_name):
             responseCode = 400
             output = "Unexpected error: " + str(e)
             print(output)
+    else:
+        responseCode = 200
+        output='Auto version upgrade is already enabled for neptune-instance : '+ instance_name
+        print(output)
 
     print(str(responseCode)+'-'+output)
     return responseCode,output

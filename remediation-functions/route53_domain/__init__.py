@@ -1,1 +1,1 @@
-__all__ = ["kms_enable_key_rotation"]
+__all__ = ["route53domain_techadmin_privacy"]

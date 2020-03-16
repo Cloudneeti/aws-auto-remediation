@@ -1,1 +1,1 @@
-__all__ = ["documentdb_defaultencryption", "documentdb_backup_retention","documentdb_logexport"]
+__all__ = ["documentdb_cluster_defaultencryption", "documentdb_cluster_backup_retention","documentdb_cluster_logexport","documentdb_cluster_deletion_protection"]

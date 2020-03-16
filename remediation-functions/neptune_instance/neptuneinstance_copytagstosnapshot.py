@@ -1,19 +1,17 @@
 '''
-neptune auto version upgrade
+update neptune copytags to snapshot
 '''
 
 from botocore.exceptions import ClientError
 
-def run_remediation(neptune, cluster_name):
+def run_remediation(neptune, instance_name):
     print("Executing remediation")            
-    backup = True
-    
-    #verify value for current backup retention 
+    applied_copy_tags_value = False
+     
+    #Verify current value for auto minor version upgrade 
     try:
-        response = neptune.describe_db_clusters(DBClusterIdentifier = cluster_name)['DBClusters']
-        backupretention = response[0]['BackupRetentionPeriod']
-        if backupretention < 7:
-            backup = False
+        response = neptune.describe_db_instances(DBInstanceIdentifier = instance_name)['DBInstances']
+        applied_copy_tags_value = response[0]['CopyTagsToSnapshot']
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
@@ -21,22 +19,23 @@ def run_remediation(neptune, cluster_name):
         responseCode = 400
         output = "Unexpected error: " + str(e)
 
-    if not backup:
+    if not applied_copy_tags_value:
         #verify instance state  
-        while response[0]['Status'] not in ['available', 'stopped']:
+        while response[0]['DBInstanceStatus'] not in ['available', 'stopped']:
             try:
-                response = neptune.describe_db_clusters(DBClusterIdentifier = cluster_name)['DBClusters']
+                response = neptune.describe_db_instances(DBInstanceIdentifier = instance_name)['DBInstances']
             except ClientError as e:
                 responseCode = 400
                 output = "Unexpected error: " + str(e)
             except Exception as e:
                 responseCode = 400
                 output = "Unexpected error: " + str(e)
-        #Update current backup retention          
+                
+        #Update copy tags to snapshot for neptune db-instance        
         try:
-            result = neptune.modify_db_cluster(
-                        DBClusterIdentifier = cluster_name,
-                        BackupRetentionPeriod = 7,
+            result = neptune.modify_db_instance(
+                        DBInstanceIdentifier = instance_name,
+                        CopyTagsToSnapshot = True,
                         ApplyImmediately = True
                     )
 
@@ -44,7 +43,7 @@ def run_remediation(neptune, cluster_name):
             if responseCode >= 400:
                 output = "Unexpected error: %s \n" % str(result)
             else:
-                output = "backup retention is now enabled for neptune cluster : %s \n" % cluster_name
+                output = "Copy tags to snapshot is now enabled for neptune instance : %s \n" % instance_name
                     
         except ClientError as e:
             responseCode = 400
@@ -56,7 +55,7 @@ def run_remediation(neptune, cluster_name):
             print(output)
     else:
         responseCode = 200
-        output='Backup retention is already enabled for neptune-instance : '+ instance_name
+        output='Copy tags to snapshot is already enabled for neptune-instance : '+ instance_name
         print(output)
 
     print(str(responseCode)+'-'+output)

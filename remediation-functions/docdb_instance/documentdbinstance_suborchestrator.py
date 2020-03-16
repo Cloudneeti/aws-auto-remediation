@@ -6,7 +6,7 @@ import json
 import boto3
 import common
 from botocore.exceptions import ClientError
-from docdb_cluster import *
+from docdb_instance import *
 
 def lambda_handler(event, context):
     global aws_access_key_id, aws_secret_access_key, aws_session_token, CustAccID, Region
@@ -37,7 +37,7 @@ def lambda_handler(event, context):
 
         try:
             Region = event["Region"]
-            docdb_clustername = event["DocdbClusterName"]
+            docdb_instancename = event["DocdbInstanceName"]
             records_json = json.loads(event["policies"])
             records = records_json["RemediationPolicies"]
         except:
@@ -59,14 +59,14 @@ def lambda_handler(event, context):
                 'body': str(e)
             }
 
-        if "DocdbStorageEncrypted" in str(records):
+        if "DocDBInstanceAutoMinorVersionUpgrade" in str(records):
             try:
-                documentdb_defaultencryption.run_remediation(docdb,docdb_clustername)
-                print('remediated-' + docdb_clustername)
+                documentdb_instance_version_upgrade.run_remediation(docdb,docdb_instancename)
+                print('remediated-' + docdb_instancename)
                 #returning the output Array in json format
                 return {  
                     'statusCode': 200,
-                    'body': json.dumps('remediated-' + docdb_clustername)
+                    'body': json.dumps('remediated-' + docdb_instancename)
                 }
             except ClientError as e:
                 print(e)
@@ -80,51 +80,6 @@ def lambda_handler(event, context):
                     'statusCode': 400,
                     'body': str(e)
                 }
-        
-        if "BackupRetentionPeriod" in str(records):
-            try:
-                documentdb_backup_retention.run_remediation(docdb,docdb_clustername)
-                print('remediated-' + docdb_clustername)
-                #returning the output Array in json format
-                return {  
-                    'statusCode': 200,
-                    'body': json.dumps('remediated-' + docdb_clustername)
-                }
-            except ClientError as e:
-                print(e)
-                return {  
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-            except Exception as e:
-                print(e)
-                return {
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-        
-        if "DocdbCloudWatchLogsEnabled" in str(records):    
-            try:
-                documentdb_logexport.run_remediation(docdb,docdb_clustername)
-                print('remediated-' + docdb_clustername)
-                #returning the output Array in json format
-                return {  
-                    'statusCode': 200,
-                    'body': json.dumps('remediated-' + docdb_clustername)
-                }
-            except ClientError as e:
-                print(e)
-                return {  
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-            except Exception as e:
-                print(e)
-                return {
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-
 
     else:
         print("CN-portal triggered remediation")
@@ -147,7 +102,7 @@ def lambda_handler(event, context):
         try:
             Region_name = json.loads(event["body"])["Region"]
             Region = common.getRegionName(Region_name)
-            docdb_clustername = json.loads(event["body"])["ResourceName"]
+            docdb_instancename = json.loads(event["body"])["ResourceName"]
         except:
             Region = ""
 
@@ -168,14 +123,8 @@ def lambda_handler(event, context):
             }
 
         try:
-            if PolicyId == "DocdbStorageEncrypted":  
-                responseCode,output = documentdb_defaultencryption.run_remediation(docdb,docdb_clustername)
-            
-            if PolicyId == "BackupRetentionPeriod":  
-                responseCode,output = documentdb_backup_retention.run_remediation(docdb,docdb_clustername)
-            
-            if PolicyId == "DocdbCloudWatchLogsEnabled":  
-                responseCode,output = documentdb_logexport.run_remediation(docdb,docdb_clustername)
+            if PolicyId == "DocDBInstanceAutoMinorVersionUpgrade":  
+                responseCode,output = documentdb_instance_version_upgrade.run_remediation(docdb,docdb_instancename)
         
         except ClientError as e:
             responseCode = 400
