@@ -127,18 +127,26 @@ Lambda_status=$?
 s3_detail="$(aws s3api get-bucket-versioning --bucket cn-multirem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
 
+rem_location="$(aws s3 get-bucket-location --bucket cn-multirem-$env-$acc_sha --query "LocationConstraint" 2>/dev/null)"
+primary_location="$(eval echo $rem_location)"
+
 if [[ "$invoker_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 0 ]] || [[ "$Lambda_status" -eq 0 ]] || [[ "$s3_status" -eq 0 ]]; then
-	echo "Remediation components already exist. Attempting to redploy framework with latest updates !"
+	echo "Remediation components already exist. Attempting to redeploy framework with latest updates !"
     #Redeploy framework
     if [[ "$s3_status" -eq 0 ]]; then
-        echo "Redploying framework....."
-        aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name cn-multirem-$env-$acc_sha --parameter-overrides Stack=cn-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$remawsaccountid region=$primary_deployment remediationregion=$primary_deployment --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
-        Lambda_status=$?
+        if [[ $primary_location == $primary_deployment ]]; then
+            echo "Redeploying framework....."
+            aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name cn-multirem-$env-$acc_sha --parameter-overrides Stack=cn-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$remawsaccountid region=$primary_deployment remediationregion=$primary_deployment --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+            Lambda_status=$?
 
-        if [[ $Lambda_status -eq 0 ]]; then
-            echo "Successfully deployed remediation framework with latest updates!!"
+            if [[ $Lambda_status -eq 0 ]]; then
+                echo "Successfully deployed remediation framework with latest updates!!"
+            else
+                echo "Something went wrong! Please contact Cloudneeti support for more details"
+                exit 1
+            fi
         else
-            echo "Something went wrong! Please contact Cloudneeti support for more details"
+            echo "Remediation components already exist in $primary_location region. Please run configure-multi-mode-remediation.sh with primary region as $primary_location !"
             exit 1
         fi
     else

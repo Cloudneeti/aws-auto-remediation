@@ -133,16 +133,16 @@ if [[ "$invoker_role" -ne 0 ]] && [[ "$Rem_role" -ne 0 ]] && [[ "$CT_status" -ne
    echo "Remediation framework is not deployed"
 elif [[ "$invoker_role" -ne 0 ]] || [[ "$Rem_role" -ne 0 ]];
 then
-   echo "Required roles not found. Please delete and redploy the framework"
+   echo "Required roles not found. Please delete and redeploy the framework"
 elif [[ "$Lambda_status" -ne 0 ]];
 then
-   echo "Remediation functions not found. Please delete and redploy the framework"
+   echo "Remediation functions not found. Please delete and redeploy the framework"
 elif [[ "$CT_status" -ne 0 ]] || [[ "$CT_log" -ne true ]];
 then
-   echo "Remediation framework cloudtrail trail is not deployed correctly, Please delete and redploy the framework"
+   echo "Remediation framework cloudtrail trail is not deployed correctly, Please delete and redeploy the framework"
 elif [[ "$s3_status" -ne 0 ]];
 then
-   echo "Remediation framework s3-bucket is not deployed correctly or deleted. Please delete and redploy the framework"
+   echo "Remediation framework s3-bucket is not deployed correctly or deleted. Please delete and redeploy the framework"
 elif [[ "$invoker_role" -eq 0 ]] && [[ "$Rem_role" -eq 0 ]] && [[ "$CT_status" -eq 0 ]] && [[ "$Lambda_status" -eq 0 ]] && [[ "$s3_status" -eq 0 ]];
 then
    echo "Remediation framework is correctly deployed"
@@ -166,13 +166,13 @@ if [[ "$secondary_regions" -ne "na" ]]; then
 
                 if [[ "$regional_stack_status" -ne 0 ]] && [[ "$Invoker_Lambda_status" -ne 0 ]];
                 then
-                    echo "Remediation framework is not configured in region $i. Please redploy the framework with region $i as input"
+                    echo "Remediation framework is not configured in region $i. Please redeploy the framework with region $i as input"
                 elif [[ "$Invoker_Lambda_status" -ne 0 ]];
                 then
-                    echo "Remediation framework is not configured in region $i. Please redploy the framework with region $i as input"
+                    echo "Remediation framework is not configured in region $i. Please redeploy the framework with region $i as input"
                 elif [[ "$regional_stack_status" -ne 0 ]];
                 then
-                    echo "Remediation framework is not configured in region $i. Please redploy the framework with region $i as input"
+                    echo "Remediation framework is not configured in region $i. Please redeploy the framework with region $i as input"
                 elif [[ "$regional_stack_status" -eq 0 ]] && [[ "$Invoker_Lambda_status" -eq 0 ]] && [[ "$invoker_role" -eq 0 ]];
                 then
                     echo "Remediation framework is correctly deployed in region $i"

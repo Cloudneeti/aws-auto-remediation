@@ -128,19 +128,26 @@ Lambda_status=$?
 s3_detail="$(aws s3api get-bucket-versioning --bucket cn-rem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
 
+rem_location="$(aws s3api get-bucket-location --bucket cn-rem-$env-$acc_sha --query 'LocationConstraint' 2>/dev/null)"
+primary_location="$(eval echo $rem_location)"
+
 #Update existing remediation framework
 if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 0 ]] || [[ "$Lambda_status" -eq 0 ]] || [[ "$s3_status" -eq 0 ]] || [[ "$invoker_role" -eq 0 ]]; then
-	echo "Remediation components already exist. Attempting to redploy framework with latest updates !"
-
+	echo "Remediation components already exist. Attempting to redeploy framework with latest updates !"
     if [[ "$s3_status" -eq 0 ]]; then
-        echo "Redploying framework....."
-        serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $primary_deployment --remediationversion $version
-        lambda_status=$?
+        if [[ $primary_location == $primary_deployment ]]; then
+            echo "Redeploying framework....."
+            serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $primary_deployment --remediationversion $version
+            lambda_status=$?
 
-        if [[ $lambda_status -eq 0 ]]; then
-            echo "Successfully deployed remediation framework with latest updates!!"
+            if [[ $lambda_status -eq 0 ]]; then
+                echo "Successfully deployed remediation framework with latest updates!!"
+            else
+                echo "Something went wrong! Please contact Cloudneeti support for more details"
+            fi
         else
-            echo "Something went wrong! Please contact Cloudneeti support for more details"
+            echo "Remediation components already exist in $primary_location region. Please run deploy-remediation-framework.sh with primary region as $primary_location !"
+            exit 1
         fi
     else
         echo "Remediation components already exist with a different environment prefix. Please run verify-remediation-setup.sh for more details !"

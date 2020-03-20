@@ -14,7 +14,7 @@ The remediation framework uses Cloudwatch event rules, CloudTrail, CloudWatch lo
 1. AWS account administrator creates/updates/reconfigure resources in aws account
 2. CloudTrail and CloudWatch event bus collects the events occurred in AWS account and trigger appropriate event rule.
 3. CloudWatch event rule trigger the auto-remediation invoker in near real-time in its region
-4. Form diifferent aws region Auto-remediation-invoker lambda calls the orchestrator which then call appropriate remediation functions present in the remediation framework 
+4. Form different aws region Auto-remediation-invoker lambda calls the orchestrator which then call appropriate remediation functions present in the remediation framework 
 5. Remediation functions setup required security configuration on the resources
 
 This auto-remediation solution supports multi-account remediation as well. Here, we are providing cross-account access roles to execute the remediation functions present in remediation framework account.
