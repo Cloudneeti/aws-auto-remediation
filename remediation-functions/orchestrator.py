@@ -41,11 +41,6 @@ def lambda_handler(event, context):
         runtime_region = os.environ['AWS_REGION']
     except:
         runtime_region = 'us-east-1'
-        
-    try:
-        runtime_region = os.environ['AWS_REGION']
-    except:
-        runtime_region = 'us-east-1'
 
     try:
         policy_list = json.loads(event['body'])['RemediationPolicies']
@@ -459,7 +454,7 @@ def lambda_handler(event, context):
                 #endregion
                 
                 #region neptune cluster suborchestrator call
-                if EventName in ["CreateDBCluster", "ModifyDBCluster", "CreateDBInstance"]:
+                if EventName in ["CreateDBCluster", "ModifyDBCluster"]:
                     try:
                         DBEngine=cw_event_data["responseElements"]["engine"]
                     except:

@@ -44,7 +44,6 @@ functions:
                 - cloudformation.amazonaws.com
               eventName:
                 - CreateStack
-                - UpdateStack
                 - UpdateTerminationProtection
       - cloudwatchEvent:
           name: 'cn-aws-cloudtrail-event-rule'
@@ -180,7 +179,6 @@ functions:
                 - ModifyDBCluster
                 - CreateDBInstance
                 - ModifyDBInstance
-                - RemoveTagsFromResource
       - cloudwatchEvent:
           name: 'cn-aws-redshift-event-rule'
           description: 'CloudWatch Event triggered on redshift cluster'
@@ -213,6 +211,7 @@ functions:
                 - PutBucketAcl
                 - PutAccelerateConfiguration
                 - PutBucketPublicAccessBlock
+                - PutBucketLogging
       - cloudwatchEvent:
           name: 'cn-aws-sqs-event-rule'
           description: 'CloudWatch Event triggered on sqs queue'
