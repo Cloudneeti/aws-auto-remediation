@@ -6,7 +6,7 @@
 .DESCRIPTION
     This script will check the deployment status of the critical components of the remediation framework.
 .NOTES
-    Version: 1.0
+    Version: 2.0
 
     # PREREQUISITE
       - Install aws cli
@@ -39,7 +39,7 @@
 usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions where auto-remediation is to be verified>]" 1>&2; exit 1; }
 
 env="dev"
-version="1.0"
+version="2.0"
 secondaryregions=('na')
 while getopts "a:r:p:e:s:" o; do
     case "${o}" in
@@ -81,13 +81,13 @@ valid_regions=($(echo "${valid_regions[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' 
 
 #Validating user input for custom regions  
 secondary_regions=()
-for i in "${valid_values[@]}"; do
-    for j in "${valid_regions[@]}"; do
-        if [[ $i == $j ]]; then
-            secondary_regions+=("$i")
+for valid_val in "${valid_values[@]}"; do
+    for valid_reg in "${valid_regions[@]}"; do
+        if [[ $valid_val == $valid_reg ]]; then
+            secondary_regions+=("$valid_val")
         fi
     done
-    if [[ $i != "na" ]] && [[ $primaryregion == $i ]]; then
+    if [[ $valid_val != "na" ]] && [[ $primaryregion == $valid_val ]]; then
         primary_deployment=$primaryregion
     fi
 done
@@ -152,30 +152,28 @@ fi
 
 echo "Verifying Regional Configuration...."
 
-if [[ "$secondary_regions" -ne "na" ]]; then
-    if [[ "$bucket_status" -eq 0 ]]; then
-        #Verify Regional Stack
-        for i in "${secondary_regions[@]}";
-        do
-            if [[ "$i" != "$primary_deployment" ]]; then
-                regional_stack_detail="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$i-$acc_sha --region $i 2>/dev/null)"
+if [[ "$secondary_regions" -ne "na" ]] & [[ "$s3_status" -eq 0 ]]; then
+        #Deploy Regional Stack
+        for region in "${secondary_regions[@]}"; do
+            if [[ "$region" != "$primary_deployment" ]]; then
+                regional_stack_detail="$(aws cloudformation describe-stacks --stack-name cn-rem-$env-$region-$acc_sha --region $region 2>/dev/null)"
                 regional_stack_status=$?
 
-                Invoker_Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $i 2>/dev/null)"
+                Invoker_Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $region 2>/dev/null)"
                 Invoker_Lambda_status=$?
 
                 if [[ "$regional_stack_status" -ne 0 ]] && [[ "$Invoker_Lambda_status" -ne 0 ]];
                 then
-                    echo "Remediation framework is not configured in region $i. Please redeploy the framework with region $i as input"
+                    echo "Remediation framework is not configured in region $region. Please redploy the framework with region $region as input"
                 elif [[ "$Invoker_Lambda_status" -ne 0 ]];
                 then
-                    echo "Remediation framework is not configured in region $i. Please redeploy the framework with region $i as input"
+                    echo "Remediation framework is not configured in region $region. Please redploy the framework with region $region as input"
                 elif [[ "$regional_stack_status" -ne 0 ]];
                 then
-                    echo "Remediation framework is not configured in region $i. Please redeploy the framework with region $i as input"
-                elif [[ "$regional_stack_status" -eq 0 ]] && [[ "$Invoker_Lambda_status" -eq 0 ]] && [[ "$invoker_role" -eq 0 ]];
+                    echo "Remediation framework is not configured in region $region. Please redploy the framework with region $region as input"
+                elif [[ "$regional_stack_status" -eq 0 ]] && [[ "$Invoker_Lambda_status" -eq 0 ]] && [[ "$Invoker_Rem_role" -eq 0 ]];
                 then
-                    echo "Remediation framework is correctly deployed in region $i"
+                    echo "Remediation framework is correctly deployed in region $region"
                 else
                     echo "Something went wrong!"
                 fi
@@ -189,6 +187,43 @@ if [[ "$secondary_regions" -ne "na" ]]; then
     fi
 else
     echo "Regional Deployments verification skipped with input na!.."
+fi
+
+if [[ "$secondary_regions" -ne "na" ]] & [[ "$s3_status" -eq 0 ]]; then
+    #Deploy Regional Stack
+    for region in "${secondary_regions[@]}"; do
+        if [[ "$region" != "$primary_deployment" ]]; then
+            regional_stack_detail="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$region-$acc_sha --region $region 2>/dev/null)"
+            regional_stack_status=$?
+
+            Invoker_Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $region 2>/dev/null)"
+            Invoker_Lambda_status=$?
+
+            if [[ "$regional_stack_status" -ne 0 ]] && [[ "$Invoker_Lambda_status" -ne 0 ]];
+            then
+                echo "Remediation framework is not configured in region $region. Please redeploy the framework with region $region as input"
+            elif [[ "$Invoker_Lambda_status" -ne 0 ]];
+            then
+                echo "Remediation framework is not configured in region $region. Please redeploy the framework with region $region as input"
+            elif [[ "$regional_stack_status" -ne 0 ]];
+            then
+                echo "Remediation framework is not configured in region $region. Please redeploy the framework with region $region as input"
+            elif [[ "$regional_stack_status" -eq 0 ]] && [[ "$Invoker_Lambda_status" -eq 0 ]] && [[ "$invoker_role" -eq 0 ]];
+            then
+                echo "Remediation framework is correctly deployed in region $region"
+            else
+                echo "Something went wrong!"
+            fi
+        else
+            echo "Region $primary_deployment is configured as primary region."
+        fi
+    done
+else
+    echo "Bucket not found Something went wrong! Please contact Cloudneeti support for more details"
+    exit 1
+fi
+else
+echo "Regional Deployments verification skipped with input na!.."
 fi
 
 

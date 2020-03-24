@@ -6,7 +6,7 @@
 .DESCRIPTION
     This script will remove all the services deployed for the remediation framework and disbale remediation for the account.
 .NOTES
-    Version: 1.0
+    Version: 2.0
 
     # PREREQUISITE
       - Install aws cli
@@ -38,7 +38,7 @@
 usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>]" 1>&2; exit 1; }
 
 env="dev"
-version="1.0"
+version="2.0"
 secondaryregions=('na')
 while getopts "a:p:e:s:" o; do
     case "${o}" in
@@ -77,13 +77,13 @@ valid_regions=($(echo "${valid_regions[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' 
 
 #Validating user input for custom regions  
 secondary_regions=()
-for i in "${valid_values[@]}"; do
-    for j in "${valid_regions[@]}"; do
-        if [[ $i == $j ]]; then
-            secondary_regions+=("$i")
+for valid_val in "${valid_values[@]}"; do
+    for valid_reg in "${valid_regions[@]}"; do
+        if [[ $valid_val == $valid_reg ]]; then
+            secondary_regions+=("$valid_val")
         fi
     done
-    if [[ $i != "na" ]] && [[ $primaryregion == $i ]]; then
+    if [[ $valid_val != "na" ]] && [[ $primaryregion == $valid_val ]]; then
         primary_deployment=$primaryregion
     fi
 done
@@ -132,23 +132,23 @@ echo "Deleting Regional Deployments...."
 if [[ "$secondary_regions" -ne "na" ]]; then
     #Delete Regional Stack
     for i in "${secondary_regions[@]}"; do
-        if [[ "$i" != "$primary_deployment" ]]; then
-            stack_detail="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$i-$acc_sha --region $i 2>/dev/null)"
+        if [[ "$region" != "$primary_deployment" ]]; then
+            stack_detail="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$region-$acc_sha --region $region 2>/dev/null)"
             stack_status=$?
+
             if [[ $stack_status -eq 0 ]]; then
                 #remove termination protection
-                aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-multirem-$env-$i-$acc_sha --region $i 2>/dev/null
+                aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-multirem-$env-$region-$acc_sha --region $region 2>/dev/null
                 #delete stack from other regions
-                aws cloudformation delete-stack --stack-name cn-multirem-$env-$i-$acc_sha --region $i
+                aws cloudformation delete-stack --stack-name cn-multirem-$env-$region-$acc_sha --region $region
             else
-                echo "Region $i is not configured in remediation framework"
+                echo "Region $region is not configured in remediation framework"
             fi
         fi
     done
 else
-    echo "Regional Deployments deletion skipped with input na!.."
+    echo "Regional Stack deletion skipped with input na!.."
 fi
-
 
 if [[ $Lambda_status -eq 0 ]] && [[ $bucket_status -eq 0 ]]; then
     echo "Successfully deleted deployment stack!"

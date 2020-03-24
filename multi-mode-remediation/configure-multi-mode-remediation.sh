@@ -6,7 +6,7 @@
 .DESCRIPTION
     This script will deploy all the services required for the remediation framework and enable remediation for this account.
 .NOTES
-    Version: 1.0
+    Version: 2.0
 
     # PREREQUISITE
       - Install aws cli
@@ -29,7 +29,7 @@
       - Run this script in any bash shell (linux command prompt)
 
 .EXAMPLE
-    Command to execute : bash configure-multi-mode-remediation.sh [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v <1.0>] [-s <list of regions where auto-remediation is to enabled>]
+    Command to execute : bash configure-multi-mode-remediation.sh [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v <2.0>] [-s <list of regions where auto-remediation is to enabled>]
 
 .INPUTS
     **Mandatory(-a)Account Id: 12-digit AWS account Id of the account for which you want to enable the remediation
@@ -44,10 +44,10 @@
     None
 '
 
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v <1.0>] [-s <list of regions where auto-remediation is to enabled>]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v <2.0>] [-s <list of regions where auto-remediation is to enabled>]" 1>&2; exit 1; }
 
 env="dev"
-version="1.0"
+version="2.0"
 secondaryregions=('na')
 while getopts "a:r:p:e:v:s:" o; do
     case "${o}" in
@@ -173,25 +173,30 @@ cd regional-deployment/
 echo "Configure Regional Deployments...."
 s3_status=$?
 
-if [[ "$secondary_regions" -ne "na" ]]; then
-    if [[ "$s3_status" -eq 0 ]]; then
+if [[ "$secondary_regions" -ne "na" ]] & [[ "$s3_status" -eq 0 ]]; then
     #Deploy Regional Stack
-        for i in "${secondary_regions[@]}"; do
-            if [[ "$i" != "$primary_deployment" ]]; then
+    for region in "${secondary_regions[@]}"; do
+        if [[ "$region" != "$primary_deployment" ]]; then
+            Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $region 2>/dev/null)"
+            Lambda_status=$?
+
+            Regional_stack="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$i-$acc_sha --region $region 2>/dev/null)"
+            Regional_stack_status=$?
+            
+            if [[ "$Regional_stack_status" -ne 0 ]] & [[ "$Lambda_status" -eq 0 ]]; then
+                echo "Region $region is not configured because of existing resources, please delete them and redeploy framework to configure this region"
+            else
                 aws cloudformation deploy --template-file region-deployment-multiacc.yml --stack-name cn-multirem-$env-$i-$acc_sha --parameter-overrides Stack=cn-rem-$env-$i-$acc_sha awsaccountid=$awsaccountid region=$i remediationregion=$primary_deployment --region $i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
-                Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $i 2>/dev/null)"
-                Lambda_status=$?
-                if [[ "$Lambda_status" -eq 0 ]]; then
-                    echo "Successfully configured region $i in remediation framework"
+                Regional_stack_status=$?
+
+                if [[ "$Regional_stack_status" -eq 0 ]]; then
+                    echo "Successfully configured region $region in remediation framework"
                 else
-                    echo "Failed to configure region $i in remediation framework"
+                    echo "Failed to configure region $region in remediation framework"
                 fi
             fi
-        done
-    else
-        echo "Bucket not found Something went wrong! Please contact Cloudneeti support for more details"
-        exit 1
-    fi
+        fi
+    done
 else
     echo "Regional Deployments skipped with input na!.."
 fi

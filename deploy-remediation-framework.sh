@@ -85,13 +85,13 @@ valid_regions=($(echo "${valid_regions[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' 
 
 #Validating user input for custom regions  
 secondary_regions=()
-for i in "${valid_values[@]}"; do
-    for j in "${valid_regions[@]}"; do
-        if [[ $i == $j ]]; then
-            secondary_regions+=("$i")
+for valid_val in "${valid_values[@]}"; do
+    for valid_reg in "${valid_regions[@]}"; do
+        if [[ $valid_val == $valid_reg ]]; then
+            secondary_regions+=("$valid_val")
         fi
     done
-    if [[ $i != "na" ]] && [[ $primaryregion == $i ]]; then
+    if [[ $valid_val != "na" ]] && [[ $primaryregion == $valid_val ]]; then
         primary_deployment=$primaryregion
     fi
 done
@@ -172,25 +172,30 @@ cd ..
 cd regional-deployment/
 echo "Configure Regional Deployments...."
 
-if [[ "$secondary_regions" -ne "na" ]]; then
-    if [[ "$s3_status" -eq 0 ]]; then
+if [[ "$secondary_regions" -ne "na" ]] & [[ "$s3_status" -eq 0 ]]; then
     #Deploy Regional Stack
-        for i in "${secondary_regions[@]}"; do
-            if [[ "$i" != "$primary_deployment" ]]; then
-                aws cloudformation deploy --template-file region-deployment-bucket.yml --stack-name cn-rem-$env-$i-$acc_sha --parameter-overrides Stack=cn-rem-$env-$i-$acc_sha awsaccountid=$awsaccountid region=$i remediationregion=$primary_deployment --region $i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
-                Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $i 2>/dev/null)"
+    for region in "${secondary_regions[@]}"; do
+        if [[ "$region" != "$primary_deployment" ]]; then
+            Lambda_det="$(aws lambda get-function --function-name cn-rem-$env-$region-$acc_sha --region $region 2>/dev/null)"
+            Lambda_status=$?
+
+            Regional_stack="$(aws cloudformation describe-stacks --stack-name cn-aws-auto-remediate-invoker --region $region 2>/dev/null)"
+            Regional_stack_status=$?
+            
+            if [[ "$Regional_stack_status" -ne 0 ]] & [[ "$Lambda_status" -eq 0 ]]; then
+                echo "Region $region is not configured because of existing resources, please delete them and redeploy framework to configure this region"
+            else
+                aws cloudformation deploy --template-file region-function-deployment-singleacc.yml --stack-name cn-rem-$env-$region-$acc_sha --parameter-overrides Stack=cn-rem-$env-$region-$acc_sha awsaccountid=$awsaccountid region=$region remediationregion=$primary_deployment --region $region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+                Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $region 2>/dev/null)"
                 Lambda_status=$?
                 if [[ "$Lambda_status" -eq 0 ]]; then
-                    echo "Successfully configured region $i in remediation framework"
+                    echo "Successfully configured region $region in remediation framework"
                 else
-                    echo "Failed to configure region $i in remediation framework"
+                    echo "Failed to configure region $region in remediation framework"
                 fi
             fi
-        done
-    else
-        echo "Bucket not found Something went wrong! Please contact Cloudneeti support for more details"
-        exit 1
-    fi
+        fi
+    done
 else
     echo "Regional Deployments skipped with input na!.."
 fi
