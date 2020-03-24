@@ -176,19 +176,19 @@ if [[ "$secondary_regions" -ne "na" ]] & [[ "$s3_status" -eq 0 ]]; then
     #Deploy Regional Stack
     for region in "${secondary_regions[@]}"; do
         if [[ "$region" != "$primary_deployment" ]]; then
-            Lambda_det="$(aws lambda get-function --function-name cn-rem-$env-$region-$acc_sha --region $region 2>/dev/null)"
+            Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $region 2>/dev/null)"
             Lambda_status=$?
 
-            Regional_stack="$(aws cloudformation describe-stacks --stack-name cn-aws-auto-remediate-invoker --region $region 2>/dev/null)"
+            Regional_stack="$(aws cloudformation describe-stacks --stack-name cn-rem-$env-$region-$acc_sha --region $region 2>/dev/null)"
             Regional_stack_status=$?
             
             if [[ "$Regional_stack_status" -ne 0 ]] & [[ "$Lambda_status" -eq 0 ]]; then
                 echo "Region $region is not configured because of existing resources, please delete them and redeploy framework to configure this region"
             else
                 aws cloudformation deploy --template-file region-function-deployment-singleacc.yml --stack-name cn-rem-$env-$region-$acc_sha --parameter-overrides Stack=cn-rem-$env-$region-$acc_sha awsaccountid=$awsaccountid region=$region remediationregion=$primary_deployment --region $region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
-                Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $region 2>/dev/null)"
-                Lambda_status=$?
-                if [[ "$Lambda_status" -eq 0 ]]; then
+                Regional_stack_status=$?
+
+                if [[ "$Regional_stack_status" -eq 0 ]]; then
                     echo "Successfully configured region $region in remediation framework"
                 else
                     echo "Failed to configure region $region in remediation framework"

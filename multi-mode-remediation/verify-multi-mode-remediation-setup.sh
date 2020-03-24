@@ -153,43 +153,6 @@ fi
 echo "Verifying Regional Configuration...."
 
 if [[ "$secondary_regions" -ne "na" ]] & [[ "$s3_status" -eq 0 ]]; then
-        #Deploy Regional Stack
-        for region in "${secondary_regions[@]}"; do
-            if [[ "$region" != "$primary_deployment" ]]; then
-                regional_stack_detail="$(aws cloudformation describe-stacks --stack-name cn-rem-$env-$region-$acc_sha --region $region 2>/dev/null)"
-                regional_stack_status=$?
-
-                Invoker_Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $region 2>/dev/null)"
-                Invoker_Lambda_status=$?
-
-                if [[ "$regional_stack_status" -ne 0 ]] && [[ "$Invoker_Lambda_status" -ne 0 ]];
-                then
-                    echo "Remediation framework is not configured in region $region. Please redploy the framework with region $region as input"
-                elif [[ "$Invoker_Lambda_status" -ne 0 ]];
-                then
-                    echo "Remediation framework is not configured in region $region. Please redploy the framework with region $region as input"
-                elif [[ "$regional_stack_status" -ne 0 ]];
-                then
-                    echo "Remediation framework is not configured in region $region. Please redploy the framework with region $region as input"
-                elif [[ "$regional_stack_status" -eq 0 ]] && [[ "$Invoker_Lambda_status" -eq 0 ]] && [[ "$Invoker_Rem_role" -eq 0 ]];
-                then
-                    echo "Remediation framework is correctly deployed in region $region"
-                else
-                    echo "Something went wrong!"
-                fi
-            else
-                echo "Region $primary_deployment is configured as primary region."
-            fi
-        done
-    else
-        echo "Bucket not found Something went wrong! Please contact Cloudneeti support for more details"
-        exit 1
-    fi
-else
-    echo "Regional Deployments verification skipped with input na!.."
-fi
-
-if [[ "$secondary_regions" -ne "na" ]] & [[ "$s3_status" -eq 0 ]]; then
     #Deploy Regional Stack
     for region in "${secondary_regions[@]}"; do
         if [[ "$region" != "$primary_deployment" ]]; then
@@ -219,11 +182,7 @@ if [[ "$secondary_regions" -ne "na" ]] & [[ "$s3_status" -eq 0 ]]; then
         fi
     done
 else
-    echo "Bucket not found Something went wrong! Please contact Cloudneeti support for more details"
-    exit 1
-fi
-else
-echo "Regional Deployments verification skipped with input na!.."
+    echo "Regional Deployments verification skipped with input na!.."
 fi
 
 

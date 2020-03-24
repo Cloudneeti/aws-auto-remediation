@@ -142,6 +142,7 @@ if [[ "$secondary_regions" -ne "na" ]]; then
         if [[ "$region" != "$primary_deployment" ]]; then
             stack_detail="$(aws cloudformation describe-stacks --stack-name cn-rem-$env-$region-$acc_sha --region $region 2>/dev/null)"
             stack_status=$?
+            
             if [[ $stack_status -eq 0 ]]; then
                 #remove termination protection
                 aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-rem-$env-$region-$acc_sha --region $region 2>/dev/null
