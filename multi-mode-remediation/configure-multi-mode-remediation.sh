@@ -127,9 +127,9 @@ Lambda_status=$?
 s3_detail="$(aws s3api get-bucket-versioning --bucket cn-multirem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
 
-rem_location="$(aws s3 get-bucket-location --bucket cn-multirem-$env-$acc_sha --query "LocationConstraint" 2>/dev/null)"
+rem_location="$(aws s3api get-bucket-location --bucket cn-multirem-$env-$acc_sha --query "LocationConstraint" 2>/dev/null)"
 primary_location="$(eval echo $rem_location)"
-
+echo $rem_location
 if [[ "$invoker_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 0 ]] || [[ "$Lambda_status" -eq 0 ]] || [[ "$s3_status" -eq 0 ]]; then
 	echo "Remediation components already exist. Attempting to redeploy framework with latest updates !"
     #Redeploy framework
