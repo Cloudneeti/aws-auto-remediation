@@ -92,13 +92,13 @@ valid_regions=($(echo "${valid_regions[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' 
 
 #Validating user input for custom regions  
 secondary_regions=()
-for i in "${valid_values[@]}"; do
-    for j in "${valid_regions[@]}"; do
-        if [[ $i == $j ]]; then
-            secondary_regions+=("$i")
+for valid_val in "${valid_values[@]}"; do
+    for valid_reg in "${valid_regions[@]}"; do
+        if [[ $valid_val == $valid_reg ]]; then
+            secondary_regions+=("$valid_val")
         fi
     done
-    if [[ $i != "na" ]] && [[ $primaryregion == $i ]]; then
+    if [[ $valid_val != "na" ]] && [[ $primaryregion == $valid_val ]]; then
         primary_deployment=$primaryregion
     fi
 done
@@ -121,24 +121,22 @@ Rem_role=$?
 CT_det="$(aws cloudtrail get-trail-status --name cn-remediation-trail --region $primary_deployment 2>/dev/null)"
 CT_status=$?
 
-Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $primary_deployment 2>/dev/null)"
-Lambda_status=$?
-
 s3_detail="$(aws s3api get-bucket-versioning --bucket cn-multirem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
 
 rem_location="$(aws s3api get-bucket-location --bucket cn-multirem-$env-$acc_sha --query "LocationConstraint" 2>/dev/null)"
 primary_location="$(eval echo $rem_location)"
-echo $rem_location
-if [[ "$invoker_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 0 ]] || [[ "$Lambda_status" -eq 0 ]] || [[ "$s3_status" -eq 0 ]]; then
+
+if [[ "$invoker_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 0 ]] || [[ "$s3_status" -eq 0 ]]; then
 	echo "Remediation components already exist. Attempting to redeploy framework with latest updates !"
     #Redeploy framework
     if [[ "$s3_status" -eq 0 ]]; then
         if [[ $primary_location == $primary_deployment ]]; then
             echo "Redeploying framework....."
-            aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name cn-multirem-$env-$acc_sha --parameter-overrides Stack=cn-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$remawsaccountid region=$primary_deployment remediationregion=$primary_deployment --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+            aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name cn-multirem-$env-$acc_sha --parameter-overrides Stack=cn-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$remawsaccountid region=$primary_deployment remediationregion=$primary_deployment --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM
+            Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $primary_deployment 2>/dev/null)"
             Lambda_status=$?
-
+            
             if [[ $Lambda_status -eq 0 ]]; then
                 echo "Successfully deployed remediation framework with latest updates!!"
             else
@@ -157,6 +155,7 @@ else
     #Deploy framework from scrach
     echo "Deploying remediation framework...."
     aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name cn-multirem-$env-$acc_sha --parameter-overrides Stack=cn-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$remawsaccountid region=$i remediationregion=$primary_deployment --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+    Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $primary_deployment 2>/dev/null)"
     Lambda_status=$?
 
     if [[ $lambda_status -eq 0 ]]; then
@@ -173,7 +172,7 @@ cd regional-deployment/
 echo "Configure Regional Deployments...."
 s3_status=$?
 
-if [[ "$secondary_regions" -ne "na" ]] & [[ "$s3_status" -eq 0 ]]; then
+if [[ "$secondary_regions" -ne "na" ]] && [[ "$s3_status" -eq 0 ]]; then
     #Deploy Regional Stack
     for region in "${secondary_regions[@]}"; do
         if [[ "$region" != "$primary_deployment" ]]; then
@@ -183,7 +182,7 @@ if [[ "$secondary_regions" -ne "na" ]] & [[ "$s3_status" -eq 0 ]]; then
             Regional_stack="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$i-$acc_sha --region $region 2>/dev/null)"
             Regional_stack_status=$?
             
-            if [[ "$Regional_stack_status" -ne 0 ]] & [[ "$Lambda_status" -eq 0 ]]; then
+            if [[ "$Regional_stack_status" -ne 0 ]] && [[ "$Lambda_status" -eq 0 ]]; then
                 echo "Region $region is not configured because of existing resources, please delete them and redeploy framework to configure this region"
             else
                 aws cloudformation deploy --template-file region-deployment-multiacc.yml --stack-name cn-multirem-$env-$i-$acc_sha --parameter-overrides Stack=cn-rem-$env-$i-$acc_sha awsaccountid=$awsaccountid region=$i remediationregion=$primary_deployment --region $i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null

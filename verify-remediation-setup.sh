@@ -149,7 +149,7 @@ echo "Verifying Regional Configuration...."
 Invoker_rem_role_det="$(aws iam get-role --role-name CN-Auto-Remediation-Invoker)"
 Invoker_Rem_role=$?
 
-if [[ "$secondary_regions" -ne "na" ]] & [[ "$s3_status" -eq 0 ]]; then
+if [[ "$secondary_regions" -ne "na" ]] && [[ "$s3_status" -eq 0 ]]; then
     #Deploy Regional Stack
     for region in "${secondary_regions[@]}"; do
         if [[ "$region" != "$primary_deployment" ]]; then

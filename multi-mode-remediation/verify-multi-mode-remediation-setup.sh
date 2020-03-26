@@ -152,7 +152,7 @@ fi
 
 echo "Verifying Regional Configuration...."
 
-if [[ "$secondary_regions" -ne "na" ]] & [[ "$s3_status" -eq 0 ]]; then
+if [[ "$secondary_regions" -ne "na" ]] && [[ "$s3_status" -eq 0 ]]; then
     #Deploy Regional Stack
     for region in "${secondary_regions[@]}"; do
         if [[ "$region" != "$primary_deployment" ]]; then
