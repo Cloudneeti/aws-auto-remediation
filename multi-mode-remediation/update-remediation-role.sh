@@ -6,7 +6,7 @@
 .DESCRIPTION
     This script will update the role of the Remediation framework with the details of the newly added account for remediation.
 .NOTES
-    Version: 1.0
+    Version: 2.0
 
     # PREREQUISITE
       - Install aws cli

@@ -6,7 +6,7 @@
 .DESCRIPTION
     This script will deploy all the services required for the remediation framework.
 .NOTES
-    Version: 1.0
+    Version: 2.0
     # PREREQUISITE
       - Install aws cli
         Link : https://docs.aws.amazon.com/cli/latest/userguide/install-linux-al2017.html
@@ -27,7 +27,7 @@
             Default output format: json  
       - Run this script in any bash shell (linux command prompt)
 .EXAMPLE
-    Command to execute : bash deploy-remediation-framework.sh [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v <1.0>] [-s <list of regions where auto-remediation is to enabled>]
+    Command to execute : bash deploy-remediation-framework.sh [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v <2.0>] [-s <list of regions where auto-remediation is to enabled>]
 
 .INPUTS
     **Mandatory(-a)Account Id: 12-digit AWS account Id of the account where you want the remediation framework to be deployed
@@ -41,9 +41,9 @@
     None
 '
 
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v <1.0>] [-s <list of regions where auto-remediation is to enabled>]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v <2.0>] [-s <list of regions where auto-remediation is to enabled>]" 1>&2; exit 1; }
 env="dev"
-version="1.0"
+version="2.0"
 secondaryregions=('na')
 while getopts "a:p:e:v:s:" o; do
     case "${o}" in
