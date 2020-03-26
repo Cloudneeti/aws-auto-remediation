@@ -154,9 +154,9 @@ if [[ "$invoker_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq
 else
     #Deploy framework from scrach
     echo "Deploying remediation framework...."
-    aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name cn-multirem-$env-$acc_sha --parameter-overrides Stack=cn-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$remawsaccountid region=$i remediationregion=$primary_deployment --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
-    Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $primary_deployment 2>/dev/null)"
-    Lambda_status=$?
+    aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name cn-multirem-$env-$acc_sha --parameter-overrides Stack=cn-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$remawsaccountid region=$region remediationregion=$primary_deployment --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+    lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $primary_deployment 2>/dev/null)"
+    lambda_status=$?
 
     if [[ $lambda_status -eq 0 ]]; then
         echo "Successfully deployed remediation framework with latest updates!!"
@@ -179,15 +179,16 @@ if [[ "$secondary_regions" -ne "na" ]] && [[ "$s3_status" -eq 0 ]]; then
             Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $region 2>/dev/null)"
             Lambda_status=$?
 
-            Regional_stack="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$i-$acc_sha --region $region 2>/dev/null)"
+            Regional_stack="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$region-$acc_sha --region $region 2>/dev/null)"
             Regional_stack_status=$?
             
             if [[ "$Regional_stack_status" -ne 0 ]] && [[ "$Lambda_status" -eq 0 ]]; then
                 echo "Region $region is not configured because of existing resources, please delete them and redeploy framework to configure this region"
             else
-                aws cloudformation deploy --template-file region-deployment-multiacc.yml --stack-name cn-multirem-$env-$i-$acc_sha --parameter-overrides Stack=cn-rem-$env-$i-$acc_sha awsaccountid=$awsaccountid region=$i remediationregion=$primary_deployment --region $i --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+                aws cloudformation deploy --template-file region-function-deployment-multiacc.yml --stack-name cn-multirem-$env-$region-$acc_sha --parameter-overrides Stack=cn-rem-$env-$region-$acc_sha awsaccountid=$awsaccountid region=$region remediationregion=$primary_deployment --region $region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+                Regional_stack="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$region-$acc_sha --region $region 2>/dev/null)"
                 Regional_stack_status=$?
-
+                
                 if [[ "$Regional_stack_status" -eq 0 ]]; then
                     echo "Successfully configured region $region in remediation framework"
                 else
