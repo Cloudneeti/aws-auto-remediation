@@ -103,10 +103,10 @@ sleep 5
 stack_detail="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$acc_sha --region $primary_deployment 2>/dev/null)"
 stack_status=$?
 
-#if [[ $stack_status -ne 0 ]]; then
-#    echo "Invaild environment prefix. No relevant stack found. Please enter current environment prefix and try to re-run the script again."#
-#    exit 1
-#fi
+if [[ $stack_status -ne 0 ]]; then
+    echo "Invaild environment prefix. No relevant stack found. Please enter current environment prefix and try to re-run the script again."#
+    exit 1
+fi
 
 s3_detail="$(aws s3api get-bucket-versioning --bucket cn-multirem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
