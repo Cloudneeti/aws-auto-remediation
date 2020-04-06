@@ -147,22 +147,6 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
         
-        if set(cluster_datatier_tag).intersection(set(records)):
-            try:
-                rdscluster_datatiertag.run_remediation(rds,RDSClusterName)
-            except ClientError as e:
-                print(e)
-                return {  
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-            except Exception as e:
-                print(e)
-                return {
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-        
         if set(cluster_iam_auth).intersection(set(records)):
             try:
                 rdscluster_iam_auth.run_remediation(rds,RDSClusterName)
@@ -243,9 +227,6 @@ def lambda_handler(event, context):
 
             if PolicyId in cluster_logexport:
                 responseCode,output = rdscluster_logsenabled.run_remediation(rds,RDSClusterName)
-            
-            if PolicyId in cluster_datatier_tag:
-                responseCode,output = rdscluster_datatiertag.run_remediation(rds,RDSClusterName)
             
             if PolicyId in cluster_iam_auth:
                 responseCode,output = rdscluster_iam_auth.run_remediation(rds,RDSClusterName)

@@ -181,22 +181,6 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
         
-        if set(instance_datatiertag).intersection(set(records)):
-            try:
-                rdsinstance_datatiertag.run_remediation(rds,RDSInstanceName)
-            except ClientError as e:
-                print(e)
-                return {  
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-            except Exception as e:
-                print(e)
-                return {
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-        
         if set(instance_iam_auth).intersection(set(records)):
             try:
                 rdsinstance_iam_auth.run_remediation(rds,RDSInstanceName)
@@ -318,9 +302,6 @@ def lambda_handler(event, context):
             
             if PolicyId in instance_logexport:
                 responseCode,output = rdsinstance_logsenabled.run_remediation(rds,RDSInstanceName)
-            
-            if PolicyId in instance_datatiertag:
-                responseCode,output = rdsinstance_datatiertag.run_remediation(rds,RDSInstanceName)
         
             if PolicyId in instance_iam_auth:
                 responseCode,output = rdsinstance_iam_auth.run_remediation(rds,RDSInstanceName)
