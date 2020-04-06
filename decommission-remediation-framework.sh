@@ -6,7 +6,7 @@
 .DESCRIPTION
     This script will remove all the services deployed for the remediation framework.
 .NOTES
-    Version: 1.0
+    Version: 2.0
 
     # PREREQUISITE
       - Install aws cli
@@ -39,7 +39,7 @@
 
 usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>]" 1>&2; exit 1; }
 env="dev"
-version="1.0"
+version="2.0"
 secondaryregions=('na')
 while getopts "a:p:e:s:" o; do
     case "${o}" in
@@ -142,6 +142,7 @@ if [[ "$secondary_regions" -ne "na" ]]; then
         if [[ "$region" != "$primary_deployment" ]]; then
             stack_detail="$(aws cloudformation describe-stacks --stack-name cn-rem-$env-$region-$acc_sha --region $region 2>/dev/null)"
             stack_status=$?
+            
             if [[ $stack_status -eq 0 ]]; then
                 #remove termination protection
                 aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-rem-$env-$region-$acc_sha --region $region 2>/dev/null
@@ -153,7 +154,7 @@ if [[ "$secondary_regions" -ne "na" ]]; then
         fi
     done
 else
-    echo "Regional Deployments skipped with input na!.."
+    echo "Regional Stack deletion skipped with input na!.."
 fi
 
 if [[ $lambda_status -eq 0 ]]  && [[ $bucket_status -eq 0 ]]; then

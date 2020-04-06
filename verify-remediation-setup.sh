@@ -6,7 +6,7 @@
 .DESCRIPTION
     This script will check the deployment status of the critical components of the remediation framework.
 .NOTES
-    Version: 1.0
+    Version: 2.0
     # PREREQUISITE
       - Install aws cli
         Link : https://docs.aws.amazon.com/cli/latest/userguide/install-linux-al2017.html
@@ -34,7 +34,7 @@
 '
 usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions where auto-remediation is to be verified>]" 1>&2; exit 1; }
 env="dev"
-version="1.0"
+version="2.0"
 secondaryregions=('na')
 while getopts "a:p:e:s:" o; do
     case "${o}" in
@@ -127,16 +127,16 @@ if [[ "$orches_role" -ne 0 ]] && [[ "$Rem_role" -ne 0 ]] && [[ "$CT_status" -ne 
    echo "Remediation framework is not deployed"
 elif [[ "$orches_role" -ne 0 ]] || [[ "$Rem_role" -ne 0 ]];
 then
-   echo "Required roles not found. Please delete and redploy the framework"
+   echo "Required roles not found. Please delete and redeploy the framework"
 elif [[ "$Lambda_status" -ne 0 ]];
 then
-   echo "Remediation functions not found. Please delete and redploy the framework"
+   echo "Remediation functions not found. Please delete and redeploy the framework"
 elif [[ "$CT_status" -ne 0 ]] || [[ "$CT_log" -ne true ]];
 then
-   echo "Remediation framework cloudtrail trail is not deployed correctly. Please delete and redploy the framework"
+   echo "Remediation framework cloudtrail trail is not deployed correctly. Please delete and redeploy the framework"
 elif [[ "$s3_status" -ne 0 ]];
 then
-   echo "Remediation framework s3-bucket is not deployed correctly or deleted. Please delete and redploy the framework"
+   echo "Remediation framework s3-bucket is not deployed correctly or deleted. Please delete and redeploy the framework"
 elif [[ "$orches_role" -eq 0 ]] && [[ "$Rem_role" -eq 0 ]] && [[ "$CT_status" -eq 0 ]] && [[ "$Lambda_status" -eq 0 ]] && [[ "$s3_status" -eq 0 ]];
 then
    echo "Remediation framework is correctly deployed"
@@ -149,39 +149,35 @@ echo "Verifying Regional Configuration...."
 Invoker_rem_role_det="$(aws iam get-role --role-name CN-Auto-Remediation-Invoker)"
 Invoker_Rem_role=$?
 
-if [[ "$secondary_regions" -ne "na" ]] & [[ "$s3_status" -eq 0 ]]; then
-        #Deploy Regional Stack
-        for region in "${secondary_regions[@]}"; do
-            if [[ "$region" != "$primary_deployment" ]]; then
-                regional_stack_detail="$(aws cloudformation describe-stacks --stack-name cn-rem-$env-$region-$acc_sha --region $region 2>/dev/null)"
-                regional_stack_status=$?
+if [[ "$secondary_regions" -ne "na" ]] && [[ "$s3_status" -eq 0 ]]; then
+    #Deploy Regional Stack
+    for region in "${secondary_regions[@]}"; do
+        if [[ "$region" != "$primary_deployment" ]]; then
+            regional_stack_detail="$(aws cloudformation describe-stacks --stack-name cn-rem-$env-$region-$acc_sha --region $region 2>/dev/null)"
+            regional_stack_status=$?
 
-                Invoker_Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $region 2>/dev/null)"
-                Invoker_Lambda_status=$?
+            Invoker_Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $region 2>/dev/null)"
+            Invoker_Lambda_status=$?
 
-                if [[ "$regional_stack_status" -ne 0 ]] && [[ "$Invoker_Lambda_status" -ne 0 ]];
-                then
-                    echo "Remediation framework is not configured in region $region. Please redploy the framework with region $region as input"
-                elif [[ "$Invoker_Lambda_status" -ne 0 ]];
-                then
-                    echo "Remediation framework is not configured in region $region. Please redploy the framework with region $region as input"
-                elif [[ "$regional_stack_status" -ne 0 ]];
-                then
-                    echo "Remediation framework is not configured in region $region. Please redploy the framework with region $region as input"
-                elif [[ "$regional_stack_status" -eq 0 ]] && [[ "$Invoker_Lambda_status" -eq 0 ]] && [[ "$Invoker_Rem_role" -eq 0 ]];
-                then
-                    echo "Remediation framework is correctly deployed in region $region"
-                else
-                    echo "Something went wrong!"
-                fi
+            if [[ "$regional_stack_status" -ne 0 ]] && [[ "$Invoker_Lambda_status" -ne 0 ]];
+            then
+                echo "Remediation framework is not configured in region $region. Please redploy the framework with region $region as input"
+            elif [[ "$Invoker_Lambda_status" -ne 0 ]];
+            then
+                echo "Remediation framework is not configured in region $region. Please redploy the framework with region $region as input"
+            elif [[ "$regional_stack_status" -ne 0 ]];
+            then
+                echo "Remediation framework is not configured in region $region. Please redploy the framework with region $region as input"
+            elif [[ "$regional_stack_status" -eq 0 ]] && [[ "$Invoker_Lambda_status" -eq 0 ]] && [[ "$Invoker_Rem_role" -eq 0 ]];
+            then
+                echo "Remediation framework is correctly deployed in region $region"
             else
-                echo "Region $primary_deployment is configured as primary region."
+                echo "Something went wrong!"
             fi
-        done
-    else
-        echo "Bucket not found Something went wrong! Please contact Cloudneeti support for more details"
-        exit 1
-    fi
+        else
+            echo "Region $primary_deployment is configured as primary region."
+        fi
+    done
 else
     echo "Regional Deployments verification skipped with input na!.."
 fi

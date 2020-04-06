@@ -3,6 +3,7 @@ Redshift automated retention period
 '''
 
 from botocore.exceptions import ClientError
+import time
 
 def run_remediation(redshift, cluster_name):
     print("Executing remediation")            
@@ -23,6 +24,7 @@ def run_remediation(redshift, cluster_name):
                 try:
                     result = redshift.modify_cluster(
                                 ClusterIdentifier=cluster_name,
+                                MaintenanceTrackName='trailing',
                                 AutomatedSnapshotRetentionPeriod=7
                             )
     
@@ -41,6 +43,8 @@ def run_remediation(redshift, cluster_name):
                     output = "Unexpected error: " + str(e)
                     print(output)
                 flag = 0
+            else:
+                time.sleep(10)
 
     else:
         responseCode = 200

@@ -122,25 +122,30 @@ invoker_role=$?
 CT_det="$(aws cloudtrail get-trail-status --name cn-remediation-trail --region $primary_deployment 2>/dev/null)"
 CT_status=$?
 
-Lambda_det="$(aws lambda get-function --function-name cn-aws-remediate-orchestrator --region $primary_deployment 2>/dev/null)"
-Lambda_status=$?
-
 s3_detail="$(aws s3api get-bucket-versioning --bucket cn-rem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
 
+rem_location="$(aws s3api get-bucket-location --bucket cn-rem-$env-$acc_sha --query 'LocationConstraint' 2>/dev/null)"
+primary_location="$(eval echo $rem_location)"
+
 #Update existing remediation framework
-if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 0 ]] || [[ "$Lambda_status" -eq 0 ]] || [[ "$s3_status" -eq 0 ]] || [[ "$invoker_role" -eq 0 ]]; then
-	echo "Remediation components already exist. Attempting to redploy framework with latest updates !"
-
+if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 0 ]] || [[ "$s3_status" -eq 0 ]] || [[ "$invoker_role" -eq 0 ]]; then
+	echo "Remediation components already exist. Attempting to redeploy framework with latest updates !"
     if [[ "$s3_status" -eq 0 ]]; then
-        echo "Redploying framework....."
-        serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $primary_deployment --remediationversion $version
-        lambda_status=$?
+        if [[ $primary_location == $primary_deployment ]]; then
+            echo "Redeploying framework....."
+            serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $primary_deployment --remediationversion $version
+            Lambda_det="$(aws lambda get-function --function-name cn-aws-remediate-orchestrator --region $primary_deployment 2>/dev/null)"
+            Lambda_status=$?
 
-        if [[ $lambda_status -eq 0 ]]; then
-            echo "Successfully deployed remediation framework with latest updates!!"
+            if [[ $lambda_status -eq 0 ]]; then
+                echo "Successfully deployed remediation framework with latest updates!!"
+            else
+                echo "Something went wrong! Please contact Cloudneeti support for more details"
+            fi
         else
-            echo "Something went wrong! Please contact Cloudneeti support for more details"
+            echo "Remediation components already exist in $primary_location region. Please run deploy-remediation-framework.sh with primary region as $primary_location !"
+            exit 1
         fi
     else
         echo "Remediation components already exist with a different environment prefix. Please run verify-remediation-setup.sh for more details !"
@@ -165,7 +170,7 @@ cd ..
 cd regional-deployment/
 echo "Configure Regional Deployments...."
 
-if [[ "$secondary_regions" -ne "na" ]] & [[ "$s3_status" -eq 0 ]]; then
+if [[ "$secondary_regions" != "na" ]] && [[ "$s3_status" -eq 0 ]]; then
     #Deploy Regional Stack
     for region in "${secondary_regions[@]}"; do
         if [[ "$region" != "$primary_deployment" ]]; then
@@ -175,10 +180,11 @@ if [[ "$secondary_regions" -ne "na" ]] & [[ "$s3_status" -eq 0 ]]; then
             Regional_stack="$(aws cloudformation describe-stacks --stack-name cn-rem-$env-$region-$acc_sha --region $region 2>/dev/null)"
             Regional_stack_status=$?
             
-            if [[ "$Regional_stack_status" -ne 0 ]] & [[ "$Lambda_status" -eq 0 ]]; then
+            if [[ "$Regional_stack_status" -ne 0 ]] && [[ "$Lambda_status" -eq 0 ]]; then
                 echo "Region $region is not configured because of existing resources, please delete them and redeploy framework to configure this region"
             else
                 aws cloudformation deploy --template-file region-function-deployment-singleacc.yml --stack-name cn-rem-$env-$region-$acc_sha --parameter-overrides Stack=cn-rem-$env-$region-$acc_sha awsaccountid=$awsaccountid region=$region remediationregion=$primary_deployment --region $region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+                Regional_stack="$(aws cloudformation describe-stacks --stack-name cn-rem-$env-$region-$acc_sha --region $region 2>/dev/null)"
                 Regional_stack_status=$?
 
                 if [[ "$Regional_stack_status" -eq 0 ]]; then
