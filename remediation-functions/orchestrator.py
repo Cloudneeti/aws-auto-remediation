@@ -32,7 +32,7 @@ def lambda_handler(event, context):
     sqs_list = ["SQSSSEEnabled"]
     rds_snapshot_list = ["RDSSnapshotNoPublicAccess"]
     route53_domain_list = ["DomainRegistrantPrivacy","DomainTransferLock","DomainAutoRenew","DomainTechAdminPrivacy"]
-    docdb_cluster_list = ["DocDBStorageEncrypted","DocDBBackupRetentionPeriod","DocDBCloudWatchLogsEnabled","DocDBDeletionProtection"]
+    docdb_cluster_list = ["DocDBBackupRetentionPeriod","DocDBCloudWatchLogsEnabled","DocDBDeletionProtection"]
     docdb_instance_list = ["DocDBInstanceAutoMinorVersionUpgrade"]
     fsx_windows_list = ["AWSFSxBackupRetentionPeriod","AWSFSxBackupRetentionDays"]
     kinesis_firehose_list = ["KinesisFirehoseEncryption"]

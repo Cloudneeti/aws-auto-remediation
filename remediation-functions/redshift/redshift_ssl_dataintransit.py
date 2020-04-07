@@ -3,6 +3,7 @@ Redshift non-default parameter groups require SSL to secure data in transit
 '''
 
 from botocore.exceptions import ClientError
+import time
 
 def run_remediation(redshift, cluster_name):
     print("Executing remediation")            
@@ -14,13 +15,16 @@ def run_remediation(redshift, cluster_name):
         Cluster_Det = redshift.describe_clusters(ClusterIdentifier=cluster_name)['Clusters']
         RedShiftParameterGroup = Cluster_Det[0]['ClusterParameterGroups'][0]['ParameterGroupName']
         ParameterGroupDet = redshift.describe_cluster_parameters(ParameterGroupName=RedShiftParameterGroup)['Parameters']
-        for i in range(len(ParameterGroupDet)):
-            if ParameterGroupDet[i]['ParameterName'] == 'require_ssl' and ParameterGroupDet[i]['ParameterValue'] == 'true':
-                ssl_enabled = 0
-                parametervalue.append(ssl_enabled)
-            if ParameterGroupDet[i]['ParameterName'] == 'enable_user_activity_logging' and ParameterGroupDet[i]['ParameterValue'] == 'true':
-                activity_logging = 0
-                parametervalue.append(activity_logging)
+        if 'default' not in RedShiftParameterGroup:
+            for i in range(len(ParameterGroupDet)):
+                if ParameterGroupDet[i]['ParameterName'] == 'require_ssl' and ParameterGroupDet[i]['ParameterValue'] == 'true':
+                    ssl_enabled = 0
+                    parametervalue.append(ssl_enabled)
+                if ParameterGroupDet[i]['ParameterName'] == 'enable_user_activity_logging' and ParameterGroupDet[i]['ParameterValue'] == 'true':
+                    activity_logging = 0
+                    parametervalue.append(activity_logging)
+        else:
+            output = "SSL Encryption policies are not applicable for redshift clusters with default parameter group"
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
@@ -63,6 +67,9 @@ def run_remediation(redshift, cluster_name):
                     output = "Unexpected error: " + str(e)
                     print(output)
                 flag = 0
+            else:
+                time.sleep(10)
+
     elif 2 in parametervalue:
         flag=1
         while flag:

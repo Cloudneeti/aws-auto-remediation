@@ -76,7 +76,7 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
         
-        if "BackupRetentionPeriod" in str(records):
+        if "DocDBBackupRetentionPeriod" in str(records):
             try:
                 documentdb_cluster_backup_retention.run_remediation(docdb,docdb_clustername)
                 print('remediated-' + docdb_clustername)
@@ -93,7 +93,7 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
         
-        if "DocdbCloudWatchLogsEnabled" in str(records):    
+        if "DocDBCloudWatchLogsEnabled" in str(records):    
             try:
                 documentdb_cluster_logexport.run_remediation(docdb,docdb_clustername)
                 print('remediated-' + docdb_clustername)
@@ -110,23 +110,6 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
         
-        if "DocdbStorageEncrypted" in str(records):    
-            try:
-                documentdb_cluster_defaultencryption.run_remediation(docdb,docdb_clustername)
-                print('remediated-' + docdb_clustername)
-            except ClientError as e:
-                print(e)
-                return {  
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-            except Exception as e:
-                print(e)
-                return {
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-
         #returning the output Array in json format
         return {  
             'statusCode': 200,
@@ -176,13 +159,10 @@ def lambda_handler(event, context):
             }
 
         try:
-            if PolicyId == "DocdbStorageEncrypted":  
-                responseCode,output = documentdb_cluster_defaultencryption.run_remediation(docdb,docdb_clustername)
-            
-            if PolicyId == "BackupRetentionPeriod":  
+            if PolicyId == "DocDBBackupRetentionPeriod":  
                 responseCode,output = documentdb_cluster_backup_retention.run_remediation(docdb,docdb_clustername)
             
-            if PolicyId == "DocdbCloudWatchLogsEnabled":  
+            if PolicyId == "DocDBCloudWatchLogsEnabled":  
                 responseCode,output = documentdb_cluster_logexport.run_remediation(docdb,docdb_clustername)
             
             if PolicyId == "DocDBDeletionProtection":  

@@ -12,7 +12,7 @@ def run_remediation(docdb,docdb_clustername):
     try:
         response = docdb.describe_db_clusters(DBClusterIdentifier = docdb_clustername)['DBClusters']
         cloudwatchlog_export = response[0]['EnabledCloudwatchLogsExports']
-        if len(cloudwatchlog_export) >= 2:
+        if len(cloudwatchlog_export) >= 1:
             cloudwatch_log_enabled = True
     except ClientError as e:
         responseCode = 400
@@ -37,7 +37,7 @@ def run_remediation(docdb,docdb_clustername):
         try:
             result = docdb.modify_db_cluster(
                         DBClusterIdentifier = docdb_clustername,
-                        EnableCloudwatchLogsExports =  ['audit' , 'profiler'],
+                        CloudwatchLogsExportConfiguration={"EnableLogTypes":['audit' , 'profiler']},
                         ApplyImmediately = True
                     )
 
