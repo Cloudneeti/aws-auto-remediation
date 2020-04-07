@@ -15,7 +15,6 @@ def lambda_handler(event, context):
     copytagstosnapshots = ["AuroraCopyTagsToSnapshot", "AuroraServerlessCopyTagsToSnapshot", "AuroraPostgresServerlessCopyTagsToSnapshot"]
     deletion_protection = ["AuroraDeleteProtection", "AuroraServerlessDeleteProtection", "AuroraPostgresServerlessDeleteProtection"]
     cluster_logexport = ["AuroralogExport","CloudwatchLogsExports"]
-    cluster_datatier_tag = ["AuroradataTierConfig", "AuroraServerlessdataTierConfig", "AuroraPostgresServerlessdataTierConfig"]
     cluster_iam_auth = ["AuroraIAMAuthEnabled"]
     
     try:

@@ -1,1 +1,1 @@
-__all__ = [ "rdscluster_autopause", "rdscluster_backupretention", "rdscluster_copytagstosnapshot", "rdscluster_deletion_protection","rdscluster_logsenabled","rdscluster_datatiertag","rdscluster_iam_auth"]
+__all__ = [ "rdscluster_autopause", "rdscluster_backupretention", "rdscluster_copytagstosnapshot", "rdscluster_deletion_protection","rdscluster_logsenabled","rdscluster_iam_auth"]

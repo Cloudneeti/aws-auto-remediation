@@ -18,7 +18,6 @@ def lambda_handler(event, context):
     multiaz = ["SQLMultiAZEnabled","MariadbMultiAZEnabled","OracleMultiAZEnabled","SQLServerMultiAZEnabled","MySQLMultiAZEnabled"]
     performance_insights = ["SQLPerformanceInsights","MariadbPerformanceInsights","OraclePerformanceInsights","SQLServerPerformanceInsights","AuroraInstancePerformanceInsights","MySQLPerformanceInsights"]
     instance_logexport = ["MySQLlogExport","MariadblogExport","OraclelogExport"]
-    instance_datatiertag = ["SQLdataTierConfig", "MariadbdataTierConfig", "OracledataTierConfig", "SQLServerdataTierConfig", "AuroraInstancedataTierConfig", "MySQLdataTierConfig"]
     instance_iam_auth = ["SQLIAMAuthEnabled", "MySQLIAMAuthEnabled"]
     db_parameters = ["MySQLBlockEncryption","MySQLEnableFIPS"]
     

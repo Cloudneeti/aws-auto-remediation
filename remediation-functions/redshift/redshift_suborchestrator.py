@@ -106,22 +106,6 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
         
-        if "RedShiftEncrypted" in str(records):
-            try:
-                redshift_ssl_dataintransit.run_remediation(redshift,redshift_name)
-            except ClientError as e:
-                print(e)
-                return {  
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-            except Exception as e:
-                print(e)
-                return {
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-        
         print('remediated-' + redshift_name)
         #returning the output Array in json format
         return {  
@@ -180,9 +164,6 @@ def lambda_handler(event, context):
             if PolicyId == "RedShiftAutomatedSnapshot":  
                 responseCode,output = redshift_automatic_retention.run_remediation(redshift,redshift_name)
             
-            if PolicyId == "RedShiftEncrypted":  
-                responseCode,output = redshift_ssl_dataintransit.run_remediation(redshift,redshift_name)
-        
         except ClientError as e:
             responseCode = 400
             output = "Unable to remediate redshift: " + str(e)

@@ -447,6 +447,8 @@ Resources:
             - "ModifyDBCluster"
             - "CreateDBInstance"
             - "ModifyDBInstance"
+            - "ModifyDBClusterSnapshotAttribute"
+            - "ModifyDBSnapshotAttribute"
       Targets: 
         - 
           Arn: 

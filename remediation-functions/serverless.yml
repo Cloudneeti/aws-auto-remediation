@@ -179,6 +179,8 @@ functions:
                 - ModifyDBCluster
                 - CreateDBInstance
                 - ModifyDBInstance
+                - ModifyDBClusterSnapshotAttribute
+                - ModifyDBSnapshotAttribute
       - cloudwatchEvent:
           name: 'cn-aws-redshift-event-rule'
           description: 'CloudWatch Event triggered on redshift cluster'
