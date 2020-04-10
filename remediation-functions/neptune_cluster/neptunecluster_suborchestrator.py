@@ -63,11 +63,6 @@ def lambda_handler(event, context):
             try:
                 neptunecluster_backupretention.run_remediation(neptune,neptune_name)
                 print('remediated-' + neptune_name)
-                #returning the output Array in json format
-                return {  
-                    'statusCode': 200,
-                    'body': json.dumps('remediated-' + neptune_name)
-                }
             except ClientError as e:
                 print(e)
                 return {  
@@ -81,6 +76,45 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
 
+        if "NeptuneIAMDbAuthEnabled" in str(records):
+            try:
+                neptunecluster_iamauth.run_remediation(neptune,neptune_name)
+                print('remediated-' + neptune_name)
+            except ClientError as e:
+                print(e)
+                return {  
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+            except Exception as e:
+                print(e)
+                return {
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+
+        if "NeptuneClusterCloudWatchLogsEnabled" in str(records):
+            try:
+                neptunecluster_logs.run_remediation(neptune,neptune_name)
+                print('remediated-' + neptune_name)
+            except ClientError as e:
+                print(e)
+                return {  
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+            except Exception as e:
+                print(e)
+                return {
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+        
+        #returning the output Array in json format
+        return {  
+            'statusCode': 200,
+            'body': json.dumps('remediated-' + neptune_name)
+        }
 
     else:
         print("CN-portal triggered remediation")
@@ -126,6 +160,12 @@ def lambda_handler(event, context):
         try:
             if PolicyId == "NeptuneBackupRetention":  
                 responseCode,output = neptunecluster_backupretention.run_remediation(neptune,neptune_name)
+
+            if PolicyId == "NeptuneIAMDbAuthEnabled":  
+                responseCode,output = neptunecluster_iamauth.run_remediation(neptune,neptune_name)
+
+            if PolicyId == "NeptuneClusterCloudWatchLogsEnabled":  
+                responseCode,output = neptunecluster_logs.run_remediation(neptune,neptune_name)
         
         except ClientError as e:
             responseCode = 400

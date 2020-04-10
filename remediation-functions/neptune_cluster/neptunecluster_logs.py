@@ -1,5 +1,5 @@
 '''
-neptune auto version upgrade
+neptune Cloudwatch logs
 '''
 
 from botocore.exceptions import ClientError
@@ -7,14 +7,15 @@ import time
 
 def run_remediation(neptune, cluster_name):
     print("Executing remediation")            
-    backup = True
+    logs_enabled = False
     
-    #verify value for current backup retention 
+    #verify value for Cloudwatch logs
     try:
         response = neptune.describe_db_clusters(DBClusterIdentifier = cluster_name)['DBClusters']
-        backupretention = response[0]['BackupRetentionPeriod']
-        if backupretention < 7:
-            backup = False
+        if response[0]['EnabledCloudwatchLogsExports']:
+            logs_enabled = True
+        else:
+            logs_enabled = False
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
@@ -22,7 +23,7 @@ def run_remediation(neptune, cluster_name):
         responseCode = 400
         output = "Unexpected error: " + str(e)
 
-    if not backup:
+    if not logs_enabled:
         #verify instance state  
         while response[0]['Status'] not in ['available', 'stopped']:
             try:
@@ -34,11 +35,11 @@ def run_remediation(neptune, cluster_name):
             except Exception as e:
                 responseCode = 400
                 output = "Unexpected error: " + str(e)
-        #Update current backup retention          
+        #Enable audit logs          
         try:
             result = neptune.modify_db_cluster(
                         DBClusterIdentifier = cluster_name,
-                        BackupRetentionPeriod = 7,
+                        CloudwatchLogsExportConfiguration={'EnableLogTypes':['audit']},
                         ApplyImmediately = True
                     )
 
@@ -46,7 +47,7 @@ def run_remediation(neptune, cluster_name):
             if responseCode >= 400:
                 output = "Unexpected error: %s \n" % str(result)
             else:
-                output = "backup retention is now enabled for neptune cluster : %s \n" % cluster_name
+                output = "Cloudwatch logs are now enabled for neptune cluster : %s \n" % cluster_name
                     
         except ClientError as e:
             responseCode = 400
@@ -58,7 +59,7 @@ def run_remediation(neptune, cluster_name):
             print(output)
     else:
         responseCode = 200
-        output='Backup retention is already enabled for neptune-instance : '+ cluster_name
+        output='Cloudwatch logs are already enabled for neptune-instance : '+ cluster_name
         print(output)
 
     print(str(responseCode)+'-'+output)

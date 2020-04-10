@@ -1,5 +1,5 @@
 '''
-neptune auto version upgrade
+neptune iam authentication
 '''
 
 from botocore.exceptions import ClientError
@@ -7,14 +7,12 @@ import time
 
 def run_remediation(neptune, cluster_name):
     print("Executing remediation")            
-    backup = True
+    iamauth_enabled = True
     
     #verify value for current backup retention 
     try:
         response = neptune.describe_db_clusters(DBClusterIdentifier = cluster_name)['DBClusters']
-        backupretention = response[0]['BackupRetentionPeriod']
-        if backupretention < 7:
-            backup = False
+        iamauth_enabled = response[0]['IAMDatabaseAuthenticationEnabled']
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
@@ -22,7 +20,7 @@ def run_remediation(neptune, cluster_name):
         responseCode = 400
         output = "Unexpected error: " + str(e)
 
-    if not backup:
+    if not iamauth_enabled:
         #verify instance state  
         while response[0]['Status'] not in ['available', 'stopped']:
             try:
@@ -34,11 +32,11 @@ def run_remediation(neptune, cluster_name):
             except Exception as e:
                 responseCode = 400
                 output = "Unexpected error: " + str(e)
-        #Update current backup retention          
+        #Update current Iam authentication          
         try:
             result = neptune.modify_db_cluster(
                         DBClusterIdentifier = cluster_name,
-                        BackupRetentionPeriod = 7,
+                        EnableIAMDatabaseAuthentication = True,
                         ApplyImmediately = True
                     )
 
@@ -46,7 +44,7 @@ def run_remediation(neptune, cluster_name):
             if responseCode >= 400:
                 output = "Unexpected error: %s \n" % str(result)
             else:
-                output = "backup retention is now enabled for neptune cluster : %s \n" % cluster_name
+                output = "Iam authentication is now enabled for neptune cluster : %s \n" % cluster_name
                     
         except ClientError as e:
             responseCode = 400
@@ -58,7 +56,7 @@ def run_remediation(neptune, cluster_name):
             print(output)
     else:
         responseCode = 200
-        output='Backup retention is already enabled for neptune-instance : '+ cluster_name
+        output='Iam authentication is already enabled for neptune-instance : '+ cluster_name
         print(output)
 
     print(str(responseCode)+'-'+output)

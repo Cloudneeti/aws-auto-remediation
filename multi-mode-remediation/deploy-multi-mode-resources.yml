@@ -632,6 +632,7 @@ Resources:
             - "ModifyDBInstance"
             - "ModifyDBClusterSnapshotAttribute"
             - "ModifyDBSnapshotAttribute"
+            - "ModifyDBParameterGroup"
       Targets: 
         - 
           Arn: 
@@ -757,74 +758,6 @@ Resources:
         Fn::GetAtt: 
           - "SQSEventRule"
           - "Arn"
-  Route53DomainEventRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Name: "cn-aws-route53domain-event-rule"
-      Description: "CloudWatch Event triggered on route53 domain changes"
-      EventPattern:
-        source:
-          - "aws.route53"
-        detail-type:
-          - "AWS API Call via CloudTrail"
-        detail:
-          eventSource:
-            - "route53.amazonaws.com"
-          eventName:
-            - "DisableDomainAutoRenew"
-            - "DisableDomainTransferLock"
-            - "UpdateDomainContact"
-      Targets: 
-        - 
-          Arn: 
-            Fn::GetAtt: 
-              - "LambdaFunction"
-              - "Arn"
-          Id: "TargetFunctionV1"
-  PermissionForRoute53EventsToInvokeLambda: 
-    Type: AWS::Lambda::Permission
-    Properties: 
-      FunctionName: 
-        Ref: "LambdaFunction"
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn: 
-        Fn::GetAtt: 
-          - "Route53DomainEventRule"
-          - "Arn"
-  KinesisFirehoseEventRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Name: "cn-aws-kinesis-firehose-event-rule"
-      Description: "CloudWatch Event triggered on kinesis firehose update"
-      EventPattern:
-        source:
-          - "aws.firehose"
-        detail-type:
-          - "AWS API Call via CloudTrail"
-        detail:
-          eventSource:
-            - "firehose.amazonaws.com"
-          eventName:
-            - "StopDeliveryStreamEncryption"
-      Targets: 
-        - 
-          Arn: 
-            Fn::GetAtt: 
-              - "LambdaFunction"
-              - "Arn"
-          Id: "TargetFunctionV1"
-  PermissionForKinesisFirehoseEventsToInvokeLambda: 
-    Type: AWS::Lambda::Permission
-    Properties: 
-      FunctionName: 
-        Ref: "LambdaFunction"
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn: 
-        Fn::GetAtt: 
-          - "KinesisFirehoseEventRule"
-          - "Arn"
   CloudneetiRole:
     Type: AWS::IAM::Role
     Properties:
@@ -852,18 +785,34 @@ Resources:
             Effect: Allow
             Action:              
             - "lambda:InvokeFunction"
+            - "autoscaling:UpdateAutoScalingGroup"
+            - "cloudformation:UpdateTerminationProtection"
+            - "cloudtrail:StartLogging"
             - "cloudtrail:UpdateTrail"
+            - "config:PutConfigurationRecorder"
+            - "dynamodb:UpdateContinuousBackups"
+            - "ec2:MonitorInstances"
+            - "ec2:ModifyInstanceAttribute"
             - "elasticloadbalancing:ModifyLoadBalancerAttributes"
             - "iam:UpdateAccountPasswordPolicy"
+            - "iam:PassRole"
             - "kinesis:StartStreamEncryption"
             - "kinesis:EnableEnhancedMonitoring"
             - "kms:EnableKeyRotation"
             - "rds:ModifyDBCluster"
             - "rds:ModifyDBInstance"
+            - "rds:ModifyDBParameterGroup"
+            - "rds:ModifyDBClusterSnapshotAttribute"
+            - "rds:ModifyDBSnapshotAttribute"
             - "redshift:ModifyCluster"
             - "s3:PutBucketVersioning"
             - "s3:PutEncryptionConfiguration"
             - "s3:PutBucketAcl"
+            - "s3:PutAccelerateConfiguration"
+            - "s3:PutBucketLogging"
+            - "s3:PutBucketPublicAccessBlock"
+            - "sqs:CreateQueue"
+            - "sqs:SetQueueAttributes"
             Resource: "*"
   CNLambdaRole:
     Type: AWS::IAM::Role

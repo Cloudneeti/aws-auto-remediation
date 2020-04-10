@@ -1,1 +1,1 @@
-__all__ = ["neptunecluster_backupretention"]
+__all__ = ["neptunecluster_backupretention","neptunecluster_logs","neptunecluster_iamauth"]

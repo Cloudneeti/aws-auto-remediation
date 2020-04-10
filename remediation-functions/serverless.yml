@@ -181,6 +181,7 @@ functions:
                 - ModifyDBInstance
                 - ModifyDBClusterSnapshotAttribute
                 - ModifyDBSnapshotAttribute
+                - ModifyDBParameterGroup
       - cloudwatchEvent:
           name: 'cn-aws-redshift-event-rule'
           description: 'CloudWatch Event triggered on redshift cluster'
@@ -228,34 +229,6 @@ functions:
               eventName:
                 - CreateQueue
                 - SetQueueAttributes
-      - cloudwatchEvent:
-          name: 'cn-aws-route53domain-event-rule'
-          description: 'CloudWatch Event triggered on route53 domain'
-          event:
-            source:
-              - aws.route53
-            detail-type:
-              - AWS API Call via CloudTrail
-            detail:
-              eventSource:
-                - route53.amazonaws.com
-              eventName:
-                - DisableDomainAutoRenew
-                - DisableDomainTransferLock
-                - UpdateDomainContact
-      - cloudwatchEvent:
-          name: 'cn-aws-kinesis-firehose-event-rule'
-          description: 'CloudWatch Event triggered on kinesis firhose'
-          event:
-            source:
-              - aws.firehose
-            detail-type:
-              - AWS API Call via CloudTrail
-            detail:
-              eventSource:
-                - firehose.amazonaws.com
-              eventName:
-                - StopDeliveryStreamEncryption
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:remediationversion}
@@ -493,17 +466,6 @@ functions:
       Description: Cloudneeti automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'cn-remediation'}
 
-  route53_domain:
-    handler: route53_domain/route53domain_suborchestrator.lambda_handler
-    name: cn-aws-remediate-route53-domain
-    timeout: 300
-    role: CNLambdaRole
-    tags:
-      ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '1.0'}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
-
   fsx_windows:
     handler: fsx_windows/fsx_windows_suborchestrator.lambda_handler
     name: cn-aws-remediate-fsx-windows
@@ -575,8 +537,14 @@ resources:
               Effect: Allow
               Action:
               - lambda:InvokeFunction
-              - cloudtrail:UpdateTrail
+              - autoscaling:UpdateAutoScalingGroup
+              - cloudformation:UpdateTerminationProtection
               - cloudtrail:StartLogging
+              - cloudtrail:UpdateTrail
+              - config:PutConfigurationRecorder
+              - dynamodb:UpdateContinuousBackups
+              - ec2:MonitorInstances
+              - ec2:ModifyInstanceAttribute
               - elasticloadbalancing:ModifyLoadBalancerAttributes
               - iam:UpdateAccountPasswordPolicy
               - iam:PassRole
@@ -585,8 +553,8 @@ resources:
               - kms:EnableKeyRotation
               - rds:ModifyDBCluster
               - rds:ModifyDBInstance
-              - rds:AddTagsToResource
-              - rds:ModifyDBSnapshot
+              - rds:ModifyDBParameterGroup
+              - rds:ModifyDBClusterSnapshotAttribute
               - rds:ModifyDBSnapshotAttribute
               - redshift:ModifyCluster
               - s3:PutBucketVersioning
@@ -595,17 +563,8 @@ resources:
               - s3:PutAccelerateConfiguration
               - s3:PutBucketPublicAccessBlock
               - s3:PutBucketLogging
-              - dynamodb:UpdateContinuousBackups
-              - ec2:MonitorInstances
-              - ec2:ModifyInstanceAttribute
-              - autoscaling:UpdateAutoScalingGroup
-              - cloudformation:UpdateTerminationProtection
-              - config:PutConfigurationRecorder
+              - sqs:CreateQueue
               - sqs:SetQueueAttributes
-              - route53domains:EnableDomainAutoRenew
-              - route53domains:UpdateDomainContactPrivacy
-              - route53domains:EnableDomainTransferLock
-              - firehose:StartDeliveryStreamEncryption
               Resource: "*"
     CNOrchestratorRole:
       Type: AWS::IAM::Role

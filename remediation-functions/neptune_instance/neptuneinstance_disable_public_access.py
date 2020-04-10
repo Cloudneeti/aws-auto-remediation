@@ -3,6 +3,7 @@ update public access parameter for instance
 '''
 
 from botocore.exceptions import ClientError
+import time
 
 def run_remediation(neptune, instance_name):
     print("Executing remediation")            
@@ -24,6 +25,7 @@ def run_remediation(neptune, instance_name):
         while response[0]['DBInstanceStatus'] not in ['available', 'stopped']:
             try:
                 response = neptune.describe_db_instances(DBInstanceIdentifier = instance_name)['DBInstances']
+                time.sleep(10)
             except ClientError as e:
                 responseCode = 400
                 output = "Unexpected error: " + str(e)

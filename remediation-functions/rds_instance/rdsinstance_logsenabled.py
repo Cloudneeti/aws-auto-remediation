@@ -34,7 +34,16 @@ def run_remediation(rds, RDSInstanceName):
                 
             #Apply all logs for db-instance        
             try:
-                if response[0]['Engine'] in ['mysql','mariadb']:
+                if response[0]['Engine'] == 'mysql' and str(8.0) in response[0]['EngineVersion']:
+                    result = rds.modify_db_instance(
+                        DBInstanceIdentifier = RDSInstanceName,
+                        BackupRetentionPeriod = response[0]['BackupRetentionPeriod'],
+                        ApplyImmediately = False,
+                        CloudwatchLogsExportConfiguration = {
+                            'EnableLogTypes': ['error', 'general', 'slowquery']
+                        }
+                    )
+                elif response[0]['Engine'] in ['mysql','mariadb']:
                     result = rds.modify_db_instance(
                         DBInstanceIdentifier = RDSInstanceName,
                         BackupRetentionPeriod = response[0]['BackupRetentionPeriod'],

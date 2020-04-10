@@ -21,9 +21,9 @@ def run_remediation(rds, RDSInstanceName):
         dbinstance_details = rds.describe_db_instances(DBInstanceIdentifier = RDSInstanceName)['DBInstances']
         if dbinstance_details[0]['Engine'] == 'mysql':
             db_engine_flag = 1
-        if dbinstance_details[0]['EngineVersion'] in ['mysql8.0.11','mysql8.0.13','mysql8.0.15','mysql8.0.16']:
+        if str(8.0) in dbinstance_details[0]['EngineVersion']:
             db_version_flag = 1
-        RDSParameterGroup = Instance_Det[0]['DBParameterGroups']
+        RDSParameterGroup = dbinstance_details[0]['DBParameterGroups']
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
@@ -43,7 +43,6 @@ def run_remediation(rds, RDSInstanceName):
                 if protocol['ParameterName'] == 'block_encryption_mode':
                     if str(protocol['ParameterValue']) and str(protocol['ParameterValue']) in ParameterBlockEncryption:
                         enable_aes_latest = 0
-                
                 #Checking for MySQL Instance to enable FIPS mode on the server side   
                 if protocol['ParameterName'] == 'ssl_fips_mode':
                     if str(protocol['ParameterValue']) and str(protocol['ParameterValue']) in ParameterFIPS:
@@ -59,8 +58,8 @@ def run_remediation(rds, RDSInstanceName):
         #Update db parameter ssl_fips_mode     
         if 1 in parametervalues:
             try:
-                result = rds.modify_db_parameter_group(DBParameterGroupName = mysql_parameter_group, Parameters = [{'ParameterName': 'ssl_fips_mode','ParameterValue': '1','Description': 'enable FIPS mode on the server side','ApplyMethod': 'immediate'}])
-
+                result = rds.modify_db_parameter_group(DBParameterGroupName = RDSParameterGroup[0]['DBParameterGroupName'], Parameters = [{'ParameterName': 'ssl_fips_mode','ParameterValue': '1','Description': 'enable FIPS mode on the server side','ApplyMethod': 'immediate'}])
+                
                 responseCode = result['ResponseMetadata']['HTTPStatusCode']
                 if responseCode >= 400:
                     output = "Unexpected error: %s \n" % str(result)
@@ -79,8 +78,8 @@ def run_remediation(rds, RDSInstanceName):
         #Update db parameter block_encryption_mode
         elif 2 in parametervalues:
             try:
-                result = rds.modify_db_parameter_group(DBParameterGroupName = mysql_parameter_group, Parameters = [{'ParameterName': 'block_encryption_mode','ParameterValue': 'aes-256-cbc','Description': 'use latest  block encryption mode','ApplyMethod': 'immediate'}])
-
+                result = rds.modify_db_parameter_group(DBParameterGroupName = RDSParameterGroup[0]['DBParameterGroupName'], Parameters = [{'ParameterName': 'block_encryption_mode','ParameterValue': 'aes-256-cbc','Description': 'use latest  block encryption mode','ApplyMethod': 'immediate'}])
+                
                 responseCode = result['ResponseMetadata']['HTTPStatusCode']
                 if responseCode >= 400:
                     output = "Unexpected error: %s \n" % str(result)
@@ -97,12 +96,12 @@ def run_remediation(rds, RDSInstanceName):
                 print(output)
         else:
             responseCode = 200
-            output = 'DB parameters are already for RDS Instance : '+ RDSInstanceName
+            output = 'DB parameters are already updated for RDS Instance : '+ RDSInstanceName
             print(output)
         parametervalues = []
     else:
         responseCode = 200
-        output = 'These Configuration are not supported for rds instance please upgraded mysql instance : '+ RDSInstanceName
+        output = 'SSL FIPS or Block Encryption Parameters Configuration are not supported for rds mysql instance please upgraded instance : '+ RDSInstanceName
         print(output)
 
     print(str(responseCode)+'-'+output)
