@@ -14,7 +14,7 @@ The remediation framework uses Cloudwatch event rules, CloudTrail, CloudWatch lo
 1. AWS account administrator creates/updates/reconfigure resources in aws account
 2. CloudTrail and CloudWatch event bus collects the events occurred in AWS account and trigger appropriate event rule.
 3. CloudWatch event rule trigger the auto-remediation invoker in near real-time in its region
-4. Form diifferent aws region Auto-remediation-invoker lambda calls the orchestrator which then call appropriate remediation functions present in the remediation framework 
+4. Form different aws region Auto-remediation-invoker lambda calls the orchestrator which then call appropriate remediation functions present in the remediation framework 
 5. Remediation functions setup required security configuration on the resources
 
 This auto-remediation solution supports multi-account remediation as well. Here, we are providing cross-account access roles to execute the remediation functions present in remediation framework account.
@@ -78,11 +78,11 @@ Perform below steps to deploy remediation framework on configured AWS account
 
 	Note: Primary region for multi account deployment should be the same as that of the remediation framework primary region for single account deployment
 
-	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <1.0> -s <list of regions where auto-remediation is to be enabled>`
+	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <2.0> -s <list of regions where auto-remediation is to be enabled>`
 
 	OR
 
-	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <1.0> -s <all>`
+	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <2.0> -s <all>`
 
 	Pass AWS account id and the environment as dev/test/prod.
 
@@ -122,11 +122,11 @@ In case you want to use same remediation framework for remediation of multiple A
 	
 	Note: Primary region for multi account deployment should be the same as that of the remediation framework primary region for single account deployment
 
-	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <1.0> -s <list of regions where auto-remediation is to enabled>`
+	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <2.0> -s <list of regions where auto-remediation is to enabled>`
 
 	OR
 
-	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <1.0> -s <all>`
+	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <2.0> -s <all>`
 
    This command creates the required resources like Cloudtrail, Cloudwatch event rules, Remediation functions and roles required to perform cross-account remediation 
 6. Verify multi-account remediation setup
