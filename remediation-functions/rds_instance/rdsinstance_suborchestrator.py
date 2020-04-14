@@ -306,7 +306,7 @@ def lambda_handler(event, context):
                 responseCode,output = rdsinstance_iam_auth.run_remediation(rds,RDSInstanceName)
             
             if PolicyId in db_parameters:
-                responseCode,output = rdsinstance_iam_auth.run_remediation(rds,RDSInstanceName)
+                responseCode,output = rdsinstance_updateparameters.run_remediation(rds,RDSInstanceName)
                 
         except ClientError as e:
             responseCode = 400

@@ -198,7 +198,7 @@ if [[ "$secondary_regions" -ne "na" ]] && [[ "$s3_status" -eq 0 ]]; then
         fi
     done
 else
-    echo "Regional Deployments not configured!.."
+    echo "Regional Deployments skipped with input na!.."
 fi
 
 if [[ $lambda_status -eq 0 ]]; then
