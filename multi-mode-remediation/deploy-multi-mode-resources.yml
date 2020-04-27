@@ -151,7 +151,7 @@ Resources:
           Value: "auto-remediation-trail"
         -
           Key: "Version"
-          Value: "2.0"
+          Value: "2.1"
         -
           Key: "Description"
           Value: "Cloudneeti automatic remediation solution for making cloud resource compliant"
@@ -266,6 +266,74 @@ Resources:
               except:
                 IsVerified = False
               return IsVerified
+  ASGEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: "cn-aws-asg-event-rule"
+      Description: "CloudWatch Event triggered on ASG update"
+      EventPattern:
+        source:
+          - "aws.autoscaling"
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "autoscaling.amazonaws.com"
+          eventName:
+            - "UpdateAutoScalingGroup"
+            - "CreateAutoScalingGroup"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "LambdaFunction"
+              - "Arn"
+          Id: "TargetFunctionV1"
+  PermissionForASGToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "LambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "ASGEventRule"
+          - "Arn"
+  CloudFormationEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: "cn-aws-cloudformation-event-rule"
+      Description: "CloudWatch Event triggered on cloudformation stack update"
+      EventPattern:
+        source:
+          - "aws.cloudformation"
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "cloudformation.amazonaws.com"
+          eventName:
+            - "CreateStack"
+            - "UpdateTerminationProtection"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "LambdaFunction"
+              - "Arn"
+          Id: "TargetFunctionV1"
+  PermissionForCloudtrailEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "LambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "CloudFormationEventRule"
+          - "Arn"
   CloudtrailEventRule:
     Type: AWS::Events::Rule
     Properties:
@@ -282,6 +350,7 @@ Resources:
           eventName:
             - "CreateTrail"
             - "UpdateTrail"
+            - "StopLogging"
       Targets: 
         - 
           Arn: 
@@ -299,6 +368,112 @@ Resources:
       SourceArn: 
         Fn::GetAtt: 
           - "CloudtrailEventRule"
+          - "Arn"
+  ConfigEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: "cn-aws-config-event-rule"
+      Description: "CloudWatch Event triggered on config changes"
+      EventPattern:
+        source:
+          - "aws.config"
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "config.amazonaws.com"
+          eventName:
+            - "PutConfigurationRecorder"
+            - "StopConfigurationRecorder"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "LambdaFunction"
+              - "Arn"
+          Id: "TargetFunctionV1"
+  PermissionForConfigEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "LambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "ConfigEventRule"
+          - "Arn"
+  DynamoDBEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: "cn-aws-dynamodb-event-rule"
+      Description: "CloudWatch Event triggered on dynamodb changes"
+      EventPattern:
+        source:
+          - "aws.dynamodb"
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "dynamodb.amazonaws.com"
+          eventName:
+            - "CreateTable"
+            - "RestoreTableFromBackup"
+            - "UpdateTable"
+            - "UpdateContinuousBackups"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "LambdaFunction"
+              - "Arn"
+          Id: "TargetFunctionV1"
+  PermissionForDynamoDBEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "LambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "DynamoDBEventRule"
+          - "Arn"
+  EC2EventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: "cn-aws-ec2instance-event-rule"
+      Description: "CloudWatch Event triggered on ec2 instance update"
+      EventPattern:
+        source:
+          - "aws.ec2"
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "ec2.amazonaws.com"
+          eventName:
+            - "RunInstances"
+            - "StartInstances"
+            - "ModifyInstanceAttribute"
+            - "UnmonitorInstances"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "LambdaFunction"
+              - "Arn"
+          Id: "TargetFunctionV1"
+  PermissionForEC2EventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "LambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "EC2EventRule"
           - "Arn"
   ELBEventRule:
     Type: AWS::Events::Rule
@@ -383,6 +558,7 @@ Resources:
             - "kinesis.amazonaws.com"
           eventName:
             - "CreateStream"
+            - "StopStreamEncryption"
             - "DisableEnhancedMonitoring"
       Targets: 
         - 
@@ -454,7 +630,9 @@ Resources:
             - "ModifyDBCluster"
             - "CreateDBInstance"
             - "ModifyDBInstance"
-            - "RemoveTagsFromResource"
+            - "ModifyDBClusterSnapshotAttribute"
+            - "ModifyDBSnapshotAttribute"
+            - "ModifyDBParameterGroup"
       Targets: 
         - 
           Arn: 
@@ -525,6 +703,9 @@ Resources:
             - "PutBucketVersioning"
             - "DeleteBucketEncryption"
             - "PutBucketAcl"
+            - "PutBucketPublicAccessBlock"
+            - "PutBucketLogging"
+            - "PutAccelerateConfiguration"
       Targets: 
         - 
           Arn: 
@@ -542,6 +723,40 @@ Resources:
       SourceArn: 
         Fn::GetAtt: 
           - "S3EventRule"
+          - "Arn"
+  SQSEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: "cn-aws-sqs-event-rule"
+      Description: "CloudWatch Event triggered on sqs update"
+      EventPattern:
+        source:
+          - "aws.sqs"
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "sqs.amazonaws.com"
+          eventName:
+            - "CreateQueue"
+            - "SetQueueAttributes"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "LambdaFunction"
+              - "Arn"
+          Id: "TargetFunctionV1"
+  PermissionForSQSEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "LambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "SQSEventRule"
           - "Arn"
   CloudneetiRole:
     Type: AWS::IAM::Role
@@ -570,18 +785,34 @@ Resources:
             Effect: Allow
             Action:              
             - "lambda:InvokeFunction"
+            - "autoscaling:UpdateAutoScalingGroup"
+            - "cloudformation:UpdateTerminationProtection"
+            - "cloudtrail:StartLogging"
             - "cloudtrail:UpdateTrail"
+            - "config:PutConfigurationRecorder"
+            - "dynamodb:UpdateContinuousBackups"
+            - "ec2:MonitorInstances"
+            - "ec2:ModifyInstanceAttribute"
             - "elasticloadbalancing:ModifyLoadBalancerAttributes"
             - "iam:UpdateAccountPasswordPolicy"
+            - "iam:PassRole"
             - "kinesis:StartStreamEncryption"
             - "kinesis:EnableEnhancedMonitoring"
             - "kms:EnableKeyRotation"
             - "rds:ModifyDBCluster"
             - "rds:ModifyDBInstance"
+            - "rds:ModifyDBParameterGroup"
+            - "rds:ModifyDBClusterSnapshotAttribute"
+            - "rds:ModifyDBSnapshotAttribute"
             - "redshift:ModifyCluster"
             - "s3:PutBucketVersioning"
             - "s3:PutEncryptionConfiguration"
             - "s3:PutBucketAcl"
+            - "s3:PutAccelerateConfiguration"
+            - "s3:PutBucketLogging"
+            - "s3:PutBucketPublicAccessBlock"
+            - "sqs:CreateQueue"
+            - "sqs:SetQueueAttributes"
             Resource: "*"
   CNLambdaRole:
     Type: AWS::IAM::Role

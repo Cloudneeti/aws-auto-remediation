@@ -6,11 +6,11 @@ from botocore.exceptions import ClientError
 
 def run_remediation(s3_client, bucket_name):
     print("Executing remediation")            
-            
+    #Apply private acl config. to bucket        
     try:
         result = s3_client.put_bucket_acl(
-                    Bucket=bucket_name,
-                    ACL='private'
+                    Bucket = bucket_name,
+                    ACL = 'private'
                 )
 
         responseCode = result['ResponseMetadata']['HTTPStatusCode']

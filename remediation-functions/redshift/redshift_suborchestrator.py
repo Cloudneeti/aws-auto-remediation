@@ -18,7 +18,6 @@ def lambda_handler(event, context):
         pass
 
     if not PolicyId:
-        print("Executing auto-remediation")
         try:  # common code
             CustAccID, role_arn = common.getRoleArn_cwlogs(event)
             aws_access_key_id, aws_secret_access_key, aws_session_token = common.getCredentials(role_arn)
@@ -164,7 +163,7 @@ def lambda_handler(event, context):
 
             if PolicyId == "RedShiftAutomatedSnapshot":  
                 responseCode,output = redshift_automatic_retention.run_remediation(redshift,redshift_name)
-        
+            
         except ClientError as e:
             responseCode = 400
             output = "Unable to remediate redshift: " + str(e)

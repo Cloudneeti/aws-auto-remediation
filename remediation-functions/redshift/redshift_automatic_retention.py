@@ -9,9 +9,10 @@ def run_remediation(redshift, cluster_name):
     print("Executing remediation")            
 
     current_retention = 0
-    
+    #Verify current backup retention value
     try:
-        current_retention = redshift.describe_clusters(ClusterIdentifier=cluster_name)['Clusters'][0]['AutomatedSnapshotRetentionPeriod']
+        response = redshift.describe_clusters(ClusterIdentifier = cluster_name)['Clusters']
+        current_retention = response[0]['AutomatedSnapshotRetentionPeriod']
     except:
         current_retention = 0    
 

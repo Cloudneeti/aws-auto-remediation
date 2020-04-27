@@ -10,13 +10,16 @@ from rds_instance import *
 
 def lambda_handler(event, context):
     global aws_access_key_id, aws_secret_access_key, aws_session_token, CustAccID, Region
-    backup_retention=["SQLBackup","SQLBackupTerm","MariadbBackup","MariadbBackupTerm","OracleBackup","OracleBackupTerm","SQLServerBackup","SQLServerBackupTerm"]
-    copytagstosnapshot=["SQLCopyTagsToSnapshot","MariadbCopyTagsToSnapshot","OracleCopyTagsToSnapshot","SQLServerCopyTagsToSnapshot"]
-    deletion_protection=["SQLDeletionProtection","MariadbDeletionProtection", "OracleDeletionProtection", "SQLServerDeletionProtection"]
-    disable_public_access=["SQLPrivateInstance","MariadbPrivateInstance","OraclePrivateInstance","SQLServerPrivateInstance","AuroraInstancePrivateInstance"]
-    minor_version=["SQLVersionUpgrade","MariadbVersionUpgrade","OracleVersionUpgrade","SQLServerVersionUpgrade","AuroraInstanceVersionUpgrade"]
-    multiaz=["SQLMultiAZEnabled","MariadbMultiAZEnabled","OracleMultiAZEnabled","SQLServerMultiAZEnabled"]
-    performance_insights=["SQLPerformanceInsights","MariadbPerformanceInsights","OraclePerformanceInsights","SQLServerPerformanceInsights","AuroraInstancePerformanceInsights"]
+    backup_retention = ["SQLBackup","SQLBackupTerm","MariadbBackup","MariadbBackupTerm","OracleBackup","OracleBackupTerm","SQLServerBackup","SQLServerBackupTerm","MySQLBackup","MySQLBackupTerm"]
+    copytagstosnapshot = ["SQLCopyTagsToSnapshot","MariadbCopyTagsToSnapshot","OracleCopyTagsToSnapshot","SQLServerCopyTagsToSnapshot","MySQLCopyTagsToSnapshot"]
+    deletion_protection = ["SQLDeletionProtection","MariadbDeletionProtection", "OracleDeletionProtection", "SQLServerDeletionProtection","MySQLDeletionProtection"]
+    disable_public_access = ["SQLPrivateInstance","MariadbPrivateInstance","OraclePrivateInstance","SQLServerPrivateInstance","AuroraInstancePrivateInstance","MySQLPrivateInstance"]
+    minor_version = ["SQLVersionUpgrade","MariadbVersionUpgrade","OracleVersionUpgrade","SQLServerVersionUpgrade","AuroraInstanceVersionUpgrade","MySQLVersionUpgrade"]
+    multiaz = ["SQLMultiAZEnabled","MariadbMultiAZEnabled","OracleMultiAZEnabled","SQLServerMultiAZEnabled","MySQLMultiAZEnabled"]
+    performance_insights = ["SQLPerformanceInsights","MariadbPerformanceInsights","OraclePerformanceInsights","SQLServerPerformanceInsights","AuroraInstancePerformanceInsights","MySQLPerformanceInsights"]
+    instance_logexport = ["MySQLlogExport","MariadblogExport","OraclelogExport"]
+    instance_iam_auth = ["SQLIAMAuthEnabled", "MySQLIAMAuthEnabled"]
+    db_parameters = ["MySQLBlockEncryption","MySQLEnableFIPS"]
     
     try:
         PolicyId = json.loads(event["body"])["PolicyId"]
@@ -26,7 +29,6 @@ def lambda_handler(event, context):
 
     #region CW Call
     if not PolicyId:
-        print("Executing auto-remediation")
         try:  # common code
             CustAccID, role_arn = common.getRoleArn_cwlogs(event)
             aws_access_key_id, aws_secret_access_key, aws_session_token = common.getCredentials(role_arn)
@@ -80,7 +82,7 @@ def lambda_handler(event, context):
                 return {
                     'statusCode': 400,
                     'body': str(e)
-                }
+                }                
 
         if set(copytagstosnapshot).intersection(set(records)):
             try:
@@ -144,23 +146,7 @@ def lambda_handler(event, context):
                 return {
                     'statusCode': 400,
                     'body': str(e)
-                } 
-
-        if set(multiaz).intersection(set(records)):
-            try:
-                rdsinstance_multizone.run_remediation(rds,RDSInstanceName)
-            except ClientError as e:
-                print(e)
-                return {  
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-            except Exception as e:
-                print(e)
-                return {
-                    'statusCode': 400,
-                    'body': str(e)
-                } 
+                }  
         
         if set(performance_insights).intersection(set(records)):
             try:
@@ -176,8 +162,72 @@ def lambda_handler(event, context):
                 return {
                     'statusCode': 400,
                     'body': str(e)
-                } 
+                }
         
+        if set(instance_logexport).intersection(set(records)):
+            try:
+                rdsinstance_logsenabled.run_remediation(rds,RDSInstanceName)
+            except ClientError as e:
+                print(e)
+                return {  
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+            except Exception as e:
+                print(e)
+                return {
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+        
+        if set(instance_iam_auth).intersection(set(records)):
+            try:
+                rdsinstance_iam_auth.run_remediation(rds,RDSInstanceName)
+            except ClientError as e:
+                print(e)
+                return {  
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+            except Exception as e:
+                print(e)
+                return {
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+        
+        if set(db_parameters).intersection(set(records)):
+            try:
+                rdsinstance_updateparameters.run_remediation(rds,RDSInstanceName)
+            except ClientError as e:
+                print(e)
+                return {  
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+            except Exception as e:
+                print(e)
+                return {
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+        
+        if set(multiaz).intersection(set(records)):
+            try:
+                rdsinstance_multizone.run_remediation(rds,RDSInstanceName)
+            except ClientError as e:
+                print(e)
+                return {  
+                    'statusCode': 400,
+                    'body': str(e)
+                }
+            except Exception as e:
+                print(e)
+                return {
+                    'statusCode': 400,
+                    'body': str(e)
+                } 
+                        
         print('remediated-' + RDSInstanceName)
         #returning the output Array in json format
         return {  
@@ -248,7 +298,16 @@ def lambda_handler(event, context):
 
             if PolicyId in performance_insights:
                 responseCode,output = rdsinstance_performanceinsights.run_remediation(rds,RDSInstanceName)
+            
+            if PolicyId in instance_logexport:
+                responseCode,output = rdsinstance_logsenabled.run_remediation(rds,RDSInstanceName)
         
+            if PolicyId in instance_iam_auth:
+                responseCode,output = rdsinstance_iam_auth.run_remediation(rds,RDSInstanceName)
+            
+            if PolicyId in db_parameters:
+                responseCode,output = rdsinstance_updateparameters.run_remediation(rds,RDSInstanceName)
+                
         except ClientError as e:
             responseCode = 400
             output = "Unable to remediate RDS Instance: " + str(e)

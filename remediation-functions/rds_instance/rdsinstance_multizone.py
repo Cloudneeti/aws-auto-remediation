@@ -1,18 +1,19 @@
 '''
 Enable MultiAZ for Amazon RDS Database Instances
 '''
-
+import time
 from botocore.exceptions import ClientError
 
 def run_remediation(rds, RDSInstanceName):
     print("Executing RDS Instance remediation")
-    multiaz='' 
+    multiaz=''
+    #Verify current multi-az configuration
     try:
-        response = rds.describe_db_instances(DBInstanceIdentifier=RDSInstanceName)['DBInstances']
-        multiaz=response[0]['MultiAZ']
-        current_retention=response[0]['BackupRetentionPeriod']
+        response = rds.describe_db_instances(DBInstanceIdentifier = RDSInstanceName)['DBInstances']
+        multiaz = response[0]['MultiAZ']
+        current_retention = response[0]['BackupRetentionPeriod']
         if not current_retention:
-            current_retention=7
+            current_retention = 7
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
@@ -21,24 +22,26 @@ def run_remediation(rds, RDSInstanceName):
         output = "Unexpected error: " + str(e)
 
     if not multiaz:
+        #verify instance state  
         while response[0]['DBInstanceStatus'] not in ['available', 'stopped']:
             try:
-                response = rds.describe_db_instances(DBInstanceIdentifier=RDSInstanceName)['DBInstances']
+                response = rds.describe_db_instances(DBInstanceIdentifier = RDSInstanceName)['DBInstances']
+                time.sleep(10)
             except ClientError as e:
                 responseCode = 400
                 output = "Unexpected error: " + str(e)
             except Exception as e:
                 responseCode = 400
                 output = "Unexpected error: " + str(e)
-
+                
+        #Apply multi-az configuration
         try:
             result = rds.modify_db_instance(
-                DBInstanceIdentifier=RDSInstanceName,
-                BackupRetentionPeriod=current_retention,
-                ApplyImmediately=False,
-                MultiAZ=True
+                DBInstanceIdentifier = RDSInstanceName,
+                BackupRetentionPeriod = current_retention,
+                ApplyImmediately = False,
+                MultiAZ = True
             )
-
             responseCode = result['ResponseMetadata']['HTTPStatusCode']
             if responseCode >= 400:
                 output = "Unexpected error: %s \n" % str(result)
@@ -55,8 +58,8 @@ def run_remediation(rds, RDSInstanceName):
             print(output)
 
     else:
-        responseCode=200
-        output='MultiAZ already enabled for rds-instance : '+RDSInstanceName
+        responseCode = 200
+        output = 'MultiAZ already enabled for rds-instance : '+ RDSInstanceName
         print(output)
 
     print(str(responseCode)+'-'+output)

@@ -5,7 +5,7 @@ provider:
   runtime: python3.7
   stage: ${opt:env, 'dev'}
   region: ${opt:region, 'us-east-1'}
-  remediationversion: ${opt:remediationversion, '2.0'}
+  remediationversion: ${opt:remediationversion, '2.1'}
   memorySize: 3008
   deploymentBucket:
     name: cn-rem-${self:provider.stage}
@@ -18,22 +18,33 @@ functions:
     role: CNLambdaRole
     events:
       - cloudwatchEvent:
-          name: 'cn-aws-rds-event-rule'
-          description: 'CloudWatch Event triggered on rds'
+          name: 'cn-aws-asg-event-rule'
+          description: 'CloudWatch Event triggered on asg'
           event:
             source:
-              - aws.rds
+              - aws.autoscaling
             detail-type:
               - AWS API Call via CloudTrail
             detail:
               eventSource:
-                - rds.amazonaws.com
+                - autoscaling.amazonaws.com
               eventName:
-                - CreateDBCluster
-                - ModifyDBCluster
-                - CreateDBInstance
-                - ModifyDBInstance
-                - RemoveTagsFromResource
+                - UpdateAutoScalingGroup
+                - CreateAutoScalingGroup
+      - cloudwatchEvent:
+          name: 'cn-aws-cloudformation-event-rule'
+          description: 'CloudWatch Event triggered on cloudformation stack'
+          event:
+            source:
+              - aws.cloudformation
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - cloudformation.amazonaws.com
+              eventName:
+                - CreateStack
+                - UpdateTerminationProtection
       - cloudwatchEvent:
           name: 'cn-aws-cloudtrail-event-rule'
           description: 'CloudWatch Event triggered on cloudtrail'
@@ -48,6 +59,67 @@ functions:
               eventName:
                 - CreateTrail
                 - UpdateTrail
+                - StopLogging
+      - cloudwatchEvent:
+          name: 'cn-aws-config-event-rule'
+          description: 'CloudWatch Event triggered on config'
+          event:
+            source:
+              - aws.config
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - config.amazonaws.com
+              eventName:
+                - PutConfigurationRecorder
+                - StopConfigurationRecorder
+      - cloudwatchEvent:
+          name: 'cn-aws-dynamodb-event-rule'
+          description: 'CloudWatch Event triggered on dynamodb'
+          event:
+            source:
+              - aws.dynamodb
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - dynamodb.amazonaws.com
+              eventName:
+                - CreateTable
+                - RestoreTableFromBackup
+                - UpdateTable
+                - UpdateContinuousBackups
+      - cloudwatchEvent:
+          name: 'cn-aws-ec2-event-rule'
+          description: 'CloudWatch Event triggered on ec2'
+          event:
+            source:
+              - aws.ec2
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - ec2.amazonaws.com
+              eventName:
+                - RunInstances
+                - StartInstances
+                - ModifyInstanceAttribute
+                - UnmonitorInstances
+      - cloudwatchEvent:
+          name: 'cn-aws-elb-event-rule'
+          description: 'CloudWatch Event triggered on elb'
+          event:
+            source:
+              - aws.elasticloadbalancing
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - elasticloadbalancing.amazonaws.com
+              eventName:
+                - CreateLoadBalancer
+                - ModifyLoadBalancerAttributes
       - cloudwatchEvent:
           name: 'cn-aws-iam-event-rule'
           description: 'CloudWatch Event triggered on iam'
@@ -75,6 +147,7 @@ functions:
                 - kinesis.amazonaws.com
               eventName:
                 - CreateStream
+                - StopStreamEncryption
                 - DisableEnhancedMonitoring
       - cloudwatchEvent:
           name: 'cn-aws-kms-event-rule'
@@ -91,19 +164,38 @@ functions:
                 - CreateKey
                 - DisableKeyRotation
       - cloudwatchEvent:
-          name: 'cn-aws-elb-event-rule'
-          description: 'CloudWatch Event triggered on elb'
+          name: 'cn-aws-rds-event-rule'
+          description: 'CloudWatch Event triggered on rds/neptune/docdb'
           event:
             source:
-              - aws.elasticloadbalancing
+              - aws.rds
             detail-type:
               - AWS API Call via CloudTrail
             detail:
               eventSource:
-                - elasticloadbalancing.amazonaws.com
+                - rds.amazonaws.com
               eventName:
-                - CreateLoadBalancer
-                - ModifyLoadBalancerAttributes
+                - CreateDBCluster
+                - ModifyDBCluster
+                - CreateDBInstance
+                - ModifyDBInstance
+                - ModifyDBClusterSnapshotAttribute
+                - ModifyDBSnapshotAttribute
+                - ModifyDBParameterGroup
+      - cloudwatchEvent:
+          name: 'cn-aws-redshift-event-rule'
+          description: 'CloudWatch Event triggered on redshift cluster'
+          event:
+            source:
+              - aws.redshift
+            detail-type:
+              - AWS API Call via CloudTrail
+            detail:
+              eventSource:
+                - redshift.amazonaws.com
+              eventName:
+                - CreateCluster
+                - ModifyCluster
       - cloudwatchEvent:
           name: 'cn-aws-s3bucket-event-rule'
           description: 'CloudWatch Event triggered on s3bucket'
@@ -120,20 +212,23 @@ functions:
                 - PutBucketVersioning
                 - DeleteBucketEncryption
                 - PutBucketAcl
+                - PutAccelerateConfiguration
+                - PutBucketPublicAccessBlock
+                - PutBucketLogging
       - cloudwatchEvent:
-          name: 'cn-aws-redshift-event-rule'
-          description: 'CloudWatch Event triggered on redshift cluster'
+          name: 'cn-aws-sqs-event-rule'
+          description: 'CloudWatch Event triggered on sqs queue'
           event:
             source:
-              - aws.redshift
+              - aws.sqs
             detail-type:
               - AWS API Call via CloudTrail
             detail:
               eventSource:
-                - redshift.amazonaws.com
+                - sqs.amazonaws.com
               eventName:
-                - CreateCluster
-                - ModifyCluster
+                - CreateQueue
+                - SetQueueAttributes
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:remediationversion}
@@ -249,7 +344,150 @@ functions:
       Version: ${opt:remediationversion}
       Description: Cloudneeti automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'cn-remediation'}
-      
+
+  neptune_cluster:
+    handler: neptune_cluster/neptunecluster_suborchestrator.lambda_handler
+    name: cn-aws-remediate-neptune-cluster
+    timeout: 900
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+
+  neptune_instance:
+    handler: neptune_instance/neptuneinstance_suborchestrator.lambda_handler
+    name: cn-aws-remediate-neptune-instance
+    timeout: 900
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+
+  ec2:
+    handler: ec2/ec2instance_suborchestrator.lambda_handler
+    name: cn-aws-remediate-ec2-instance
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+  
+  dynamodb:
+    handler: dynamodb/dynamodb_suborchestrator.lambda_handler
+    name: cn-aws-remediate-dynamodb
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+  
+  config:
+    handler: config/config_suborchestrator.lambda_handler
+    name: cn-aws-remediate-config
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+  
+  asg:
+    handler: asg/asg_suborchestrator.lambda_handler
+    name: cn-aws-remediate-asg
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+  
+  cloudformation:
+    handler: cloudformation/cloudformation_suborchestrator.lambda_handler
+    name: cn-aws-remediate-cloudformation
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+  
+  sqs:
+    handler: sqs/sqs_suborchestrator.lambda_handler
+    name: cn-aws-remediate-sqs
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+  
+  rds_snapshots:
+    handler: rds_snapshots/rdssnapshot_suborchestrator.lambda_handler
+    name: cn-aws-remediate-rdssnapshot
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+  
+  docdb_instance:
+    handler: docdb_instance/documentdbinstance_suborchestrator.lambda_handler
+    name: cn-aws-remediate-documentdb-instance
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+  
+  docdb_cluster:
+    handler: docdb_cluster/documentdbcluster_suborchestrator.lambda_handler
+    name: cn-aws-remediate-documentdb-cluster
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+
+  fsx_windows:
+    handler: fsx_windows/fsx_windows_suborchestrator.lambda_handler
+    name: cn-aws-remediate-fsx-windows
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+  
+  kinesis_firehose:
+    handler: kinesis_firehose/kinesis_firehose_suborchestrator.lambda_handler
+    name: cn-aws-remediate-kinesis-firehose
+    timeout: 300
+    role: CNLambdaRole
+    tags:
+      ServiceName: auto-remediation-lambda
+      Version: ${opt:version, '1.0'}
+      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'cn-remediation'}
+    
 resources:
   Resources:
     CNCloudTrail:
@@ -299,18 +537,34 @@ resources:
               Effect: Allow
               Action:
               - lambda:InvokeFunction
+              - autoscaling:UpdateAutoScalingGroup
+              - cloudformation:UpdateTerminationProtection
+              - cloudtrail:StartLogging
               - cloudtrail:UpdateTrail
+              - config:PutConfigurationRecorder
+              - dynamodb:UpdateContinuousBackups
+              - ec2:MonitorInstances
+              - ec2:ModifyInstanceAttribute
               - elasticloadbalancing:ModifyLoadBalancerAttributes
               - iam:UpdateAccountPasswordPolicy
+              - iam:PassRole
               - kinesis:StartStreamEncryption
               - kinesis:EnableEnhancedMonitoring
               - kms:EnableKeyRotation
               - rds:ModifyDBCluster
               - rds:ModifyDBInstance
+              - rds:ModifyDBParameterGroup
+              - rds:ModifyDBClusterSnapshotAttribute
+              - rds:ModifyDBSnapshotAttribute
               - redshift:ModifyCluster
               - s3:PutBucketVersioning
               - s3:PutEncryptionConfiguration
               - s3:PutBucketAcl
+              - s3:PutAccelerateConfiguration
+              - s3:PutBucketPublicAccessBlock
+              - s3:PutBucketLogging
+              - sqs:CreateQueue
+              - sqs:SetQueueAttributes
               Resource: "*"
     CNOrchestratorRole:
       Type: AWS::IAM::Role

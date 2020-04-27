@@ -1,15 +1,16 @@
 '''
 Enable Deletion Protection feature for AWS RDS database instances
 '''
-
+import time
 from botocore.exceptions import ClientError
 
 def run_remediation(rds, RDSInstanceName):
     print("Executing RDS Instance remediation")  
-    deletion_protection='' 
+    deletion_protection = False 
+    #Verify for deletion protection value for rds resources 
     try:
-        response = rds.describe_db_instances(DBInstanceIdentifier=RDSInstanceName)['DBInstances']
-        deletion_protection=response[0]['DeletionProtection']
+        response = rds.describe_db_instances(DBInstanceIdentifier = RDSInstanceName)['DBInstances']
+        deletion_protection = response[0]['DeletionProtection']
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
@@ -18,23 +19,26 @@ def run_remediation(rds, RDSInstanceName):
         output = "Unexpected error: " + str(e)
             
     if not deletion_protection:
+        #verify instance state  
         while response[0]['DBInstanceStatus'] not in ['available', 'stopped']:
             try:
-                response = rds.describe_db_instances(DBInstanceIdentifier=RDSInstanceName)['DBInstances']
+                response = rds.describe_db_instances(DBInstanceIdentifier = RDSInstanceName)['DBInstances']
+                time.sleep(10)
             except ClientError as e:
                 responseCode = 400
                 output = "Unexpected error: " + str(e)
             except Exception as e:
                 responseCode = 400
                 output = "Unexpected error: " + str(e)
-
+                
+        #Apply deletion protection
         try:
             result = rds.modify_db_instance(
-                DBInstanceIdentifier=RDSInstanceName,
-                ApplyImmediately=True,
-                DeletionProtection=True
+                DBInstanceIdentifier = RDSInstanceName,
+                BackupRetentionPeriod = response[0]['BackupRetentionPeriod'],
+                ApplyImmediately = False,
+                DeletionProtection = True
             )
-
             responseCode = result['ResponseMetadata']['HTTPStatusCode']
             if responseCode >= 400:
                 output = "Unexpected error: %s \n" % str(result)
@@ -51,8 +55,8 @@ def run_remediation(rds, RDSInstanceName):
             print(output)
 
     else:
-        responseCode=200
-        output='Deletion protection already enabled for : '+RDSInstanceName
+        responseCode = 200
+        output ='Deletion protection already enabled for : '+ RDSInstanceName
         print(output)
 
     print(str(responseCode)+'-'+output)

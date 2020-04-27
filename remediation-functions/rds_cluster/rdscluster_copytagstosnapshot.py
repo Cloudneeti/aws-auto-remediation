@@ -1,14 +1,16 @@
 '''
 Enable Copy Tags to snapshot feature for AWS RDS database clusters
 '''
-
+import time
 from botocore.exceptions import ClientError
 
 def run_remediation(rds, RDSIdentifier):
     print("Executing RDS Cluster remediation")  
-    response=''
+    copytagflag = False
+    #Verify current cluster copy tags to snapshot config.
     try:
-        response = rds.describe_db_clusters(DBClusterIdentifier=RDSIdentifier)['DBClusters'][0]['CopyTagsToSnapshot']
+        response = rds.describe_db_clusters(DBClusterIdentifier = RDSIdentifier)['DBClusters']
+        copytagflag = response[0]['CopyTagsToSnapshot']
     except ClientError as e:
         responseCode = 400
         output = "Unexpected error: " + str(e)
@@ -18,12 +20,26 @@ def run_remediation(rds, RDSIdentifier):
         output = "Unexpected error: " + str(e)
         print(output)
 
-    if not response:            
+    if not copytagflag:
+        #verify cluster state
+        while response[0]['Status'] not in ['available', 'stopped']:
+            try:
+                response = rds.describe_db_clusters(DBClusterIdentifier = RDSIdentifier)['DBClusters']
+                time.sleep(10)
+            except ClientError as e:
+                responseCode = 400
+                output = "Unexpected error: " + str(e)
+            except Exception as e:
+                responseCode = 400
+                output = "Unexpected error: " + str(e)
+                
+        #Update current value for copy tags to snapshot                   
         try:
             result = rds.modify_db_cluster(
-                DBClusterIdentifier=RDSIdentifier,
-                ApplyImmediately=True,
-                CopyTagsToSnapshot=True
+                DBClusterIdentifier = RDSIdentifier,
+                BackupRetentionPeriod = response[0]['BackupRetentionPeriod'],
+                ApplyImmediately = False,
+                CopyTagsToSnapshot = True
             )
 
             responseCode = result['ResponseMetadata']['HTTPStatusCode']
@@ -43,8 +59,8 @@ def run_remediation(rds, RDSIdentifier):
 
         print(str(responseCode)+'-'+output)
     else:
-        responseCode=200
-        output='Copy tags to snapshot already enabled for cluster : '+RDSIdentifier
+        responseCode = 200
+        output = 'Copy tags to snapshot already enabled for cluster : '+ RDSIdentifier
         print(output)
 
     return responseCode,output
