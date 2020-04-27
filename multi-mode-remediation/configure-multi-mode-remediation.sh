@@ -12,7 +12,7 @@
     The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-    Version: 2.0
+    Version: 2.1
 
     # PREREQUISITE
       - Install aws cli
@@ -35,7 +35,7 @@
       - Run this script in any bash shell (linux command prompt)
 
 .EXAMPLE
-    Command to execute : bash configure-multi-mode-remediation.sh [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v <2.0>] [-s <list of regions where auto-remediation is to enabled>]
+    Command to execute : bash configure-multi-mode-remediation.sh [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v <2.1>] [-s <list of regions where auto-remediation is to enabled>]
 
 .INPUTS
     **Mandatory(-a)Account Id: 12-digit AWS account Id of the account for which you want to enable the remediation
@@ -50,10 +50,10 @@
     None
 '
 
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v <2.0>] [-s <list of regions where auto-remediation is to enabled>]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-r <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v <2.1>] [-s <list of regions where auto-remediation is to enabled>]" 1>&2; exit 1; }
 
 env="dev"
-version="2.0"
+version="2.1"
 secondaryregions=('na')
 while getopts "a:r:p:e:v:s:" o; do
     case "${o}" in

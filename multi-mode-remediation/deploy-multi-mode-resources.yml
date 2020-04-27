@@ -151,7 +151,7 @@ Resources:
           Value: "auto-remediation-trail"
         -
           Key: "Version"
-          Value: "2.0"
+          Value: "2.1"
         -
           Key: "Description"
           Value: "Cloudneeti automatic remediation solution for making cloud resource compliant"
