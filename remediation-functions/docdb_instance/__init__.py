@@ -1,1 +1,1 @@
-__all__ = ["documentdb_instance_version_upgrade"]
+__all__ = ["docdbinstance_version_upgrade"]

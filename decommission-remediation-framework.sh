@@ -6,6 +6,7 @@
     Decommissioning Remediation Framework.
 .DESCRIPTION
     This script will remove all the services deployed for the remediation framework.
+
 .NOTES
 
     Copyright (c) Cloudneeti. All rights reserved.

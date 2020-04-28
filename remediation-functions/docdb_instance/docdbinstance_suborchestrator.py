@@ -1,4 +1,9 @@
 '''
+Copyright (c) Cloudneeti. All rights reserved.
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is  furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 docdb cluster sub-orchestrator function
 '''
 
@@ -6,7 +11,7 @@ import json
 import boto3
 import common
 from botocore.exceptions import ClientError
-from docdb_cluster import *
+from docdb_instance import *
 
 def lambda_handler(event, context):
     global aws_access_key_id, aws_secret_access_key, aws_session_token, CustAccID, Region
@@ -37,7 +42,7 @@ def lambda_handler(event, context):
 
         try:
             Region = event["Region"]
-            docdb_clustername = event["DocdbClusterName"]
+            docdb_instancename = event["DocdbInstanceName"]
             records_json = json.loads(event["policies"])
             records = records_json["RemediationPolicies"]
         except:
@@ -59,10 +64,15 @@ def lambda_handler(event, context):
                 'body': str(e)
             }
 
-        if "DocDBDeletionProtection" in str(records):
+        if "DocDBInstanceAutoMinorVersionUpgrade" in str(records):
             try:
-                documentdb_cluster_deletion_protection.run_remediation(docdb,docdb_clustername)
-                print('remediated-' + docdb_clustername)
+                docdbinstance_version_upgrade.run_remediation(docdb,docdb_instancename)
+                print('remediated-' + docdb_instancename)
+                #returning the output Array in json format
+                return {  
+                    'statusCode': 200,
+                    'body': json.dumps('remediated-' + docdb_instancename)
+                }
             except ClientError as e:
                 print(e)
                 return {  
@@ -75,47 +85,6 @@ def lambda_handler(event, context):
                     'statusCode': 400,
                     'body': str(e)
                 }
-        
-        if "DocDBBackupRetentionPeriod" in str(records):
-            try:
-                documentdb_cluster_backup_retention.run_remediation(docdb,docdb_clustername)
-                print('remediated-' + docdb_clustername)
-            except ClientError as e:
-                print(e)
-                return {  
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-            except Exception as e:
-                print(e)
-                return {
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-        
-        if "DocDBCloudWatchLogsEnabled" in str(records):    
-            try:
-                documentdb_cluster_logexport.run_remediation(docdb,docdb_clustername)
-                print('remediated-' + docdb_clustername)
-            except ClientError as e:
-                print(e)
-                return {  
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-            except Exception as e:
-                print(e)
-                return {
-                    'statusCode': 400,
-                    'body': str(e)
-                }
-        
-        #returning the output Array in json format
-        return {  
-            'statusCode': 200,
-            'body': json.dumps('remediated-' + docdb_clustername)
-        }
-
 
     else:
         print("CN-portal triggered remediation")
@@ -138,7 +107,7 @@ def lambda_handler(event, context):
         try:
             Region_name = json.loads(event["body"])["Region"]
             Region = common.getRegionName(Region_name)
-            docdb_clustername = json.loads(event["body"])["ResourceName"]
+            docdb_instancename = json.loads(event["body"])["ResourceName"]
         except:
             Region = ""
 
@@ -159,14 +128,8 @@ def lambda_handler(event, context):
             }
 
         try:
-            if PolicyId == "DocDBBackupRetentionPeriod":  
-                responseCode,output = documentdb_cluster_backup_retention.run_remediation(docdb,docdb_clustername)
-            
-            if PolicyId == "DocDBCloudWatchLogsEnabled":  
-                responseCode,output = documentdb_cluster_logexport.run_remediation(docdb,docdb_clustername)
-            
-            if PolicyId == "DocDBDeletionProtection":  
-                responseCode,output = documentdb_cluster_deletion_protection.run_remediation(docdb,docdb_clustername)
+            if PolicyId == "DocDBInstanceAutoMinorVersionUpgrade":  
+                responseCode,output = docdbinstance_version_upgrade.run_remediation(docdb,docdb_instancename)
         
         except ClientError as e:
             responseCode = 400

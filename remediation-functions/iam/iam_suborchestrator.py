@@ -1,4 +1,9 @@
 '''
+Copyright (c) Cloudneeti. All rights reserved.
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is  furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 IAM sub-orchestrator function
 '''
 
@@ -19,9 +24,15 @@ def lambda_handler(event, context):
 
     if not PolicyId:
         print("Executing auto-remediation")
+        params = {}
         try:  # common code
             CustAccID, role_arn = common.getRoleArn_cwlogs(event)
             aws_access_key_id, aws_secret_access_key, aws_session_token = common.getCredentials(role_arn)
+            params = {
+                        "aws_access_key_id": aws_access_key_id,
+                        "aws_secret_access_key": aws_secret_access_key,
+                        "aws_session_token": aws_session_token
+                    }
         except ClientError as e:
             print(e)
             return {  
@@ -60,7 +71,7 @@ def lambda_handler(event, context):
         
         if "IAMPasswordRequiredNumber" in str(records):
             try:       
-                iam_require_numbers.run_remediation(iam_client)
+                iam_require_numbers.run_remediation(iam_client, params)
             except ClientError as e:
                 print(e)
                 return {  
@@ -76,7 +87,7 @@ def lambda_handler(event, context):
 
         if "IAMPasswordUpCaseLetter" in str(records):
             try:
-                iam_require_uppercaseletters.run_remediation(iam_client)    
+                iam_require_uppercaseletters.run_remediation(iam_client, params)    
             except ClientError as e:
                 print(e)
                 return {  
@@ -92,7 +103,7 @@ def lambda_handler(event, context):
 
         if "IAMPasswordRequiredSymbols" in str(records):  
             try: 
-                iam_require_symbols.run_remediation(iam_client)
+                iam_require_symbols.run_remediation(iam_client, params)
             except ClientError as e:
                 print(e)
                 return {  
@@ -108,7 +119,7 @@ def lambda_handler(event, context):
             
         if "IAMRequireLowercaseLetter" in str(records):  
             try:
-                iam_require_lowercaseletters.run_remediation(iam_client) 
+                iam_require_lowercaseletters.run_remediation(iam_client, params) 
             except ClientError as e:
                 print(e)
                 return {  
@@ -124,7 +135,7 @@ def lambda_handler(event, context):
 
         if "IAMMinPasswordLength" in str(records):
             try:
-                iam_minimum_passwordlength.run_remediation(iam_client) 
+                iam_minimum_passwordlength.run_remediation(iam_client, params) 
             except ClientError as e:
                 print(e)
                 return {  
@@ -140,7 +151,7 @@ def lambda_handler(event, context):
 
         if "IAMExpirePasswords" in str(records):
             try:
-                iam_password_expiration.run_remediation(iam_client) 
+                iam_password_expiration.run_remediation(iam_client, params) 
             except ClientError as e:
                 print(e)
                 return {  
@@ -156,7 +167,7 @@ def lambda_handler(event, context):
 
         if "IAMPasswordReusePrevention" in str(records):
             try:
-                iam_password_reuse.run_remediation(iam_client) 
+                iam_password_reuse.run_remediation(iam_client, params) 
             except ClientError as e:
                 print(e)
                 return {  
@@ -182,6 +193,11 @@ def lambda_handler(event, context):
         try:  # common code
             CustAccID, role_arn = common.getRoleArn(event)
             aws_access_key_id, aws_secret_access_key, aws_session_token = common.getCredentials(role_arn)
+            params = {
+                        "aws_access_key_id": aws_access_key_id,
+                        "aws_secret_access_key": aws_secret_access_key,
+                        "aws_session_token": aws_session_token
+                    }
         except ClientError as e:
             print(e)
             return {  
@@ -216,25 +232,25 @@ def lambda_handler(event, context):
             output = "Policies not configured"
             
             if PolicyId == "IAMPasswordRequiredNumber":     
-                responseCode,output = iam_require_numbers.run_remediation(iam_client)
+                responseCode,output = iam_require_numbers.run_remediation(iam_client, params)
 
             if PolicyId == "IAMPasswordUpCaseLetter":        
-                responseCode,output = iam_require_uppercaseletters.run_remediation(iam_client)
+                responseCode,output = iam_require_uppercaseletters.run_remediation(iam_client, params)
 
             if PolicyId == "IAMPasswordRequiredSymbols":       
-                responseCode,output = iam_require_symbols.run_remediation(iam_client)
+                responseCode,output = iam_require_symbols.run_remediation(iam_client, params)
                 
             if PolicyId == "IAMRequireLowercaseLetter":       
-                responseCode,output = iam_require_lowercaseletters.run_remediation(iam_client) 
+                responseCode,output = iam_require_lowercaseletters.run_remediation(iam_client, params) 
 
             if PolicyId == "IAMMinPasswordLength":       
-                responseCode,output = iam_minimum_passwordlength.run_remediation(iam_client)     
+                responseCode,output = iam_minimum_passwordlength.run_remediation(iam_client, params)     
 
             if PolicyId == "IAMExpirePasswords":       
-                responseCode,output = iam_password_expiration.run_remediation(iam_client) 
+                responseCode,output = iam_password_expiration.run_remediation(iam_client, params) 
 
             if PolicyId == "IAMPasswordReusePrevention":       
-                responseCode,output = iam_password_reuse.run_remediation(iam_client)               
+                responseCode,output = iam_password_reuse.run_remediation(iam_client, params)               
 
         except ClientError as e:
             responseCode = 400

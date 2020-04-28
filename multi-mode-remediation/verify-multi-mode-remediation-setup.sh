@@ -5,6 +5,7 @@
     Validate if Remediation is enabled or not.
 .DESCRIPTION
     This script will check the deployment status of the critical components of the remediation framework.
+
 .NOTES
 
     Copyright (c) Cloudneeti. All rights reserved.

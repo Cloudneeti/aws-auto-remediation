@@ -5,6 +5,7 @@
     Update remediation framework role.
 .DESCRIPTION
     This script will update the role of the Remediation framework with the details of the newly added account for remediation.
+
 .NOTES
 
     Copyright (c) Cloudneeti. All rights reserved.
