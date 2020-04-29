@@ -1,1 +1,1 @@
-__all__=["cloudformation_template_termination_protection"]
+__all__=["cloudformation_termination_protection"]

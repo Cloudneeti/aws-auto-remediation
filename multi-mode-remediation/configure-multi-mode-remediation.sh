@@ -5,6 +5,7 @@
     Enable Remediation.
 .DESCRIPTION
     This script will deploy all the services required for the remediation framework and enable remediation for this account.
+
 .NOTES
 
     Copyright (c) Cloudneeti. All rights reserved.
@@ -173,9 +174,7 @@ else
 fi
 
 #Regional deployments for framework
-cd ..
-cd regional-deployment/
-echo "Configure Regional Deployments...."
+echo "Configuring regional deployments...."
 s3_status=$?
 
 if [[ "$secondary_regions" -ne "na" ]] && [[ "$s3_status" -eq 0 ]]; then
@@ -191,7 +190,7 @@ if [[ "$secondary_regions" -ne "na" ]] && [[ "$s3_status" -eq 0 ]]; then
             if [[ "$Regional_stack_status" -ne 0 ]] && [[ "$Lambda_status" -eq 0 ]]; then
                 echo "Region $region is not configured because of existing resources, please delete them and redeploy framework to configure this region"
             else
-                aws cloudformation deploy --template-file region-function-deployment-multiacc.yml --stack-name cn-multirem-$env-$region-$acc_sha --parameter-overrides Stack=cn-rem-$env-$region-$acc_sha awsaccountid=$awsaccountid region=$region remediationregion=$primary_deployment --region $region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+                aws cloudformation deploy --template-file deploy-invoker-multi-mode.yml --stack-name cn-multirem-$env-$region-$acc_sha --parameter-overrides Stack=cn-rem-$env-$region-$acc_sha awsaccountid=$awsaccountid region=$region remediationregion=$primary_deployment --region $region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
                 Regional_stack="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$region-$acc_sha --region $region 2>/dev/null)"
                 Regional_stack_status=$?
                 
