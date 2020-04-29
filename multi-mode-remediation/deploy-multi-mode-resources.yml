@@ -18,6 +18,9 @@ Parameters:
         Description: Region of deployment
         Type: String
         Default: us-east-1
+    remediationversion:
+        Description: Remediation framework region
+        Type: String
     remediationregion:
         Description: Region of framework
         Type: String
@@ -156,7 +159,7 @@ Resources:
           Value: "auto-remediation-trail"
         -
           Key: "Version"
-          Value: "2.1"
+          Value: !Ref remediationversion
         -
           Key: "Description"
           Value: "Cloudneeti automatic remediation solution for making cloud resource compliant"
