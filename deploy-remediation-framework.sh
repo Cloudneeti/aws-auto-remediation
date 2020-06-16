@@ -175,6 +175,7 @@ fi
 
 #Regional deployments for framework
 echo "Configuring Regional Deployments...."
+cd ..
 
 if [[ "$secondary_regions" != "na" ]] && [[ "$s3_status" -eq 0 ]]; then
     #Deploy Regional Stack
