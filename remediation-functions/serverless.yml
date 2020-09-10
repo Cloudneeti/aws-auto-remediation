@@ -8,10 +8,11 @@ service: cn-rem-functions
 provider:
   name: aws
   runtime: python3.7
-  stage: ${opt:env, 'dev'}
+  stage: ${opt:accounthash}
   region: ${opt:region, 'us-east-1'}
   remediationversion: ${opt:remediationversion, '2.0'}
   memorySize: 3008
+  versionFunctions: false
   deploymentBucket:
     name: cn-rem-${self:provider.stage}
 
@@ -65,20 +66,6 @@ functions:
                 - CreateTrail
                 - UpdateTrail
                 - StopLogging
-      - cloudwatchEvent:
-          name: 'cn-aws-config-event-rule'
-          description: 'CloudWatch Event triggered on config'
-          event:
-            source:
-              - aws.config
-            detail-type:
-              - AWS API Call via CloudTrail
-            detail:
-              eventSource:
-                - config.amazonaws.com
-              eventName:
-                - PutConfigurationRecorder
-                - StopConfigurationRecorder
       - cloudwatchEvent:
           name: 'cn-aws-dynamodb-event-rule'
           description: 'CloudWatch Event triggered on dynamodb'
@@ -394,17 +381,6 @@ functions:
       Description: Cloudneeti automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'cn-remediation'}
   
-  config:
-    handler: config/config_suborchestrator.lambda_handler
-    name: cn-aws-remediate-config
-    timeout: 300
-    role: CNLambdaRole
-    tags:
-      ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '1.0'}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
-  
   asg:
     handler: asg/asg_suborchestrator.lambda_handler
     name: cn-aws-remediate-asg
@@ -498,7 +474,7 @@ resources:
     CNCloudTrail:
       Type: AWS::CloudTrail::Trail
       Properties: 
-        CloudWatchLogsLogGroupArn: "arn:aws:logs:${opt:region}:${opt:aws-account-id}:log-group:cn-log-group:*"
+        CloudWatchLogsLogGroupArn: "arn:aws:logs:${self:provider.region}:${opt:aws-account-id}:log-group:cn-log-group:*"
         CloudWatchLogsRoleArn: "arn:aws:iam::${opt:aws-account-id}:role/CN-CloudwatchRole"
         IncludeGlobalServiceEvents: true
         IsLogging: true
@@ -546,7 +522,6 @@ resources:
               - cloudformation:UpdateTerminationProtection
               - cloudtrail:StartLogging
               - cloudtrail:UpdateTrail
-              - config:PutConfigurationRecorder
               - dynamodb:UpdateContinuousBackups
               - ec2:MonitorInstances
               - ec2:ModifyInstanceAttribute
@@ -598,7 +573,7 @@ resources:
     CNLambdaRole:
       Type: AWS::IAM::Role
       Properties:
-        RoleName: CN-OrchesLambdaRole-${self:provider.stage}
+        RoleName: CN-OrchesLambdaRole-${opt:env, 'cn-remediation'}
         AssumeRolePolicyDocument:
           Version: '2012-10-17'
           Statement:

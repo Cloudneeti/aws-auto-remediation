@@ -83,6 +83,15 @@ done
 shift $((OPTIND-1))
 valid_values=( "na" "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
 
+echo "Validating input parameters..."
+
+configure_account="$(aws sts get-caller-identity)"
+
+if [[ "$configure_account" != *"$awsaccountid"* ]];then
+    echo "AWS CLI configuration AWS account Id and entered AWS account Id does not match. Please try again with correct AWS Account Id."
+    exit 1
+fi
+
 #Verify input for regional deployment
 if [[ $secondaryregions == "na" ]]; then
     valid_regions=${valid_values[0]}
@@ -113,6 +122,8 @@ done
 if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ "$remawsaccountid" == "" ]] || ! [[ "$remawsaccountid" =~ ^[0-9]+$ ]] || [[ ${#remawsaccountid} != 12 ]] || [[ $primary_deployment == "" ]]; then
     usage
 fi
+
+echo "Input validation complete!"
 
 acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
 env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
@@ -167,6 +178,8 @@ else
 
     if [[ $lambda_status -eq 0 ]]; then
         echo "Successfully deployed remediation framework with latest updates!!"
+        #Enabling termination protection for stack(s)
+        aws cloudformation update-termination-protection --enable-termination-protection --stack-name "cn-multirem-$env-$acc_sha" --region $primary_deployment
     else
         echo "Something went wrong! Please contact Cloudneeti support for more details"
         exit 1
@@ -196,6 +209,8 @@ if [[ "$secondary_regions" -ne "na" ]] && [[ "$s3_status" -eq 0 ]]; then
                 
                 if [[ "$Regional_stack_status" -eq 0 ]]; then
                     echo "Successfully configured region $region in remediation framework"
+                    #Enabling termination protection for stack(s)
+                    aws cloudformation update-termination-protection --enable-termination-protection --stack-name "cn-multirem-$env-$region-$acc_sha" --region $region 2>/dev/null
                 else
                     echo "Failed to configure region $region in remediation framework"
                 fi

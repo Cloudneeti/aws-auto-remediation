@@ -33,7 +33,6 @@ def lambda_handler(event, context):
     ec2instance_list = ["EC2MonitoringState", "EC2TerminationProtection"]
     cloudformation_list = ["StackTermination"]
     asg_list = ["ASGCooldown"]
-    config_list = ["ConfigCaptureGlobalResources"]
     sqs_list = ["SQSSSEEnabled"]
     rds_snapshot_list = ["RDSSnapshotNoPublicAccess"]
     docdb_cluster_list = ["DocDBBackupRetentionPeriod","DocDBCloudWatchLogsEnabled","DocDBDeletionProtection"]
@@ -97,7 +96,7 @@ def lambda_handler(event, context):
                 'body': json.dumps(str(e))
             }  
         # rem_bucket = 'cn-rem-cust-rem-acc'
-        available_list = cloudtrail_list + elb_list + elbv2_list + iam_list + kinesis_list + kms_list + rds_cluster_list + rds_instance_list + redshift_list + s3_list + dynamodb_list + ec2instance_list + cloudformation_list + asg_list + config_list + sqs_list + neptune_instance_list + neptune_cluster_list + rds_snapshot_list + docdb_cluster_list + docdb_instance_list + fsx_windows_list + kinesis_firehose_list
+        available_list = cloudtrail_list + elb_list + elbv2_list + iam_list + kinesis_list + kms_list + rds_cluster_list + rds_instance_list + redshift_list + s3_list + dynamodb_list + ec2instance_list + cloudformation_list + asg_list + sqs_list + neptune_instance_list + neptune_cluster_list + rds_snapshot_list + docdb_cluster_list + docdb_instance_list + fsx_windows_list + kinesis_firehose_list
             
         try:
             if set(policy_list) <= set(available_list): 
@@ -547,34 +546,6 @@ def lambda_handler(event, context):
                         print('Error during remediation, error:' + str(e))
                 #endregion
 
-                #region config suborchestrator call
-                if EventName in ["PutConfigurationRecorder", "StopConfigurationRecorder"]:
-                    try:
-                        ConfigRoleARN = cw_event_data["requestParameters"]["configurationRecorder"]["roleARN"]
-                        Configname = cw_event_data["requestParameters"]["configurationRecorder"]["name"]
-                        Region = cw_event_data["awsRegion"]
-
-                        remediationObj = {
-                            "accountId": AWSAccId,
-                            "Name": Configname,
-                            "ConfigRoleARN": ConfigRoleARN,
-                            "Region" : Region,
-                            "policies": records
-                        }
-                        
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-config', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                        response = json.loads(response['Payload'].read())
-                        print(response)
-                        return {
-                            'statusCode': 200,
-                            'body': json.dumps(response)
-                        }
-                    except ClientError as e:
-                        print('Error during remediation, error:' + str(e))
-                    except Exception as e:
-                        print('Error during remediation, error:' + str(e))
-                #endregion
-                
                 #region asg suborchestrator call
                 if EventName in ["UpdateAutoScalingGroup","CreateAutoScalingGroup"]:
                     try:
@@ -1156,18 +1127,6 @@ def lambda_handler(event, context):
         if PolicyId in (asg_list):
             try:            
                 response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-asg', InvocationType = 'RequestResponse', Payload = json.dumps(event))
-                response = json.loads(response['Payload'].read())
-                print(response)
-            except ClientError as e:
-                print('Error during remediation, error:' + str(e))
-            except Exception as e:
-                print('Error during remediation, error:' + str(e))
-        #endregion
-        
-        #region config suborchestrator call
-        if PolicyId in (config_list):
-            try:            
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-config', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:

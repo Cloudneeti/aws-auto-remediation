@@ -40,6 +40,12 @@ Resources:
               NoncurrentVersionExpirationInDays: 60
         VersioningConfiguration:
             Status: Enabled
+        PublicAccessBlockConfiguration:
+            BlockPublicAcls: True
+            BlockPublicPolicy: True
+            IgnorePublicAcls: True
+            RestrictPublicBuckets: True
+        ObjectLockEnabled: True
         Tags: 
           -
             Key: "ServiceName"
