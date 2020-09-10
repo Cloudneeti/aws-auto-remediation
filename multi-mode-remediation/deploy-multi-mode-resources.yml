@@ -46,6 +46,12 @@ Resources:
               NoncurrentVersionExpirationInDays: 1
         VersioningConfiguration:
             Status: Enabled
+        PublicAccessBlockConfiguration:
+            BlockPublicAcls: True
+            BlockPublicPolicy: True
+            IgnorePublicAcls: True
+            RestrictPublicBuckets: True
+        ObjectLockEnabled: True
         Tags: 
           -
             Key: "ServiceName"
@@ -376,40 +382,6 @@ Resources:
       SourceArn: 
         Fn::GetAtt: 
           - "CloudtrailEventRule"
-          - "Arn"
-  ConfigEventRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Name: "cn-aws-config-event-rule"
-      Description: "CloudWatch Event triggered on config changes"
-      EventPattern:
-        source:
-          - "aws.config"
-        detail-type:
-          - "AWS API Call via CloudTrail"
-        detail:
-          eventSource:
-            - "config.amazonaws.com"
-          eventName:
-            - "PutConfigurationRecorder"
-            - "StopConfigurationRecorder"
-      Targets: 
-        - 
-          Arn: 
-            Fn::GetAtt: 
-              - "LambdaFunction"
-              - "Arn"
-          Id: "TargetFunctionV1"
-  PermissionForConfigEventsToInvokeLambda: 
-    Type: AWS::Lambda::Permission
-    Properties: 
-      FunctionName: 
-        Ref: "LambdaFunction"
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn: 
-        Fn::GetAtt: 
-          - "ConfigEventRule"
           - "Arn"
   DynamoDBEventRule:
     Type: AWS::Events::Rule
@@ -797,7 +769,6 @@ Resources:
             - "cloudformation:UpdateTerminationProtection"
             - "cloudtrail:StartLogging"
             - "cloudtrail:UpdateTrail"
-            - "config:PutConfigurationRecorder"
             - "dynamodb:UpdateContinuousBackups"
             - "ec2:MonitorInstances"
             - "ec2:ModifyInstanceAttribute"

@@ -14,7 +14,7 @@
     The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-    Version: 2.0
+    Version: 2.1
     # PREREQUISITE
       - Install aws cli
         Link : https://docs.aws.amazon.com/cli/latest/userguide/install-linux-al2017.html
@@ -51,7 +51,7 @@
 
 usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>]" 1>&2; exit 1; }
 env="dev"
-version="2.0"
+version="2.1"
 secondaryregions=('na')
 while getopts "a:p:e:v:s:" o; do
     case "${o}" in
@@ -76,6 +76,15 @@ while getopts "a:p:e:v:s:" o; do
 done
 shift $((OPTIND-1))
 valid_values=( "na" "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
+
+echo "Validating input parameters..."
+
+configure_account="$(aws sts get-caller-identity)"
+
+if [[ "$configure_account" != *"$awsaccountid"* ]];then
+    echo "AWS CLI configuration AWS account Id and entered AWS account Id does not match. Please try again with correct AWS Account Id."
+    exit 1
+fi
 
 #Verify input for regional deployment
 if [[ $secondaryregions == "na" ]]; then
@@ -110,6 +119,8 @@ if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#a
     usage
 fi
 
+echo "Input validation complete!"
+
 #Verify deployment of remediation framework
 cd remediation-functions/
 
@@ -142,7 +153,7 @@ if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 
     if [[ "$s3_status" -eq 0 ]]; then
         if [[ $primary_location == $primary_deployment ]]; then
             echo "Redeploying framework....."
-            serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $primary_deployment --remediationversion $version
+            serverless deploy --env $env --accounthash $env-$acc_sha --aws-account-id $awsaccountid --region $primary_deployment --remediationversion $version
             Lambda_det="$(aws lambda get-function --function-name cn-aws-remediate-orchestrator --region $primary_deployment 2>/dev/null)"
             Lambda_status=$?
 
@@ -165,8 +176,12 @@ else
     aws cloudformation deploy --template-file deployment-bucket.yml --stack-name cn-rem-$env-$acc_sha --parameter-overrides Stack=cn-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$primary_deployment --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
     s3_status=$?
     if [[ "$s3_status" -eq 0 ]]; then
-        serverless deploy --env $env-$acc_sha --aws-account-id $awsaccountid --region $primary_deployment --remediationversion $version
+        serverless deploy --env $env --accounthash $env-$acc_sha --aws-account-id $awsaccountid --region $primary_deployment --remediationversion $version
         lambda_status=$?
+
+        #Enabling termination protection for stack(s)
+        aws cloudformation update-termination-protection --enable-termination-protection --stack-name cn-rem-$env-$acc_sha --region $primary_deployment 2>/dev/null
+        aws cloudformation update-termination-protection --enable-termination-protection --stack-name "cn-rem-functions-$env-$acc_sha" --region $primary_deployment 2>/dev/null
     else
         echo "Something went wrong! Please contact Cloudneeti support for more details"
         exit 1
@@ -196,6 +211,7 @@ if [[ "$secondary_regions" != "na" ]] && [[ "$s3_status" -eq 0 ]]; then
 
                 if [[ "$Regional_stack_status" -eq 0 ]]; then
                     echo "Successfully configured region $region in remediation framework"
+                    aws cloudformation update-termination-protection --enable-termination-protection --stack-name "cn-rem-$env-$region-$acc_sha" --region $region 2>/dev/null
                 else
                     echo "Failed to configure region $region in remediation framework"
                 fi
