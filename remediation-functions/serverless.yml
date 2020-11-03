@@ -557,7 +557,7 @@ resources:
               Principal:
                 AWS:
                   - "arn:aws:iam::079042248639:root",
-                  - "arn:aws:iam::960859847322:root"   # Add the Cloudneeti AWS Account ID
+                  - "arn:aws:iam::960859847322:root",   # Add the Cloudneeti AWS Account ID
                   - "arn:aws:iam::${opt:aws-account-id}:role/CN-Auto-Remediation-Invoker"
               Action: sts:AssumeRole
         Policies:
