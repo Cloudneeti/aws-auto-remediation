@@ -35,10 +35,11 @@
             Default output format: json  
       - Run this script in any bash shell (linux command prompt)
 .EXAMPLE
-    Command to execute : bash deploy-remediation-framework.sh [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>]
+    Command to execute : bash deploy-remediation-framework.sh [-a <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>]
 
 .INPUTS
     **Mandatory(-a)Account Id: 12-digit AWS account Id of the account where you want the remediation framework to be deployed
+    **Mandatory(-z)ZCSPM Account Id : 12-digit account Id of ZCSPM AWS Account, so that ZCSPM can trigger the remediation functions 
     **Mandatory(-p)AWS Region: Region where you want to deploy all major components of remediation framework
     (-e)Environment prefix: Enter any suitable prefix for your deployment
     (-v)Version: Enter the remediation framework version (Would be provided by Cloudneeti)
@@ -49,14 +50,17 @@
     None
 '
 
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>]" 1>&2; exit 1; }
 env="dev"
 version="2.1"
 secondaryregions=('na')
-while getopts "a:p:e:v:s:" o; do
+while getopts "a:z:p:e:v:s:" o; do
     case "${o}" in
         a)
             awsaccountid=${OPTARG}
+            ;;
+        z)
+            cspmawsaccountid=${OPTARG}
             ;;
         p)
             primaryregion=${OPTARG}
@@ -113,9 +117,8 @@ for valid_val in "${valid_values[@]}"; do
     fi
 done
 
-
 #validate aws account-id and region
-if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ $primary_deployment == "" ]]; then
+if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ "$cspmawsaccountid" == "" ]] || ! [[ "$cspmawsaccountid" =~ ^[0-9]+$ ]] || [[ ${#cspmawsaccountid} != 12 ]] || [[ $primary_deployment == "" ]]; then
     usage
 fi
 
@@ -153,7 +156,7 @@ if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 
     if [[ "$s3_status" -eq 0 ]]; then
         if [[ $primary_location == $primary_deployment ]]; then
             echo "Redeploying framework....."
-            serverless deploy --env $env --accounthash $env-$acc_sha --aws-account-id $awsaccountid --region $primary_deployment --remediationversion $version
+            serverless deploy --env $env --accounthash $env-$acc_sha --aws-account-id $awsaccountid --cspm-aws-account-id $cspmawsaccountid --region $primary_deployment --remediationversion $version
             Lambda_det="$(aws lambda get-function --function-name cn-aws-remediate-orchestrator --region $primary_deployment 2>/dev/null)"
             Lambda_status=$?
 
@@ -176,7 +179,7 @@ else
     aws cloudformation deploy --template-file deployment-bucket.yml --stack-name cn-rem-$env-$acc_sha --parameter-overrides Stack=cn-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$primary_deployment --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
     s3_status=$?
     if [[ "$s3_status" -eq 0 ]]; then
-        serverless deploy --env $env --accounthash $env-$acc_sha --aws-account-id $awsaccountid --region $primary_deployment --remediationversion $version
+        serverless deploy --env $env --accounthash $env-$acc_sha --aws-account-id $awsaccountid --cspm-aws-account-id $cspmawsaccountid --region $primary_deployment --remediationversion $version
         lambda_status=$?
 
         #Enabling termination protection for stack(s)

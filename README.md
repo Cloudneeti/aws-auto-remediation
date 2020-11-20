@@ -23,9 +23,6 @@ This auto-remediation solution supports multi-account remediation as well. Here,
 
 Use Cloudneeti to configure remediation policies on the AWS account. You can manually trigger remediation of existing resources from Cloudneeti portal. Remediation framework always remediates resources whenever somebody creates new resources or updates the existing resources. 
 
-
-
-
 ## Pre-requisites
 
 Following dependencies should be present on the machine before proceeding to onboarding steps,
@@ -48,6 +45,9 @@ Following dependencies should be present on the machine before proceeding to onb
 
 	`https://stedolan.github.io/jq/download/`
 
+- ZCSPM AWS Account Id
+
+	You can retrieve this from the ZCSPM Welcome email, else you can contact ZCSPM support.
 
 ## Onboarding Steps
 
@@ -78,11 +78,11 @@ Perform below steps to deploy remediation framework on configured AWS account
 
 	Note: Primary region for multi account deployment should be the same as that of the remediation framework primary region for single account deployment
 
-	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <list of regions where auto-remediation is to be enabled>`
+	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -z <12-digit-zcspm-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <list of regions where auto-remediation is to be enabled>`
 
 	OR
 
-	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <all>`
+	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -z <12-digit-zcspm-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <all>`
 
 	Pass AWS account id and the environment as dev/test/prod.
 
