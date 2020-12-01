@@ -106,7 +106,7 @@ fi
 acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
 env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
 
-stack_detail="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$acc_sha --region $primary_deployment 2>/dev/null)"
+stack_detail="$(aws cloudformation describe-stacks --stack-name zcspm-multirem-$env-$acc_sha --region $primary_deployment 2>/dev/null)"
 stack_status=$?
 
 echo "Validating environment prefix..."
@@ -117,23 +117,23 @@ if [[ $stack_status -ne 0 ]]; then
 fi
 
 echo "Verifying role deployment...."
-invoker_role_det="$(aws iam get-role --role-name CN-Auto-Remediation-Invoker 2>/dev/null)"
+invoker_role_det="$(aws iam get-role --role-name ZCSPM-Auto-Remediation-Invoker 2>/dev/null)"
 invoker_role=$?
 
-rem_role_det="$(aws iam get-role --role-name CN-Auto-Remediation-Role 2>/dev/null)"
+rem_role_det="$(aws iam get-role --role-name ZCSPM-Auto-Remediation-Role 2>/dev/null)"
 Rem_role=$?
 
 echo "Verifying Cloudtrail deployment...."
-CT_det="$(aws cloudtrail get-trail-status --name cn-remediation-trail --region $primary_deployment 2>/dev/null)"
+CT_det="$(aws cloudtrail get-trail-status --name zcspm-remediation-trail --region $primary_deployment 2>/dev/null)"
 CT_status=$?
 
-CT_log="$(aws cloudtrail get-trail-status --name cn-remediation-trail --region $primary_deployment | jq -r '.IsLogging' 2>/dev/null)"
+CT_log="$(aws cloudtrail get-trail-status --name zcspm-remediation-trail --region $primary_deployment | jq -r '.IsLogging' 2>/dev/null)"
 
 echo "Verifying Lambda deployment...."
-Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $primary_deployment 2>/dev/null)"
+Lambda_det="$(aws lambda get-function --function-name zcspm-aws-auto-remediate-invoker --region $primary_deployment 2>/dev/null)"
 Lambda_status=$?
 
-s3_detail="$(aws s3api get-bucket-versioning --bucket cn-multirem-$env-$acc_sha 2>/dev/null)"
+s3_detail="$(aws s3api get-bucket-versioning --bucket zcspm-multirem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
 
 if [[ "$invoker_role" -ne 0 ]] && [[ "$Rem_role" -ne 0 ]] && [[ "$CT_status" -ne 0 ]] && [[ "$Lambda_status" -ne 0 ]] && [[ "$s3_status" -ne 0 ]]; then
@@ -163,10 +163,10 @@ if [[ "$secondary_regions" -ne "na" ]] && [[ "$s3_status" -eq 0 ]]; then
     #Deploy Regional Stack
     for region in "${secondary_regions[@]}"; do
         if [[ "$region" != "$primary_deployment" ]]; then
-            regional_stack_detail="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$region-$acc_sha --region $region 2>/dev/null)"
+            regional_stack_detail="$(aws cloudformation describe-stacks --stack-name zcspm-multirem-$env-$region-$acc_sha --region $region 2>/dev/null)"
             regional_stack_status=$?
 
-            Invoker_Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $region 2>/dev/null)"
+            Invoker_Lambda_det="$(aws lambda get-function --function-name zcspm-aws-auto-remediate-invoker --region $region 2>/dev/null)"
             Invoker_Lambda_status=$?
 
             if [[ "$regional_stack_status" -ne 0 ]] && [[ "$Invoker_Lambda_status" -ne 0 ]];
@@ -195,7 +195,7 @@ fi
 
 echo "............."
 echo "Verifying if role in the remediation framework is correctly deployed or not!"
-rem_role="$(aws sts assume-role --role-arn arn:aws:iam::$remawsaccountid:role/CN-Remediation-Invocation-Role --role-session-name cn-session 2>/dev/null)"
+rem_role="$(aws sts assume-role --role-arn arn:aws:iam::$remawsaccountid:role/ZCSPM-Remediation-Invocation-Role --role-session-name zcspm-session 2>/dev/null)"
 rem_role_status=$?
 if [[ $rem_role_status -ne 0 ]]; then
     echo "The role in the account with remediation framework is not updated with the current account details! Please run update-remediation-role.sh to update the role!"

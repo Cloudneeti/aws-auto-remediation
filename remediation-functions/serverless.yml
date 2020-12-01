@@ -3,7 +3,7 @@
 #The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 #THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-service: cn-rem-functions
+service: zcspm-rem-functions
 
 provider:
   name: aws
@@ -14,17 +14,17 @@ provider:
   memorySize: 3008
   versionFunctions: false
   deploymentBucket:
-    name: cn-rem-${self:provider.stage}
+    name: zcspm-rem-${self:provider.stage}
 
 functions:   
   orchestrator:
     handler: orchestrator.lambda_handler
-    name: cn-aws-remediate-orchestrator
+    name: zcspm-aws-remediate-orchestrator
     timeout: 900
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     events:
       - cloudwatchEvent:
-          name: 'cn-aws-asg-event-rule'
+          name: 'zcspm-aws-asg-event-rule'
           description: 'CloudWatch Event triggered on asg'
           event:
             source:
@@ -38,7 +38,7 @@ functions:
                 - UpdateAutoScalingGroup
                 - CreateAutoScalingGroup
       - cloudwatchEvent:
-          name: 'cn-aws-cloudformation-event-rule'
+          name: 'zcspm-aws-cloudformation-event-rule'
           description: 'CloudWatch Event triggered on cloudformation stack'
           event:
             source:
@@ -52,7 +52,7 @@ functions:
                 - CreateStack
                 - UpdateTerminationProtection
       - cloudwatchEvent:
-          name: 'cn-aws-cloudtrail-event-rule'
+          name: 'zcspm-aws-cloudtrail-event-rule'
           description: 'CloudWatch Event triggered on cloudtrail'
           event:
             source:
@@ -67,7 +67,7 @@ functions:
                 - UpdateTrail
                 - StopLogging
       - cloudwatchEvent:
-          name: 'cn-aws-dynamodb-event-rule'
+          name: 'zcspm-aws-dynamodb-event-rule'
           description: 'CloudWatch Event triggered on dynamodb'
           event:
             source:
@@ -83,7 +83,7 @@ functions:
                 - UpdateTable
                 - UpdateContinuousBackups
       - cloudwatchEvent:
-          name: 'cn-aws-ec2-event-rule'
+          name: 'zcspm-aws-ec2-event-rule'
           description: 'CloudWatch Event triggered on ec2'
           event:
             source:
@@ -99,7 +99,7 @@ functions:
                 - ModifyInstanceAttribute
                 - UnmonitorInstances
       - cloudwatchEvent:
-          name: 'cn-aws-elb-event-rule'
+          name: 'zcspm-aws-elb-event-rule'
           description: 'CloudWatch Event triggered on elb'
           event:
             source:
@@ -113,7 +113,7 @@ functions:
                 - CreateLoadBalancer
                 - ModifyLoadBalancerAttributes
       - cloudwatchEvent:
-          name: 'cn-aws-iam-event-rule'
+          name: 'zcspm-aws-iam-event-rule'
           description: 'CloudWatch Event triggered on iam'
           event:
             source:
@@ -127,7 +127,7 @@ functions:
                 - UpdateAccountPasswordPolicy
                 - DeleteAccountPasswordPolicy
       - cloudwatchEvent:
-          name: 'cn-aws-kinesis-event-rule'
+          name: 'zcspm-aws-kinesis-event-rule'
           description: 'CloudWatch Event triggered on kinesis'
           event:
             source:
@@ -142,7 +142,7 @@ functions:
                 - StopStreamEncryption
                 - DisableEnhancedMonitoring
       - cloudwatchEvent:
-          name: 'cn-aws-kms-event-rule'
+          name: 'zcspm-aws-kms-event-rule'
           description: 'CloudWatch Event triggered on kms'
           event:
             source:
@@ -156,7 +156,7 @@ functions:
                 - CreateKey
                 - DisableKeyRotation
       - cloudwatchEvent:
-          name: 'cn-aws-rds-event-rule'
+          name: 'zcspm-aws-rds-event-rule'
           description: 'CloudWatch Event triggered on rds/neptune/docdb'
           event:
             source:
@@ -175,7 +175,7 @@ functions:
                 - ModifyDBSnapshotAttribute
                 - ModifyDBParameterGroup
       - cloudwatchEvent:
-          name: 'cn-aws-redshift-event-rule'
+          name: 'zcspm-aws-redshift-event-rule'
           description: 'CloudWatch Event triggered on redshift cluster'
           event:
             source:
@@ -189,7 +189,7 @@ functions:
                 - CreateCluster
                 - ModifyCluster
       - cloudwatchEvent:
-          name: 'cn-aws-s3bucket-event-rule'
+          name: 'zcspm-aws-s3bucket-event-rule'
           description: 'CloudWatch Event triggered on s3bucket'
           event:
             source:
@@ -208,7 +208,7 @@ functions:
                 - PutBucketPublicAccessBlock
                 - PutBucketLogging
       - cloudwatchEvent:
-          name: 'cn-aws-sqs-event-rule'
+          name: 'zcspm-aws-sqs-event-rule'
           description: 'CloudWatch Event triggered on sqs queue'
           event:
             source:
@@ -224,264 +224,264 @@ functions:
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:remediationversion}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
 
   cloudtrail:
     handler: cloudtrail/cloudtrail_suborchestrator.lambda_handler
-    name: cn-aws-remediate-cloudtrail
+    name: zcspm-aws-remediate-cloudtrail
     timeout: 300
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:remediationversion}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
 
   elb:
     handler: elb/elb_suborchestrator.lambda_handler
-    name: cn-aws-remediate-elb
+    name: zcspm-aws-remediate-elb
     timeout: 300
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:remediationversion}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
 
   elbv2:
     handler: elbv2/elbv2_suborchestrator.lambda_handler
-    name: cn-aws-remediate-elbv2
+    name: zcspm-aws-remediate-elbv2
     timeout: 300
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:remediationversion}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
 
   iam:
     handler: iam/iam_suborchestrator.lambda_handler
-    name: cn-aws-remediate-iam
+    name: zcspm-aws-remediate-iam
     timeout: 300
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:remediationversion}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
 
   kinesis:
     handler: kinesis/kinesis_suborchestrator.lambda_handler
-    name: cn-aws-remediate-kinesis
+    name: zcspm-aws-remediate-kinesis
     timeout: 900
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:remediationversion}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
 
   kms:
     handler: kms/kms_suborchestrator.lambda_handler
-    name: cn-aws-remediate-kms
+    name: zcspm-aws-remediate-kms
     timeout: 300
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:remediationversion}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
 
   rds_cluster:
     handler: rds_cluster/rdscluster_suborchestrator.lambda_handler
-    name: cn-aws-remediate-rdscluster
+    name: zcspm-aws-remediate-rdscluster
     timeout: 900
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:remediationversion}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
 
   rds_instance:
     handler: rds_instance/rdsinstance_suborchestrator.lambda_handler
-    name: cn-aws-remediate-rdsinstance
+    name: zcspm-aws-remediate-rdsinstance
     timeout: 900
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:remediationversion}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
 
   redshift:
     handler: redshift/redshift_suborchestrator.lambda_handler
-    name: cn-aws-remediate-redshift
+    name: zcspm-aws-remediate-redshift
     timeout: 900
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:remediationversion}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
 
   s3:
     handler: s3/s3_suborchestrator.lambda_handler
-    name: cn-aws-remediate-s3-bucket
+    name: zcspm-aws-remediate-s3-bucket
     timeout: 300
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:remediationversion}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
 
   neptune_cluster:
     handler: neptune_cluster/neptunecluster_suborchestrator.lambda_handler
-    name: cn-aws-remediate-neptune-cluster
+    name: zcspm-aws-remediate-neptune-cluster
     timeout: 900
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
 
   neptune_instance:
     handler: neptune_instance/neptuneinstance_suborchestrator.lambda_handler
-    name: cn-aws-remediate-neptune-instance
+    name: zcspm-aws-remediate-neptune-instance
     timeout: 900
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
 
   ec2:
     handler: ec2/ec2instance_suborchestrator.lambda_handler
-    name: cn-aws-remediate-ec2-instance
+    name: zcspm-aws-remediate-ec2-instance
     timeout: 300
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
   
   dynamodb:
     handler: dynamodb/dynamodb_suborchestrator.lambda_handler
-    name: cn-aws-remediate-dynamodb
+    name: zcspm-aws-remediate-dynamodb
     timeout: 300
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
   
   asg:
     handler: asg/asg_suborchestrator.lambda_handler
-    name: cn-aws-remediate-asg
+    name: zcspm-aws-remediate-asg
     timeout: 300
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
   
   cloudformation:
     handler: cloudformation/cloudformation_suborchestrator.lambda_handler
-    name: cn-aws-remediate-cloudformation
+    name: zcspm-aws-remediate-cloudformation
     timeout: 300
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
   
   sqs:
     handler: sqs/sqs_suborchestrator.lambda_handler
-    name: cn-aws-remediate-sqs
+    name: zcspm-aws-remediate-sqs
     timeout: 300
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
   
   rds_snapshots:
     handler: rds_snapshots/rdssnapshot_suborchestrator.lambda_handler
-    name: cn-aws-remediate-rdssnapshot
+    name: zcspm-aws-remediate-rdssnapshot
     timeout: 300
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
   
   docdb_instance:
     handler: docdb_instance/docdbinstance_suborchestrator.lambda_handler
-    name: cn-aws-remediate-documentdb-instance
+    name: zcspm-aws-remediate-documentdb-instance
     timeout: 300
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
   
   docdb_cluster:
     handler: docdb_cluster/docdbcluster_suborchestrator.lambda_handler
-    name: cn-aws-remediate-documentdb-cluster
+    name: zcspm-aws-remediate-documentdb-cluster
     timeout: 300
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
 
   fsx_windows:
     handler: fsx_windows/fsx_windows_suborchestrator.lambda_handler
-    name: cn-aws-remediate-fsx-windows
+    name: zcspm-aws-remediate-fsx-windows
     timeout: 300
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
   
   kinesis_firehose:
     handler: kinesis_firehose/kinesis_firehose_suborchestrator.lambda_handler
-    name: cn-aws-remediate-kinesis-firehose
+    name: zcspm-aws-remediate-kinesis-firehose
     timeout: 300
-    role: CNLambdaRole
+    role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
       Version: ${opt:version, '1.0'}
-      Description: Cloudneeti automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'cn-remediation'}
+      Description: ZCSPM automatic remediation solution for making cloud resource compliant
+      Environment: ${opt:env, 'zcspm-remediation'}
     
 resources:
   Resources:
-    CNCloudTrail:
+    ZCSPMCloudTrail:
       Type: AWS::CloudTrail::Trail
       Properties: 
-        CloudWatchLogsLogGroupArn: "arn:aws:logs:${self:provider.region}:${opt:aws-account-id}:log-group:cn-log-group:*"
-        CloudWatchLogsRoleArn: "arn:aws:iam::${opt:aws-account-id}:role/CN-CloudwatchRole"
+        CloudWatchLogsLogGroupArn: "arn:aws:logs:${self:provider.region}:${opt:aws-account-id}:log-group:zcspm-log-group:*"
+        CloudWatchLogsRoleArn: "arn:aws:iam::${opt:aws-account-id}:role/ZCSPM-CloudwatchRole"
         IncludeGlobalServiceEvents: true
         IsLogging: true
         IsMultiRegionTrail: true
-        S3BucketName: cn-rem-${self:provider.stage}
-        S3KeyPrefix: cn-ctlogs
-        TrailName: cn-remediation-trail
+        S3BucketName: zcspm-rem-${self:provider.stage}
+        S3KeyPrefix: zcspm-ctlogs
+        TrailName: zcspm-remediation-trail
         Tags: 
           -
             Key: "ServiceName"
@@ -491,14 +491,14 @@ resources:
             Value: "${opt:remediationversion}"
           -
             Key: "Description"
-            Value: "Cloudneeti automatic remediation solution for making cloud resource compliant"
+            Value: "ZCSPM automatic remediation solution for making cloud resource compliant"
           -
             Key: "Environment"
-            Value: "${opt:env, 'cn-remediation'}"
-    CloudneetiRole:
+            Value: "${opt:env, 'zcspm-remediation'}"
+    ZCSPMRole:
       Type: AWS::IAM::Role
       Properties:
-        RoleName: CN-Auto-Remediation-Role
+        RoleName: ZCSPM-Auto-Remediation-Role
         AssumeRolePolicyDocument:
           Version: '2012-10-17'
           Statement:
@@ -510,7 +510,7 @@ resources:
         ManagedPolicyArns:
           - "arn:aws:iam::aws:policy/SecurityAudit"
         Policies:
-        - PolicyName: cn-lambda-policy
+        - PolicyName: zcspm-lambda-policy
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -546,21 +546,21 @@ resources:
               - sqs:CreateQueue
               - sqs:SetQueueAttributes
               Resource: "*"
-    CNOrchestratorRole:
+    ZCSPMOrchestratorRole:
       Type: AWS::IAM::Role
       Properties:
-        RoleName: CN-Remediation-Invocation-Role
+        RoleName: ZCSPM-Remediation-Invocation-Role
         AssumeRolePolicyDocument:
           Version: '2012-10-17'
           Statement:
             - Effect: Allow
               Principal:
                 AWS:
-                  - "arn:aws:iam::${opt:cspm-aws-account-id}:root",  # Add the Cloudneeti AWS Account ID
-                  - "arn:aws:iam::${opt:aws-account-id}:role/CN-Auto-Remediation-Invoker"
+                  - "arn:aws:iam::${opt:zcspm-aws-account-id}:root"  # Add the ZCSPM AWS Account ID
+                  - "arn:aws:iam::${opt:aws-account-id}:role/ZCSPM-Auto-Remediation-Invoker"
               Action: sts:AssumeRole
         Policies:
-          - PolicyName: cn-lambda-policy
+          - PolicyName: zcspm-lambda-policy
             PolicyDocument:
               Version: '2012-10-17'
               Statement:
@@ -570,10 +570,10 @@ resources:
                 - lambda:InvokeFunction
                 - lambda:GetFunction
                 Resource: "*"
-    CNLambdaRole:
+    ZCSPMLambdaRole:
       Type: AWS::IAM::Role
       Properties:
-        RoleName: CN-OrchesLambdaRole-${opt:env, 'cn-remediation'}
+        RoleName: ZCSPM-OrchesLambdaRole-${opt:env, 'zcspm-remediation'}
         AssumeRolePolicyDocument:
           Version: '2012-10-17'
           Statement:
@@ -583,7 +583,7 @@ resources:
                   - lambda.amazonaws.com
               Action: sts:AssumeRole
         Policies:
-          - PolicyName: cn-lambda-policy
+          - PolicyName: zcspm-lambda-policy
             PolicyDocument:
               Version: '2012-10-17'
               Statement:
@@ -606,4 +606,4 @@ resources:
                 Action:
                 - sts:AssumeRole
                 Resource: 
-                - "arn:aws:iam::*:role/CN-Auto-Remediation-Role"
+                - "arn:aws:iam::*:role/ZCSPM-Auto-Remediation-Role"
