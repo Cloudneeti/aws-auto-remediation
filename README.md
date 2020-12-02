@@ -84,7 +84,7 @@ Perform below steps to deploy remediation framework on configured AWS account
 
 	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -z <12-digit-zcspm-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <all>`
 
-	Pass AWS account id and the environment as dev/test/prod.
+	The ZCSPM Account Id parameter(-z), can be skipped if the user does not want to integrate the Auto remediation framework with ZCSPM.
 
 3. Verify remediation framework setup
 
