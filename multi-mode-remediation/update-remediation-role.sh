@@ -61,6 +61,15 @@ if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#a
     usage
 fi
 
+echo "Verifying if pre-requisites are set-up.."
+sleep 5
+if [[ "$(which serverless)" != "" ]] && [[ "$(which aws)" != "" ]] && [[ "$(which jq)" != "" ]];then
+    echo "All pre-requisite packages are installed!!"
+else
+    echo "Package(s)/tool(s) mentioned as pre-requisites have not been correctly installed. Please verify the installation and try re-running the script."
+    exit 1
+fi
+
 echo "Getting existing role details...."
 
 role_detail="$(aws iam get-role --role-name ZCSPM-Remediation-Invocation-Role --output json 2>/dev/null)"

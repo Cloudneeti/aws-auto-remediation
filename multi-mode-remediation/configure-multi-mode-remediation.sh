@@ -83,6 +83,15 @@ done
 shift $((OPTIND-1))
 valid_values=( "na" "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
 
+echo "Verifying if pre-requisites are set-up.."
+sleep 5
+if [[ "$(which serverless)" != "" ]] && [[ "$(which aws)" != "" ]];then
+    echo "All pre-requisite packages are installed!!"
+else
+    echo "Package(s)/tool(s) mentioned as pre-requisites have not been correctly installed. Please verify the installation and try re-running the script."
+    exit 1
+fi
+
 echo "Validating input parameters..."
 
 configure_account="$(aws sts get-caller-identity)"
