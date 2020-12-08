@@ -146,7 +146,7 @@ On ZCSPM you need to have AWS account on-boarded.
 2. Go to settings and click on “Configure Account Remediation”
 3. Change Remediation State to enable and enter AWS account id in which remediation framework deployed using earlier steps.
 
-   ![configur-zcspm-remediation.png](images/configure-zcspm-remediation.png)
+   ![configure-zcspm-remediation.png](images/configure-zcspm-remediation.png)
 
 ### Enable Remediation Policies
 After configuring remediation settings, enable the remediation policies on ZCSPM portal.
