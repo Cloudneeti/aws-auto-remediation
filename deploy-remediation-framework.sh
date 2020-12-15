@@ -129,12 +129,18 @@ done
 
 #validate aws account-id and region
 if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ $primary_deployment == "" ]]; then
-    echo "Entered AWS Account Id(s) is/are invalid!!"
+    echo "Entered AWS Account Id or the primary deployment region are invalid!!"
     usage
 fi
 
 if [[ "$zcspmawsaccountid" == "" ]] || [[ "$zcspmawsaccountid" == "na" ]]; then
+    read -p "The ZCSPM Account Id parameter (-z) was not passed as an input. This signifies that the remediation framework cannot be integrated with ZCSPM portal. Do you still want to continue? (Y/N): " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1
     zcspmawsaccountid=$awsaccountid
+else
+    if [[ ${#zcspmawsaccountid} != 12 ]] || ! [[ "$zcspmawsaccountid" =~ ^[0-9]+$ ]]; then
+    echo "Entered ZCSPM AWS Account Id is invalid!!"
+    usage
+    fi
 fi
 
 echo "Input validation complete!"
