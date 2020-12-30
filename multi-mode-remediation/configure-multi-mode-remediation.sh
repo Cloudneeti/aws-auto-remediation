@@ -43,7 +43,7 @@
     **Mandatory(-r)Remediation Account Id: 12-digit AWS account Id of the account where the remediation framework is deployed
     **Mandatory(-p)AWS Region: Region where you want to deploy all major components of remediation framework
     (-e)Environment prefix: Enter any suitable prefix for your deployment
-    (-v)Version: Enter the remediation framework version (Would be provided by Cloudneeti)
+    (-v)Version: Enter the remediation framework version (Would be provided by ZCSPM)
     (-s)Region list: Comma seperated list(with no spaces) of the regions where the auto-remediation is to be enabled(eg: us-east-1,us-east-2)
         **Pass "all" if you want to enable auto-remediation in all other available regions
         **Pass "na" if you do not want to enable auto-remediation in any other region
@@ -82,6 +82,15 @@ while getopts "a:r:p:e:v:s:" o; do
 done
 shift $((OPTIND-1))
 valid_values=( "na" "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
+
+echo "Verifying if pre-requisites are set-up.."
+sleep 5
+if [[ "$(which serverless)" != "" ]] && [[ "$(which aws)" != "" ]];then
+    echo "All pre-requisite packages are installed!!"
+else
+    echo "Package(s)/tool(s) mentioned as pre-requisites have not been correctly installed. Please verify the installation and try re-running the script."
+    exit 1
+fi
 
 echo "Validating input parameters..."
 
@@ -130,19 +139,19 @@ env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
 
 echo "Checking if the remediation is already enabled for the account....."
 
-invoker_role_det="$(aws iam get-role --role-name CN-Auto-Remediation-Invoker 2>/dev/null)"
+invoker_role_det="$(aws iam get-role --role-name ZCSPM-Auto-Remediation-Invoker 2>/dev/null)"
 invoker_role=$?
 
-rem_role_det="$(aws iam get-role --role-name CN-Auto-Remediation-Role 2>/dev/null)"
+rem_role_det="$(aws iam get-role --role-name ZCSPM-Auto-Remediation-Role 2>/dev/null)"
 Rem_role=$?
 
-CT_det="$(aws cloudtrail get-trail-status --name cn-remediation-trail --region $primary_deployment 2>/dev/null)"
+CT_det="$(aws cloudtrail get-trail-status --name zcspm-remediation-trail --region $primary_deployment 2>/dev/null)"
 CT_status=$?
 
-s3_detail="$(aws s3api get-bucket-versioning --bucket cn-multirem-$env-$acc_sha 2>/dev/null)"
+s3_detail="$(aws s3api get-bucket-versioning --bucket zcspm-multirem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
 
-rem_location="$(aws s3api get-bucket-location --bucket cn-multirem-$env-$acc_sha --query "LocationConstraint" 2>/dev/null)"
+rem_location="$(aws s3api get-bucket-location --bucket zcspm-multirem-$env-$acc_sha --query "LocationConstraint" 2>/dev/null)"
 primary_location="$(eval echo $rem_location)"
 
 if [[ "$invoker_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 0 ]] || [[ "$s3_status" -eq 0 ]]; then
@@ -151,14 +160,14 @@ if [[ "$invoker_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq
     if [[ "$s3_status" -eq 0 ]]; then
         if [[ $primary_location == $primary_deployment ]]; then
             echo "Redeploying framework....."
-            aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name cn-multirem-$env-$acc_sha --parameter-overrides Stack=cn-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$remawsaccountid region=$primary_deployment remediationversion=$version remediationregion=$primary_deployment --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM
-            Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $primary_deployment 2>/dev/null)"
+            aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name zcspm-multirem-$env-$acc_sha --parameter-overrides Stack=zcspm-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$remawsaccountid region=$primary_deployment remediationversion=$version remediationregion=$primary_deployment --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM
+            Lambda_det="$(aws lambda get-function --function-name zcspm-aws-auto-remediate-invoker --region $primary_deployment 2>/dev/null)"
             Lambda_status=$?
             
             if [[ $Lambda_status -eq 0 ]]; then
                 echo "Successfully deployed remediation framework with latest updates!!"
             else
-                echo "Something went wrong! Please contact Cloudneeti support for more details"
+                echo "Something went wrong! Please contact ZCSPM support for more details"
                 exit 1
             fi
         else
@@ -172,16 +181,16 @@ if [[ "$invoker_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq
 else
     #Deploy framework from scrach
     echo "Deploying remediation framework...."
-    aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name cn-multirem-$env-$acc_sha --parameter-overrides Stack=cn-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$remawsaccountid region=$region remediationversion=$version remediationregion=$primary_deployment --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
-    lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $primary_deployment 2>/dev/null)"
+    aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name zcspm-multirem-$env-$acc_sha --parameter-overrides Stack=zcspm-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$remawsaccountid region=$region remediationversion=$version remediationregion=$primary_deployment --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+    lambda_det="$(aws lambda get-function --function-name zcspm-aws-auto-remediate-invoker --region $primary_deployment 2>/dev/null)"
     lambda_status=$?
 
     if [[ $lambda_status -eq 0 ]]; then
         echo "Successfully deployed remediation framework with latest updates!!"
         #Enabling termination protection for stack(s)
-        aws cloudformation update-termination-protection --enable-termination-protection --stack-name "cn-multirem-$env-$acc_sha" --region $primary_deployment
+        aws cloudformation update-termination-protection --enable-termination-protection --stack-name "zcspm-multirem-$env-$acc_sha" --region $primary_deployment
     else
-        echo "Something went wrong! Please contact Cloudneeti support for more details"
+        echo "Something went wrong! Please contact ZCSPM support for more details"
         exit 1
     fi
 fi
@@ -194,23 +203,23 @@ if [[ "$secondary_regions" -ne "na" ]] && [[ "$s3_status" -eq 0 ]]; then
     #Deploy Regional Stack
     for region in "${secondary_regions[@]}"; do
         if [[ "$region" != "$primary_deployment" ]]; then
-            Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $region 2>/dev/null)"
+            Lambda_det="$(aws lambda get-function --function-name zcspm-aws-auto-remediate-invoker --region $region 2>/dev/null)"
             Lambda_status=$?
 
-            Regional_stack="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$region-$acc_sha --region $region 2>/dev/null)"
+            Regional_stack="$(aws cloudformation describe-stacks --stack-name zcspm-multirem-$env-$region-$acc_sha --region $region 2>/dev/null)"
             Regional_stack_status=$?
             
             if [[ "$Regional_stack_status" -ne 0 ]] && [[ "$Lambda_status" -eq 0 ]]; then
                 echo "Region $region is not configured because of existing resources, please delete them and redeploy framework to configure this region"
             else
-                aws cloudformation deploy --template-file deploy-invoker-multi-mode.yml --stack-name cn-multirem-$env-$region-$acc_sha --parameter-overrides Stack=cn-rem-$env-$region-$acc_sha awsaccountid=$awsaccountid region=$region remediationregion=$primary_deployment --region $region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
-                Regional_stack="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$region-$acc_sha --region $region 2>/dev/null)"
+                aws cloudformation deploy --template-file deploy-invoker-multi-mode.yml --stack-name zcspm-multirem-$env-$region-$acc_sha --parameter-overrides Stack=zcspm-rem-$env-$region-$acc_sha awsaccountid=$awsaccountid region=$region remediationregion=$primary_deployment --region $region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+                Regional_stack="$(aws cloudformation describe-stacks --stack-name zcspm-multirem-$env-$region-$acc_sha --region $region 2>/dev/null)"
                 Regional_stack_status=$?
                 
                 if [[ "$Regional_stack_status" -eq 0 ]]; then
                     echo "Successfully configured region $region in remediation framework"
                     #Enabling termination protection for stack(s)
-                    aws cloudformation update-termination-protection --enable-termination-protection --stack-name "cn-multirem-$env-$region-$acc_sha" --region $region 2>/dev/null
+                    aws cloudformation update-termination-protection --enable-termination-protection --stack-name "zcspm-multirem-$env-$region-$acc_sha" --region $region 2>/dev/null
                 else
                     echo "Failed to configure region $region in remediation framework"
                 fi
@@ -224,5 +233,5 @@ fi
 if [[ $lambda_status -eq 0 ]]; then
     echo "Successfully deployed remediation framework!!"
 else
-    echo "Something went wrong! Please contact Cloudneeti support for more details"
+    echo "Something went wrong! Please contact ZCSPM support for more details"
 fi

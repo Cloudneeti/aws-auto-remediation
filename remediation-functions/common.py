@@ -25,7 +25,7 @@ class customException(Exception):
     def __str__(self):
         return self.errorMessage
 
-def getCredentials(roleArn, roleSessionName='CN-RemSession'):
+def getCredentials(roleArn, roleSessionName='ZCSPM-RemSession'):
     sts_client = boto3.client('sts')
     try:
         response = sts_client.assume_role(RoleArn=roleArn,RoleSessionName=roleSessionName)
@@ -43,7 +43,7 @@ def getRoleArn(event):
             return "", customException("Error when parsing the Post message body")
     except:
         return "", customException("Error when parsing the Post message body")
-    return CustAccID, 'arn:aws:iam::' + CustAccID + ':role/CN-Auto-Remediation-Role'
+    return CustAccID, 'arn:aws:iam::' + CustAccID + ':role/ZCSPM-Auto-Remediation-Role'
 
 def getRoleArn_cwlogs(event):
     try:
@@ -52,7 +52,7 @@ def getRoleArn_cwlogs(event):
             return "", customException("Error when parsing the Post message body")
     except:
         return "", customException("Error when parsing the Post message body")
-    return CustAccID, 'arn:aws:iam::' + CustAccID + ':role/CN-Auto-Remediation-Role'
+    return CustAccID, 'arn:aws:iam::' + CustAccID + ':role/ZCSPM-Auto-Remediation-Role'
     
 def getRegionName(Region):
     RegionDetail = {

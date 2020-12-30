@@ -61,20 +61,29 @@ if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#a
     usage
 fi
 
+echo "Verifying if pre-requisites are set-up.."
+sleep 5
+if [[ "$(which serverless)" != "" ]] && [[ "$(which aws)" != "" ]] && [[ "$(which jq)" != "" ]];then
+    echo "All pre-requisite packages are installed!!"
+else
+    echo "Package(s)/tool(s) mentioned as pre-requisites have not been correctly installed. Please verify the installation and try re-running the script."
+    exit 1
+fi
+
 echo "Getting existing role details...."
 
-role_detail="$(aws iam get-role --role-name CN-Remediation-Invocation-Role --output json 2>/dev/null)"
+role_detail="$(aws iam get-role --role-name ZCSPM-Remediation-Invocation-Role --output json 2>/dev/null)"
 role_status=$?
 if [[ $role_status -ne 0 ]]; then
     echo "Remediation role does not exist!! Please verify if the remediation framework is correctly deployed or not."
     exit 1
 fi
 
-Assume_role_policy="$(aws iam get-role --role-name CN-Remediation-Invocation-Role --output json | jq '.Role.AssumeRolePolicyDocument' 2>/dev/null )"
+Assume_role_policy="$(aws iam get-role --role-name ZCSPM-Remediation-Invocation-Role --output json | jq '.Role.AssumeRolePolicyDocument' 2>/dev/null )"
 role_status=$?
 
 if [[ $role_status -ne 0 ]]; then
-    echo "Unable to get role details. Please contact Cloudneeti support!"
+    echo "Unable to get role details. Please contact ZCSPM support!"
     exit 1
 fi
 
@@ -92,15 +101,15 @@ append_status=$?
 echo "Updated IAM Role policy json: $Updated_Assume_role_policy"
 
 if [[ $append_status -eq 0 ]]; then
-    aws iam update-assume-role-policy --role-name CN-Remediation-Invocation-Role --policy-document "$Updated_Assume_role_policy" 2>/dev/null
+    aws iam update-assume-role-policy --role-name ZCSPM-Remediation-Invocation-Role --policy-document "$Updated_Assume_role_policy" 2>/dev/null
     update_status=$?
 else
-    echo "Something went wrong! Please contact Cloudneeti support!"
+    echo "Something went wrong! Please contact ZCSPM support!"
     exit 1
 fi
 
 if [[ $update_status -eq 0 ]]; then
     echo "Successfully updated the remediation framework role!!"
 else
-    echo "Something went wrong! Please contact Cloudneeti support!"
+    echo "Something went wrong! Please contact ZCSPM support!"
 fi

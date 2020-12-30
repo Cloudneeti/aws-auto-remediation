@@ -95,7 +95,7 @@ def lambda_handler(event, context):
                 'statusCode': 401,
                 'body': json.dumps(str(e))
             }  
-        # rem_bucket = 'cn-rem-cust-rem-acc'
+        # rem_bucket = 'zcspm-rem-cust-rem-acc'
         available_list = cloudtrail_list + elb_list + elbv2_list + iam_list + kinesis_list + kms_list + rds_cluster_list + rds_instance_list + redshift_list + s3_list + dynamodb_list + ec2instance_list + cloudformation_list + asg_list + sqs_list + neptune_instance_list + neptune_cluster_list + rds_snapshot_list + docdb_cluster_list + docdb_instance_list + fsx_windows_list + kinesis_firehose_list
             
         try:
@@ -159,7 +159,7 @@ def lambda_handler(event, context):
         except:
             RemediationAWSAccountId = AWSAccId
         
-        if "assumed-role/CN-Auto-Remediation-Role" not in str(EventSource):    
+        if "assumed-role/ZCSPM-Auto-Remediation-Role" not in str(EventSource):    
             try:
                 hash_object = hashlib.sha256('{AWSAccId}'.format(AWSAccId = AWSAccId).encode())
                 hash_key = hash_object.hexdigest()
@@ -248,7 +248,7 @@ def lambda_handler(event, context):
                             "Region" : Region,
                             "policies": records
                         }
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-cloudtrail', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-cloudtrail', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                         response = json.loads(response['Payload'].read())
                         print(response)
                         return {
@@ -294,7 +294,7 @@ def lambda_handler(event, context):
                                 "Region" : Region,
                                 "policies": records
                             }
-                            response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-elbv2', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-elbv2', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                             response = json.loads(response['Payload'].read())
                             print(response)
                             return {
@@ -317,7 +317,7 @@ def lambda_handler(event, context):
                                 "Region" : Region,
                                 "policies": records
                             }
-                            response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-elb', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-elb', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                             response = json.loads(response['Payload'].read())
                             print(response)
                             return {
@@ -338,7 +338,7 @@ def lambda_handler(event, context):
                             "policies": records
                         }
                         
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-iam', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-iam', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                         response = json.loads(response['Payload'].read())
                         print(response)
                         return {
@@ -363,7 +363,7 @@ def lambda_handler(event, context):
                             "policies": records
                         }
                         
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-kinesis', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-kinesis', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                         response = json.loads(response['Payload'].read())
                         print(response)
                         return {
@@ -393,7 +393,7 @@ def lambda_handler(event, context):
                             "policies": records
                         }
                         
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-kms', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-kms', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                         response = json.loads(response['Payload'].read())
                         print(response)
                         return {
@@ -418,7 +418,7 @@ def lambda_handler(event, context):
                             "policies": records
                         }
                         
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-redshift', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-redshift', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                         response = json.loads(response['Payload'].read())
                         print(response)
                         return {
@@ -443,7 +443,7 @@ def lambda_handler(event, context):
                             "policies": records
                         }
                         
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-s3-bucket', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-s3-bucket', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                         response = json.loads(response['Payload'].read())
                         print(response)
                         return {
@@ -475,7 +475,7 @@ def lambda_handler(event, context):
                                 "policies": records
                             }
                             
-                            response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-neptune-cluster', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-neptune-cluster', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                             response = json.loads(response['Payload'].read())
                             print(response)
                             return {
@@ -507,7 +507,7 @@ def lambda_handler(event, context):
                                 "policies": records
                             }
                             
-                            response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-neptune-instance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-neptune-instance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                             response = json.loads(response['Payload'].read())
                             print(response)
                             return {
@@ -533,7 +533,7 @@ def lambda_handler(event, context):
                             "policies": records
                         }
                         
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-dynamodb', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-dynamodb', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                         response = json.loads(response['Payload'].read())
                         print(response)
                         return {
@@ -559,7 +559,7 @@ def lambda_handler(event, context):
                             "policies": records
                         }
                         
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-asg', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-asg', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                         response = json.loads(response['Payload'].read())
                         print(response)
                         return {
@@ -588,7 +588,7 @@ def lambda_handler(event, context):
                             "policies": records
                         }
                         
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-cloudformation', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-cloudformation', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                         response = json.loads(response['Payload'].read())
                         print(response)
                         return {
@@ -617,7 +617,7 @@ def lambda_handler(event, context):
                             "policies": records
                         }
                         
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-ec2-instance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-ec2-instance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                         response = json.loads(response['Payload'].read())
                         print(response)
                         return {
@@ -642,7 +642,7 @@ def lambda_handler(event, context):
                             "policies": records
                         }
                         
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-sqs', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-sqs', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                         response = json.loads(response['Payload'].read())
                         print(response)
                         return {
@@ -671,7 +671,7 @@ def lambda_handler(event, context):
                             "policies": records
                         }
                         
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-rdssnapshot', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-rdssnapshot', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                         response = json.loads(response['Payload'].read())
                         print(response)
                         return {
@@ -708,7 +708,7 @@ def lambda_handler(event, context):
                                 "policies": records
                             }
                             
-                            response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-documentdb-cluster', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-documentdb-cluster', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                             response = json.loads(response['Payload'].read())
                             print(response)
                             return {
@@ -746,7 +746,7 @@ def lambda_handler(event, context):
                                 "policies": records
                             }
                             
-                            response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-documentdb-instance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-documentdb-instance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                             response = json.loads(response['Payload'].read())
                             print(response)
                             return {
@@ -779,7 +779,7 @@ def lambda_handler(event, context):
                                 "policies": records
                             }
                             
-                            response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-rdscluster', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-rdscluster', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                             response = json.loads(response['Payload'].read())
                             print(response)
                             return {
@@ -805,7 +805,7 @@ def lambda_handler(event, context):
                             "policies": records
                         }
                         
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-rdsinstance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-rdsinstance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                         response = json.loads(response['Payload'].read())
                         print(response)
                         return {
@@ -831,7 +831,7 @@ def lambda_handler(event, context):
                             "policies": records
                         }
                         
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-fsx-windows', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-fsx-windows', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                         response = json.loads(response['Payload'].read())
                         print(response)
                         return {
@@ -857,7 +857,7 @@ def lambda_handler(event, context):
                             "policies": records
                         }
                         
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-kinesis-firehose', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-kinesis-firehose', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
                         response = json.loads(response['Payload'].read())
                         print(response)
                         return {
@@ -903,7 +903,7 @@ def lambda_handler(event, context):
             
             try:
                 invokeLambda = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=runtime_region)
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-auto-remediate-invoker', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-auto-remediate-invoker', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 RelayAccess = json.loads(response['Payload'].read())
             except:
                 RelayAccess = False                
@@ -918,7 +918,7 @@ def lambda_handler(event, context):
         return [RelayAccess, OrchestartorAccess]
     #endregion
 
-    #region CN Portal Triggered remediation
+    #region ZCSPM Portal Triggered remediation
     else:  
         try:  
             invokeLambda = boto3.client('lambda', region_name=runtime_region)
@@ -938,7 +938,7 @@ def lambda_handler(event, context):
         #region cloudtrail suborchestrator call
         if PolicyId in (cloudtrail_list):
             try:            
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-cloudtrail', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-cloudtrail', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:
@@ -950,7 +950,7 @@ def lambda_handler(event, context):
         #region elb suborchestrator call
         if PolicyId in (elb_list):
             try:            
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-elb', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-elb', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:
@@ -962,7 +962,7 @@ def lambda_handler(event, context):
         #region elb suborchestrator call
         if PolicyId in (elbv2_list):
             try:            
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-elbv2', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-elbv2', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:
@@ -974,7 +974,7 @@ def lambda_handler(event, context):
         #region IAM sub-orchestrator call
         if PolicyId in (iam_list):
             try:            
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-iam', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-iam', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:
@@ -994,7 +994,7 @@ def lambda_handler(event, context):
         #region Kinesis sub-orchestrator call
         if PolicyId in (kinesis_list):
             try:            
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-kinesis', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-kinesis', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:
@@ -1014,7 +1014,7 @@ def lambda_handler(event, context):
         #region kms suborchestrator call
         if PolicyId in (kms_list):
             try:            
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-kms', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-kms', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:
@@ -1026,7 +1026,7 @@ def lambda_handler(event, context):
         #region rds cluster suborchestrator call
         if PolicyId in (rds_cluster_list):
             try:            
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-rdscluster', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-rdscluster', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:
@@ -1038,7 +1038,7 @@ def lambda_handler(event, context):
         #region rds instance suborchestrator call
         if PolicyId in (rds_instance_list):
             try:        
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-rdsinstance', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-rdsinstance', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:
@@ -1050,7 +1050,7 @@ def lambda_handler(event, context):
         #region Redshift sub-orchestrator call
         if PolicyId in (redshift_list):
             try:            
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-redshift', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-redshift', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:
@@ -1070,7 +1070,7 @@ def lambda_handler(event, context):
         #region S3 sub-orchestrator call
         if PolicyId in str(s3_list):
             try:            
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-s3-bucket', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-s3-bucket', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:
@@ -1090,7 +1090,7 @@ def lambda_handler(event, context):
         #region rds cluster suborchestrator call
         if PolicyId in (dynamodb_list):
             try:            
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-dynamodb', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-dynamodb', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:
@@ -1102,7 +1102,7 @@ def lambda_handler(event, context):
         #region ec2 suborchestrator call
         if PolicyId in (ec2instance_list):
             try:            
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-ec2-instance', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-ec2-instance', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:
@@ -1114,7 +1114,7 @@ def lambda_handler(event, context):
         #region cloudformation suborchestrator call
         if PolicyId in (cloudformation_list):
             try:            
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-cloudformation', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-cloudformation', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:
@@ -1126,7 +1126,7 @@ def lambda_handler(event, context):
         #region asg suborchestrator call
         if PolicyId in (asg_list):
             try:            
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-asg', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-asg', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:
@@ -1138,7 +1138,7 @@ def lambda_handler(event, context):
         #region sqs suborchestrator call
         if PolicyId in (sqs_list):
             try:            
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-sqs', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-sqs', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:
@@ -1150,7 +1150,7 @@ def lambda_handler(event, context):
         #region neptune cluster suborchestrator call
         if PolicyId in (neptune_instance_list):
             try:            
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-neptune-instance', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-neptune-instance', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:
@@ -1162,7 +1162,7 @@ def lambda_handler(event, context):
         #region neptune instance suborchestrator call
         if PolicyId in (neptune_cluster_list):
             try:        
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-neptune-cluster', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-neptune-cluster', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:
@@ -1174,7 +1174,7 @@ def lambda_handler(event, context):
         #region neptune instance suborchestrator call
         if PolicyId in (rds_snapshot_list):
             try:        
-                response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-rdssnapshot', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-rdssnapshot', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 response = json.loads(response['Payload'].read())
                 print(response)
             except ClientError as e:
