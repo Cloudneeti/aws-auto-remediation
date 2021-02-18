@@ -24,14 +24,14 @@ Resources:
   LambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: cn-aws-auto-remediate-invoker
+      FunctionName: zcspm-aws-auto-remediate-invoker
       Role: 
         Fn::Join:
           - ""
           - - 'arn:aws:iam::'
             - !Ref awsaccountid
             - ':'
-            - role/CN-Auto-Remediation-Invoker
+            - role/ZCSPM-Auto-Remediation-Invoker
       Runtime: python3.7
       Handler: index.lambda_handler
       Timeout: 900 #seconds
@@ -74,12 +74,12 @@ Resources:
                     return {'statusCode': 400,'body': json.dumps(str(e))}
 
                   # Invoke remediation orchestrator
-                  if "assumed-role/CN-Auto-Remediation-Role" not in str(EventSource):        
+                  if "assumed-role/ZCSPM-Auto-Remediation-Role" not in str(EventSource):        
                       try:  # common code
-                        remdiationfunc_rolearn = 'arn:aws:iam::' + AWSAccId + ':role/CN-Remediation-Invocation-Role'
+                        remdiationfunc_rolearn = 'arn:aws:iam::' + AWSAccId + ':role/ZCSPM-Remediation-Invocation-Role'
                         try:
                           sts_client = boto3.client('sts')
-                          response = sts_client.assume_role(RoleArn=remdiationfunc_rolearn,RoleSessionName='CN-RemSession')
+                          response = sts_client.assume_role(RoleArn=remdiationfunc_rolearn,RoleSessionName='ZCSPM-RemSession')
                         except Exception as e:
                           print(e)
                           return {
@@ -99,7 +99,7 @@ Resources:
 
                       try:
                         invokeLambda = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=runtime_region)
-                        response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-orchestrator', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-orchestrator', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                         t = json.loads(response['Payload'].read())
                         print(t['body'])
                         return {
@@ -125,7 +125,7 @@ Resources:
   ASGEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-asg-event-rule"
+      Name: "zcspm-aws-asg-event-rule"
       Description: "CloudWatch Event triggered on ASG update"
       EventPattern:
         source:
@@ -159,7 +159,7 @@ Resources:
   CloudFormationEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-cloudformation-event-rule"
+      Name: "zcspm-aws-cloudformation-event-rule"
       Description: "CloudWatch Event triggered on cloudformation stack update"
       EventPattern:
         source:
@@ -193,7 +193,7 @@ Resources:
   CloudtrailEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-cloudtrail-event-rule"
+      Name: "zcspm-aws-cloudtrail-event-rule"
       Description: "CloudWatch Event triggered on cloudtrail"
       EventPattern:
         source:
@@ -225,44 +225,10 @@ Resources:
         Fn::GetAtt: 
           - "CloudtrailEventRule"
           - "Arn"
-  ConfigEventRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Name: "cn-aws-config-event-rule"
-      Description: "CloudWatch Event triggered on config changes"
-      EventPattern:
-        source:
-          - "aws.config"
-        detail-type:
-          - "AWS API Call via CloudTrail"
-        detail:
-          eventSource:
-            - "config.amazonaws.com"
-          eventName:
-            - "PutConfigurationRecorder"
-            - "StopConfigurationRecorder"
-      Targets: 
-        - 
-          Arn: 
-            Fn::GetAtt: 
-              - "LambdaFunction"
-              - "Arn"
-          Id: "TargetFunctionV1"
-  PermissionForConfigEventsToInvokeLambda: 
-    Type: AWS::Lambda::Permission
-    Properties: 
-      FunctionName: 
-        Ref: "LambdaFunction"
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn: 
-        Fn::GetAtt: 
-          - "ConfigEventRule"
-          - "Arn"
   DynamoDBEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-dynamodb-event-rule"
+      Name: "zcspm-aws-dynamodb-event-rule"
       Description: "CloudWatch Event triggered on dynamodb changes"
       EventPattern:
         source:
@@ -298,7 +264,7 @@ Resources:
   EC2EventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-ec2instance-event-rule"
+      Name: "zcspm-aws-ec2instance-event-rule"
       Description: "CloudWatch Event triggered on ec2 instance update"
       EventPattern:
         source:
@@ -334,7 +300,7 @@ Resources:
   ELBEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-elb-event-rule"
+      Name: "zcspm-aws-elb-event-rule"
       Description: "CloudWatch Event triggered on elb"
       EventPattern:
         source:
@@ -368,7 +334,7 @@ Resources:
   KinesisEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-kinesis-event-rule"
+      Name: "zcspm-aws-kinesis-event-rule"
       Description: "CloudWatch Event triggered on kinesis"
       EventPattern:
         source:
@@ -403,7 +369,7 @@ Resources:
   KMSEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-kms-event-rule"
+      Name: "zcspm-aws-kms-event-rule"
       Description: "CloudWatch Event triggered on kms"
       EventPattern:
         source:
@@ -437,7 +403,7 @@ Resources:
   RDSEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-rds-event-rule"
+      Name: "zcspm-aws-rds-event-rule"
       Description: "CloudWatch Event triggered on rds"
       EventPattern:
         source:
@@ -475,7 +441,7 @@ Resources:
   RedshiftEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-redshift-event-rule"
+      Name: "zcspm-aws-redshift-event-rule"
       Description: "CloudWatch Event triggered on redshift cluster"
       EventPattern:
         source:
@@ -509,7 +475,7 @@ Resources:
   S3EventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-s3bucket-event-rule"
+      Name: "zcspm-aws-s3bucket-event-rule"
       Description: "CloudWatch Event triggered on s3 bucket"
       EventPattern:
         source:
@@ -548,7 +514,7 @@ Resources:
   SQSEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-sqs-event-rule"
+      Name: "zcspm-aws-sqs-event-rule"
       Description: "CloudWatch Event triggered on sqs update"
       EventPattern:
         source:

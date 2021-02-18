@@ -40,19 +40,25 @@ Resources:
         LifecycleConfiguration:
             Rules:
             - Id: Delete-ct-logs
-              Prefix: cn-ctlogs/
+              Prefix: zcspm-ctlogs/
               Status: Enabled
               ExpirationInDays: 1
               NoncurrentVersionExpirationInDays: 1
         VersioningConfiguration:
             Status: Enabled
+        PublicAccessBlockConfiguration:
+            BlockPublicAcls: True
+            BlockPublicPolicy: True
+            IgnorePublicAcls: True
+            RestrictPublicBuckets: True
+        ObjectLockEnabled: True
         Tags: 
           -
             Key: "ServiceName"
             Value: "auto-remediation-deployment-bucket"
           -
             Key: "Description"
-            Value: "Cloudneeti automatic remediation solution for making cloud resource compliant"
+            Value: "ZCSPM automatic remediation solution for making cloud resource compliant"
   CTBucketPolicy:
     Type: AWS::S3::BucketPolicy
     DependsOn: S3Bucket
@@ -87,22 +93,22 @@ Resources:
               - ""
               - - 'arn:aws:s3:::'
                 - !Ref Stack
-                - '/cn-ctlogs/AWSLogs/'
+                - '/zcspm-ctlogs/AWSLogs/'
                 - !Ref awsaccountid
                 - '/*'
             Condition:
               StringLike: 
                 s3:x-amz-acl: 
                   - "bucket-owner-full-control"
-  CNLogGroup:
+  ZCSPMLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: cn-log-group
-  CNCloudwatchRole: 
+      LogGroupName: zcspm-log-group
+  ZCSPMCloudwatchRole: 
     Type: AWS::IAM::Role
-    DependsOn: CNLogGroup 
+    DependsOn: ZCSPMLogGroup 
     Properties:
-      RoleName: CN-CloudwatchRole
+      RoleName: ZCSPM-CloudwatchRole
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -112,7 +118,7 @@ Resources:
                 - "cloudtrail.amazonaws.com"
             Action: "sts:AssumeRole"
       Policies:
-        - PolicyName: cn-cloudwatch-policy
+        - PolicyName: zcspm-cloudwatch-policy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -127,7 +133,7 @@ Resources:
                   - !Ref region
                   - ':'
                   - !Ref awsaccountid
-                  - ':log-group:cn-log-group:*'
+                  - ':log-group:zcspm-log-group:*'
             - Sid: "CTCWPolicy2"
               Effect: "Allow"
               Action:
@@ -139,8 +145,8 @@ Resources:
                   - !Ref region
                   - ':'
                   - !Ref awsaccountid
-                  - ':log-group:cn-log-group:*'
-  CNCloudTrail:
+                  - ':log-group:zcspm-log-group:*'
+  ZCSPMCloudTrail:
     Type: AWS::CloudTrail::Trail
     DependsOn: CTBucketPolicy
     Properties:
@@ -151,8 +157,8 @@ Resources:
         Fn::Join:
         - ""
         - - !Ref Stack
-      S3KeyPrefix: cn-ctlogs
-      TrailName: cn-remediation-trail
+      S3KeyPrefix: zcspm-ctlogs
+      TrailName: zcspm-remediation-trail
       Tags: 
         -
           Key: "ServiceName"
@@ -162,21 +168,21 @@ Resources:
           Value: !Ref remediationversion
         -
           Key: "Description"
-          Value: "Cloudneeti automatic remediation solution for making cloud resource compliant"
+          Value: "ZCSPM automatic remediation solution for making cloud resource compliant"
         -
           Key: "Environment"
-          Value: "cn-remediation"
+          Value: "zcspm-remediation"
   LambdaFunction:
     Type: AWS::Lambda::Function
-    DependsOn: CNLambdaRole
+    DependsOn: ZCSPMLambdaRole
     Properties:
-      FunctionName: cn-aws-auto-remediate-invoker
+      FunctionName: zcspm-aws-auto-remediate-invoker
       Role: 
         Fn::Join:
         - ''
         - - 'arn:aws:iam::'
           - !Ref awsaccountid
-          - ':role/CN-Auto-Remediation-Invoker'
+          - ':role/ZCSPM-Auto-Remediation-Invoker'
       Runtime: python3.7
       Handler: index.lambda_handler
       Timeout: 900 #seconds
@@ -191,7 +197,7 @@ Resources:
           from botocore.exceptions import ClientError
           import os
 
-          def getCredentials(roleArn, roleSessionName='CN-RemSession'):
+          def getCredentials(roleArn, roleSessionName='ZCSPM-RemSession'):
             sts_client = boto3.client('sts')
             try:
                 response = sts_client.assume_role(RoleArn=roleArn,RoleSessionName=roleSessionName)
@@ -230,10 +236,10 @@ Resources:
               except Exception as e: 
                 print(e)
 
-              if "assumed-role/CN-Auto-Remediation-Role" not in str(EventSource):
+              if "assumed-role/ZCSPM-Auto-Remediation-Role" not in str(EventSource):
                 try:
                   iam = boto3.client("iam")
-                  role_det = iam.get_role(RoleName='CN-Auto-Remediation-Role')['Role']['AssumeRolePolicyDocument']['Statement']
+                  role_det = iam.get_role(RoleName='ZCSPM-Auto-Remediation-Role')['Role']['AssumeRolePolicyDocument']['Statement']
                   for i in range(len(role_det)):
                     if AWSAccId not in str(role_det[i]['Principal']):
                       RemAccDet = role_det[i]['Principal']['AWS']
@@ -245,7 +251,7 @@ Resources:
                   return {'statusCode': 400,'body': json.dumps(str(e))}
                         
                 try:  # common code
-                  remdiationfunc_rolearn = 'arn:aws:iam::' + RemAccId + ':role/CN-Remediation-Invocation-Role'
+                  remdiationfunc_rolearn = 'arn:aws:iam::' + RemAccId + ':role/ZCSPM-Remediation-Invocation-Role'
                   aws_access_key_id, aws_secret_access_key, aws_session_token = getCredentials(remdiationfunc_rolearn)
                 except ClientError as e:
                   return {'statusCode': 400,'body': json.dumps(str(e))}
@@ -254,7 +260,7 @@ Resources:
 
                 try:
                   invokeLambda = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=runtime_region)
-                  response = invokeLambda.invoke(FunctionName = 'cn-aws-remediate-orchestrator', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                  response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-orchestrator', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                   t = json.loads(response['Payload'].read())
                   print(t['body'])
                   return {
@@ -277,7 +283,7 @@ Resources:
   ASGEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-asg-event-rule"
+      Name: "zcspm-aws-asg-event-rule"
       Description: "CloudWatch Event triggered on ASG update"
       EventPattern:
         source:
@@ -311,7 +317,7 @@ Resources:
   CloudFormationEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-cloudformation-event-rule"
+      Name: "zcspm-aws-cloudformation-event-rule"
       Description: "CloudWatch Event triggered on cloudformation stack update"
       EventPattern:
         source:
@@ -345,7 +351,7 @@ Resources:
   CloudtrailEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-cloudtrail-event-rule"
+      Name: "zcspm-aws-cloudtrail-event-rule"
       Description: "CloudWatch Event triggered on cloudtrail"
       EventPattern:
         source:
@@ -377,44 +383,10 @@ Resources:
         Fn::GetAtt: 
           - "CloudtrailEventRule"
           - "Arn"
-  ConfigEventRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Name: "cn-aws-config-event-rule"
-      Description: "CloudWatch Event triggered on config changes"
-      EventPattern:
-        source:
-          - "aws.config"
-        detail-type:
-          - "AWS API Call via CloudTrail"
-        detail:
-          eventSource:
-            - "config.amazonaws.com"
-          eventName:
-            - "PutConfigurationRecorder"
-            - "StopConfigurationRecorder"
-      Targets: 
-        - 
-          Arn: 
-            Fn::GetAtt: 
-              - "LambdaFunction"
-              - "Arn"
-          Id: "TargetFunctionV1"
-  PermissionForConfigEventsToInvokeLambda: 
-    Type: AWS::Lambda::Permission
-    Properties: 
-      FunctionName: 
-        Ref: "LambdaFunction"
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn: 
-        Fn::GetAtt: 
-          - "ConfigEventRule"
-          - "Arn"
   DynamoDBEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-dynamodb-event-rule"
+      Name: "zcspm-aws-dynamodb-event-rule"
       Description: "CloudWatch Event triggered on dynamodb changes"
       EventPattern:
         source:
@@ -450,7 +422,7 @@ Resources:
   EC2EventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-ec2instance-event-rule"
+      Name: "zcspm-aws-ec2instance-event-rule"
       Description: "CloudWatch Event triggered on ec2 instance update"
       EventPattern:
         source:
@@ -486,7 +458,7 @@ Resources:
   ELBEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-elb-event-rule"
+      Name: "zcspm-aws-elb-event-rule"
       Description: "CloudWatch Event triggered on elb"
       EventPattern:
         source:
@@ -520,7 +492,7 @@ Resources:
   IAMEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-iam-event-rule"
+      Name: "zcspm-aws-iam-event-rule"
       Description: "CloudWatch Event triggered on iam changes"
       EventPattern:
         source:
@@ -554,7 +526,7 @@ Resources:
   KinesisEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-kinesis-event-rule"
+      Name: "zcspm-aws-kinesis-event-rule"
       Description: "CloudWatch Event triggered on kinesis"
       EventPattern:
         source:
@@ -589,7 +561,7 @@ Resources:
   KMSEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-kms-event-rule"
+      Name: "zcspm-aws-kms-event-rule"
       Description: "CloudWatch Event triggered on kms"
       EventPattern:
         source:
@@ -623,7 +595,7 @@ Resources:
   RDSEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-rds-event-rule"
+      Name: "zcspm-aws-rds-event-rule"
       Description: "CloudWatch Event triggered on rds"
       EventPattern:
         source:
@@ -662,7 +634,7 @@ Resources:
   RedshiftEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-redshift-event-rule"
+      Name: "zcspm-aws-redshift-event-rule"
       Description: "CloudWatch Event triggered on redshift cluster"
       EventPattern:
         source:
@@ -696,7 +668,7 @@ Resources:
   S3EventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-s3bucket-event-rule"
+      Name: "zcspm-aws-s3bucket-event-rule"
       Description: "CloudWatch Event triggered on s3 bucket"
       EventPattern:
         source:
@@ -735,7 +707,7 @@ Resources:
   SQSEventRule:
     Type: AWS::Events::Rule
     Properties:
-      Name: "cn-aws-sqs-event-rule"
+      Name: "zcspm-aws-sqs-event-rule"
       Description: "CloudWatch Event triggered on sqs update"
       EventPattern:
         source:
@@ -766,10 +738,10 @@ Resources:
         Fn::GetAtt: 
           - "SQSEventRule"
           - "Arn"
-  CloudneetiRole:
+  ZCSPMRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: CN-Auto-Remediation-Role
+      RoleName: ZCSPM-Auto-Remediation-Role
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -785,7 +757,7 @@ Resources:
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/SecurityAudit"
       Policies:
-      - PolicyName: cn-lambda-policy
+      - PolicyName: zcspm-lambda-policy
         PolicyDocument:
           Version: "2012-10-17"
           Statement:
@@ -797,7 +769,6 @@ Resources:
             - "cloudformation:UpdateTerminationProtection"
             - "cloudtrail:StartLogging"
             - "cloudtrail:UpdateTrail"
-            - "config:PutConfigurationRecorder"
             - "dynamodb:UpdateContinuousBackups"
             - "ec2:MonitorInstances"
             - "ec2:ModifyInstanceAttribute"
@@ -822,10 +793,10 @@ Resources:
             - "sqs:CreateQueue"
             - "sqs:SetQueueAttributes"
             Resource: "*"
-  CNLambdaRole:
+  ZCSPMLambdaRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: CN-Auto-Remediation-Invoker
+      RoleName: ZCSPM-Auto-Remediation-Invoker
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -835,7 +806,7 @@ Resources:
                 - "lambda.amazonaws.com"
             Action: "sts:AssumeRole"
       Policies:
-        - PolicyName: cn-lambda-policy
+        - PolicyName: zcspm-lambda-policy
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -855,4 +826,4 @@ Resources:
               Action:
               - "sts:AssumeRole"
               Resource: 
-              - "arn:aws:iam::*:role/CN-Remediation-Invocation-Role"
+              - "arn:aws:iam::*:role/ZCSPM-Remediation-Invocation-Role"

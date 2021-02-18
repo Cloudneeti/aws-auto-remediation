@@ -3,7 +3,7 @@
 
 ## Solution Overview
 
-This remediation solution is designed to continuously perform remediation in near real-time of non-compliant AWS resources. It helps to set up security configurations whenever new resources get created in AWS account. Along with Cloudneeti solution helps you to remediate existing non-compliant resources.
+This remediation solution is designed to continuously perform remediation in near real-time of non-compliant AWS resources. It helps to set up security configurations whenever new resources get created in AWS account. Along with ZCSPM, this solution helps you to remediate existing non-compliant resources.
 
 ### How it works
 
@@ -21,10 +21,7 @@ This auto-remediation solution supports multi-account remediation as well. Here,
 
 ![multiaccountremediation.png](images/multiaccountremediation.png)
 
-Use Cloudneeti to configure remediation policies on the AWS account. You can manually trigger remediation of existing resources from Cloudneeti portal. Remediation framework always remediates resources whenever somebody creates new resources or updates the existing resources. 
-
-
-
+Use ZCSPM to configure remediation policies on the AWS account. You can manually trigger remediation of existing resources from ZCSPM portal. Remediation framework always remediates resources whenever somebody creates new resources or updates the existing resources. 
 
 ## Pre-requisites
 
@@ -48,6 +45,9 @@ Following dependencies should be present on the machine before proceeding to onb
 
 	`https://stedolan.github.io/jq/download/`
 
+- ZCSPM AWS Account Id
+
+	You can retrieve this from the ZCSPM Welcome email, else you can contact ZCSPM support.
 
 ## Onboarding Steps
 
@@ -78,13 +78,13 @@ Perform below steps to deploy remediation framework on configured AWS account
 
 	Note: Primary region for multi account deployment should be the same as that of the remediation framework primary region for single account deployment
 
-	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <list of regions where auto-remediation is to be enabled>`
+	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -z <12-digit-zcspm-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <list of regions where auto-remediation is to be enabled>`
 
 	OR
 
-	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <all>`
+	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -z <12-digit-zcspm-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <all>`
 
-	Pass AWS account id and the environment as dev/test/prod.
+	The ZCSPM Account Id parameter(-z), can be skipped if the user does not want to integrate the Auto remediation framework with ZCSPM.
 
 3. Verify remediation framework setup
 
@@ -137,23 +137,23 @@ In case you want to use same remediation framework for remediation of multiple A
 
 	`# bash verify-multi-mode-remediation-setup.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -s <all>`
 
-## Configure remediation on Cloudneeti Account
+## Configure remediation on ZCSPM Account
 
-On Cloudneeti you need to have AWS account on-boarded. 
+On ZCSPM you need to have AWS account on-boarded. 
 
 ### Configure Account Remediation
-1. Login to Cloudneeti portal
+1. Login to ZCSPM portal
 2. Go to settings and click on “Configure Account Remediation”
 3. Change Remediation State to enable and enter AWS account id in which remediation framework deployed using earlier steps.
 
-   ![configure-cloudneeti-remediation.png](images/configure-cloudneeti-remediation.png)
+   ![configure-zcspm-remediation.png](images/configure-zcspm-remediation.png)
 
 ### Enable Remediation Policies
-After configuring remediation settings, enable the remediation policies on Cloudneeti portal.
+After configuring remediation settings, enable the remediation policies on ZCSPM portal.
 
 ![configure-remediation-policies.png](images/configure-remediation-policies.png)
 
-Refer, [Cloudneeti docs](https://docs.cloudneeti.com) to perform remediation of existing resources. 
+Refer, [ZCSPM docs](https://docs.cloudneeti.com) to perform remediation of existing resources. 
 
 
 

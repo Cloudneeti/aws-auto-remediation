@@ -103,9 +103,8 @@
 |101		|EC2 Instance	|EC2MonitoringState 	|Ensure that detailed monitoring is enabled for the AWS EC2 instances that you need to monitor closely|
 |102		|EC2 Instance	|EC2TerminationProtection	|Ensure Termination Protection feature is enabled for EC2 instances that are not part of ASGs|
 |103		|ASG	|ASGCooldown	|Ensure Amazon Auto Scaling Groups are utilizing cooldown periods|
-|104		|Config	|ConfigCaptureGlobalResources	|Ensure Global resources are included into Amazon Config service configuration|
-|105	|DynamoDB	|DynamoDbContinuousBackup	|Ensure Amazon DynamoDB tables have continuous backups enabled|
-|106	|SQS	|SQSSSEEnabled	|Ensure that Server-Side Encryption is enabled for Amazon SQS queues|
-|107	|CloudFormation 	|StackTermination	|Ensure that Termination Protection feature is enabled for AWS CloudFormation stacks|
-|108	|CloudTrail 	|CTIsLogging	|Ensure that CloudTrail trail have logging enabled|
-|109	|Kinesis	|KinesisSSE	|Ensure Amazon Kinesis streams enforce Server-Side Encryption (SSE)|
+|104	|DynamoDB	|DynamoDbContinuousBackup	|Ensure Amazon DynamoDB tables have continuous backups enabled|
+|105	|SQS	|SQSSSEEnabled	|Ensure that Server-Side Encryption is enabled for Amazon SQS queues|
+|106	|CloudFormation 	|StackTermination	|Ensure that Termination Protection feature is enabled for AWS CloudFormation stacks|
+|107	|CloudTrail 	|CTIsLogging	|Ensure that CloudTrail trail have logging enabled|
+|108	|Kinesis	|KinesisSSE	|Ensure Amazon Kinesis streams enforce Server-Side Encryption (SSE)|

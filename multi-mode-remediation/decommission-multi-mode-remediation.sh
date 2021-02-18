@@ -13,13 +13,13 @@
     The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-    Version: 2.0
+    Version: 2.1
 
     # PREREQUISITE
       - Install aws cli
         Link : https://docs.aws.amazon.com/cli/latest/userguide/install-linux-al2017.html
       - Before running this script, you need to delete the associated remediation s3-bucket
-        Bucket name is as follows : cn-rem-{environment-prefix}-{account-id-hash}
+        Bucket name is as follows : zcspm-rem-{environment-prefix}-{account-id-hash}
       - Configure your aws account using the below command:
         aws configure
         Enter the required inputs:
@@ -45,7 +45,7 @@
 usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>]" 1>&2; exit 1; }
 
 env="dev"
-version="2.0"
+version="2.1"
 secondaryregions=('na')
 while getopts "a:p:e:s:" o; do
     case "${o}" in
@@ -107,7 +107,7 @@ env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
 echo "Validating environment prefix..."
 sleep 5
 
-stack_detail="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$acc_sha --region $primary_deployment 2>/dev/null)"
+stack_detail="$(aws cloudformation describe-stacks --stack-name zcspm-multirem-$env-$acc_sha --region $primary_deployment 2>/dev/null)"
 stack_status=$?
 
 if [[ $stack_status -ne 0 ]]; then
@@ -115,23 +115,23 @@ if [[ $stack_status -ne 0 ]]; then
     exit 1
 fi
 
-s3_detail="$(aws s3api get-bucket-versioning --bucket cn-multirem-$env-$acc_sha 2>/dev/null)"
+s3_detail="$(aws s3api get-bucket-versioning --bucket zcspm-multirem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
 
 echo "Checking if the deployment bucket was correctly deleted... "
 
 if [[ $s3_status -eq 0 ]]; then
-    echo "Deployment bucket is still not deleted. Please delete cn-multirem-$env-$acc_sha and try to re-run the script again."
+    echo "Deployment bucket is still not deleted. Please delete zcspm-multirem-$env-$acc_sha and try to re-run the script again."
     exit 1
 fi
 
 echo "Deleting deployment stack..."
 #remove termination protection from stack
-aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-multirem-$env-$acc_sha --region $primary_deployment 2>/dev/null
+aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name zcspm-multirem-$env-$acc_sha --region $primary_deployment 2>/dev/null
 
 #delete main stack
-aws cloudformation delete-stack --stack-name cn-multirem-$env-$acc_sha --region $primary_deployment 2>/dev/null
-Lambda_det="$(aws lambda get-function --function-name cn-aws-auto-remediate-invoker --region $primary_deployment 2>/dev/null)"
+aws cloudformation delete-stack --stack-name zcspm-multirem-$env-$acc_sha --region $primary_deployment 2>/dev/null
+Lambda_det="$(aws lambda get-function --function-name zcspm-aws-auto-remediate-invoker --region $primary_deployment 2>/dev/null)"
 Lambda_status=$?
 
 echo "Deleting Regional Deployments...."
@@ -140,14 +140,14 @@ if [[ "$secondary_regions" -ne "na" ]]; then
     #Delete Regional Stack
     for region in "${secondary_regions[@]}"; do
         if [[ "$region" != "$primary_deployment" ]]; then
-            stack_detail="$(aws cloudformation describe-stacks --stack-name cn-multirem-$env-$region-$acc_sha --region $region 2>/dev/null)"
+            stack_detail="$(aws cloudformation describe-stacks --stack-name zcspm-multirem-$env-$region-$acc_sha --region $region 2>/dev/null)"
             stack_status=$?
 
             if [[ $stack_status -eq 0 ]]; then
                 #remove termination protection
-                aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name cn-multirem-$env-$region-$acc_sha --region $region 2>/dev/null
+                aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name zcspm-multirem-$env-$region-$acc_sha --region $region 2>/dev/null
                 #delete stack from other regions
-                aws cloudformation delete-stack --stack-name cn-multirem-$env-$region-$acc_sha --region $region
+                aws cloudformation delete-stack --stack-name zcspm-multirem-$env-$region-$acc_sha --region $region
             else
                 echo "Region $region is not configured in remediation framework"
             fi
@@ -160,5 +160,5 @@ fi
 if [[ $Lambda_status -eq 0 ]] && [[ $bucket_status -eq 0 ]]; then
     echo "Successfully deleted deployment stack!"
 else
-    echo "Something went wrong! Please contact Cloudneeti support!"
+    echo "Something went wrong! Please contact ZCSPM support!"
 fi
