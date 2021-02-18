@@ -53,7 +53,7 @@ usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-p <primary-deployment-reg
 env="dev"
 version="2.0"
 secondaryregions=('na')
-while getopts "a:p:e:v:s:" o; do
+while getopts "a:p:e:v:s:g:" o; do
     case "${o}" in
         a)
             awsaccountid=${OPTARG}
@@ -69,6 +69,8 @@ while getopts "a:p:e:v:s:" o; do
             ;;
         s) secondaryregions=${OPTARG}
             ;;
+        g) globalservices=${OPTARG}
+            ;;
         *)
             usage
             ;;
@@ -76,6 +78,8 @@ while getopts "a:p:e:v:s:" o; do
 done
 shift $((OPTIND-1))
 valid_values=( "na" "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
+
+Options=( "y" "Y" "yes" "Yes" "YES" )
 
 #Verify input for regional deployment
 if [[ $secondaryregions == "na" ]]; then
@@ -204,6 +208,11 @@ if [[ "$secondary_regions" != "na" ]] && [[ "$s3_status" -eq 0 ]]; then
     done
 else
     echo "Regional Deployments skipped with input na!.."
+fi
+
+#Opt in for global services
+if [[ " ${Options[@]} " =~ " ${globalservices} " ]]; then
+    aws cloudformation deploy --template-file deploy-global-services-invoker-function.yml --stack-name cn-rem-global-resources-$env-$acc_sha --parameter-overrides Stack=cn-rem-global-resources-$env-$acc_sha awsaccountid=$awsaccountid region="us-east-1" remediationregion=$primary_deployment --region "us-east-1" --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
 fi
 
 if [[ $lambda_status -eq 0 ]]; then
