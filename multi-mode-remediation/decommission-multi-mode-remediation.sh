@@ -157,6 +157,21 @@ else
     echo "Regional Stack deletion skipped with input na!.."
 fi
 
+echo "Verify and decommision global services deployments...."
+
+global_stack_detail="$(aws cloudformation describe-stacks --stack-name zcspm-multirem-global-resources-$env-$acc_sha --region "us-east-1" 2>/dev/null)"
+global_stack_status=$?
+
+if [[ $global_stack_status -eq 0 ]]; then
+    #remove termination protection
+    aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name zcspm-multirem-global-resources-$env-$acc_sha --region "us-east-1" 2>/dev/null
+    #delete stack for global services
+    aws cloudformation delete-stack --stack-name zcspm-multirem-global-resources-$env-$acc_sha --region "us-east-1" 2>/dev/null
+else
+    echo "Auto remediation is already disabled for Global Services, No stack found!"
+fi
+
+
 if [[ $Lambda_status -eq 0 ]] && [[ $bucket_status -eq 0 ]]; then
     echo "Successfully deleted deployment stack!"
 else

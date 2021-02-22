@@ -198,3 +198,13 @@ if [[ "$secondary_regions" -ne "na" ]] && [[ "$s3_status" -eq 0 ]]; then
 else
     echo "Regional Deployments verification skipped with input na!.."
 fi
+
+echo "Verifying Global Services Integration...."
+global_stack="$(aws cloudformation describe-stacks --stack-name zcspm-rem-global-resources-$env-$acc_sha --region "us-east-1" 2>/dev/null)"
+global_stack_detail=$?
+
+if [[ "$global_stack_detail" -eq 0 ]]; then
+    echo "Global Services Auto Remediation is enabled"
+else
+    echo "Global Services Auto Remediation is disabled"
+fi

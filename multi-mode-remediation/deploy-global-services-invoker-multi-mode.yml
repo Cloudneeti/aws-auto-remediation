@@ -16,7 +16,7 @@ Resources:
   LambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: zcspm-aws-global-services-auto-remediate-invoker
+      FunctionName: zcspm-aws-auto-remediate-invoker
       Role: 
         Fn::Join:
           - ""
@@ -33,14 +33,22 @@ Resources:
       MemorySize: 3008 #max memory foot print
       Code:
         ZipFile:  |
-          import os
           import json
           import boto3
           from botocore.exceptions import ClientError
+          import os
+
+          def getCredentials(roleArn, roleSessionName='ZCSPM-RemSession'):
+            sts_client = boto3.client('sts')
+            try:
+                response = sts_client.assume_role(RoleArn=roleArn,RoleSessionName=roleSessionName)
+            except Exception as e:
+                return print("Error when getting AssumeRole "+e)
+            cred = response['Credentials']
+            return cred['AccessKeyId'], cred['SecretAccessKey'], cred['SessionToken']
 
           def lambda_handler(event, context):
-            #regional-event customer account CW event
-            
+            #multi-event customer account CW event
             try:
               runtime_region = os.environ['referenceregion']
             except:
@@ -51,42 +59,44 @@ Resources:
             except:
               cw_event_data = ''
 
+            #multi-account verify access
+            try:
+              VerifyAccess = json.loads(event['body'])['VerifyAccess']
+              print(VerifyAccess)
+            except:
+              VerifyAccess = '' 
+
             #trigger by cw logs
             if cw_event_data:
               try:
-                records = ""
                 AWSAccId = cw_event_data["userIdentity"]["accountId"]
                 EventName = cw_event_data["eventName"]
                 EventSource = cw_event_data["userIdentity"]["arn"]
               except ClientError as e:
                 print(e)
-                return {'statusCode': 400,'body': json.dumps(str(e))}
-              except Exception as e:
+              except Exception as e: 
                 print(e)
-                return {'statusCode': 400,'body': json.dumps(str(e))}
 
-              # Invoke remediation orchestrator
-              if "assumed-role/ZCSPM-Auto-Remediation-Role" not in str(EventSource):        
-                try:  # common code
-                  remdiationfunc_rolearn = 'arn:aws:iam::' + AWSAccId + ':role/ZCSPM-Remediation-Invocation-Role'
-                  try:
-                    sts_client = boto3.client('sts')
-                    response = sts_client.assume_role(RoleArn=remdiationfunc_rolearn,RoleSessionName='ZCSPM-RemSession')
-                  except Exception as e:
-                    print(e)
-                    return {
-                      'statusCode': 200,
-                      'body': json.dumps("Error when getting AssumeRole")
-                    }
-                  cred = response['Credentials']
-                  aws_access_key_id=cred['AccessKeyId']
-                  aws_secret_access_key=cred['SecretAccessKey']
-                  aws_session_token=cred['SessionToken']
+              if "assumed-role/ZCSPM-Auto-Remediation-Role" not in str(EventSource):
+                try:
+                  iam = boto3.client("iam")
+                  role_det = iam.get_role(RoleName='ZCSPM-Auto-Remediation-Role')['Role']['AssumeRolePolicyDocument']['Statement']
+                  for i in range(len(role_det)):
+                    if AWSAccId not in str(role_det[i]['Principal']):
+                      RemAccDet = role_det[i]['Principal']['AWS']
+                      RemAccId = (RemAccDet.split('arn:aws:iam::')[1]).split(':root')[0]
+                      break
                 except ClientError as e:
-                  print(e)
                   return {'statusCode': 400,'body': json.dumps(str(e))}
                 except Exception as e:
-                  print(e)
+                  return {'statusCode': 400,'body': json.dumps(str(e))}
+                        
+                try:  # common code
+                  remdiationfunc_rolearn = 'arn:aws:iam::' + RemAccId + ':role/ZCSPM-Remediation-Invocation-Role'
+                  aws_access_key_id, aws_secret_access_key, aws_session_token = getCredentials(remdiationfunc_rolearn)
+                except ClientError as e:
+                  return {'statusCode': 400,'body': json.dumps(str(e))}
+                except Exception as e:
                   return {'statusCode': 400,'body': json.dumps(str(e))}
 
                 try:
@@ -99,21 +109,18 @@ Resources:
                       'body': json.dumps(t)
                   }
                 except ClientError as e:
-                  print(e)
                   return {'statusCode': 400,'body': json.dumps(str(e))}
                 except Exception as e:
-                  print(e)
                   return {'statusCode': 400,'body': json.dumps(str(e))}
-              #endregion
-              
-              #No Events
               else:
-                print("Policies not configured for remediation")
-                return {'statusCode': 200,'body': json.dumps("Policies not configured for remediation")}
-              #endregion
-            
-            else:
-              return {'statusCode': 200,'body': json.dumps("Invalid event source!")}
+                return {'statusCode': 200,'body': json.dumps("Resource already remediated")}
+            elif VerifyAccess:       
+              IsVerified = True 
+              try:  # common code 
+                CustAccID = json.loads(event['body'])['RemediationAWSAccountId']
+              except:
+                IsVerified = False
+              return IsVerified
   IAMEventRule:
     Type: AWS::Events::Rule
     Properties:

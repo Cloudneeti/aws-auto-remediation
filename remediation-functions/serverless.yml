@@ -113,20 +113,6 @@ functions:
                 - CreateLoadBalancer
                 - ModifyLoadBalancerAttributes
       - cloudwatchEvent:
-          name: 'zcspm-aws-iam-event-rule'
-          description: 'CloudWatch Event triggered on iam'
-          event:
-            source:
-              - aws.iam
-            detail-type:
-              - AWS API Call via CloudTrail
-            detail:
-              eventSource:
-                - iam.amazonaws.com
-              eventName:
-                - UpdateAccountPasswordPolicy
-                - DeleteAccountPasswordPolicy
-      - cloudwatchEvent:
           name: 'zcspm-aws-kinesis-event-rule'
           description: 'CloudWatch Event triggered on kinesis'
           event:
