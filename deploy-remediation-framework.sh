@@ -14,7 +14,7 @@
     The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-    Version: 2.1
+    Version: 2.2
     # PREREQUISITE
       - Install aws cli
         Link : https://docs.aws.amazon.com/cli/latest/userguide/install-linux-al2017.html
@@ -52,7 +52,7 @@
 
 usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>]" 1>&2; exit 1; }
 env="dev"
-version="2.1"
+version="2.2"
 secondaryregions=('na')
 while getopts "a:z:p:e:v:s:" o; do
     case "${o}" in
@@ -69,7 +69,7 @@ while getopts "a:z:p:e:v:s:" o; do
             env=${OPTARG}
             ;;
         v)
-            version=${OPTARG}
+            inputversion=${OPTARG}
             ;;
         s) 
             secondaryregions=${OPTARG}
@@ -80,6 +80,7 @@ while getopts "a:z:p:e:v:s:" o; do
     esac
 done
 shift $((OPTIND-1))
+
 valid_values=( "na" "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
 
 echo "Verifying if pre-requisites are set-up.."
@@ -92,6 +93,17 @@ else
 fi
 
 echo "Validating input parameters..."
+
+echo "Validating framework version"
+
+if [[ "$inputversion" != "$version" ]]; then
+    echo "Incorrect framework version provided. Current framework version is: $version"
+    exit 1
+fi
+
+echo "Framework version that will be deployed is: $version"
+
+echo "Verifying entered AWS Account Id(s) and region(s)..."
 
 configure_account="$(aws sts get-caller-identity)"
 
@@ -150,6 +162,7 @@ cd remediation-functions/
 
 acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
 env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
+isOrgMasterAccount=" "
 
 echo "Checking if the remediation framework already exists in the configured account....."
 
@@ -212,6 +225,63 @@ else
     fi
 fi
 
+isOrgMasterAccount="$(aws organizations list-accounts 2>/dev/null)"
+
+if [[ $isOrgMasterAccount ]]; then
+    org_account_count="$(aws organizations list-accounts --output json | jq '.Accounts' | jq length 2>/dev/null)"
+
+    if [[ $org_account_count -ne 0 ]]; then
+
+        echo "Updating invocation role with all Account(s) in the AWS Organization...."
+
+        role_detail="$(aws iam get-role --role-name ZCSPM-Remediation-Invocation-Role --output json 2>/dev/null)"
+        role_status=$?
+        if [[ $role_status -ne 0 ]]; then
+            echo "Remediation role does not exist!! Please verify if the remediation framework is correctly deployed or not."
+            exit 1
+        fi
+
+        Assume_role_policy="$(aws iam get-role --role-name ZCSPM-Remediation-Invocation-Role --output json | jq '.Role.AssumeRolePolicyDocument' 2>/dev/null )"
+        role_status=$?
+
+        if [[ $role_status -ne 0 ]]; then
+            echo "Unable to get role details. Please contact ZCSPM support!"
+            exit 1
+        fi
+
+        org_detail="$(aws organizations list-accounts --output json 2>/dev/null)"
+
+        echo "Updating existing role..."
+        for i in $(jq '.Accounts | keys | .[]' <<< "$org_detail"); do
+            account_detail=$(jq -r ".Accounts[$i]" <<< "$org_detail")
+            awsaccountid=$(jq -r '.Id' <<< "$account_detail")
+
+            if [[ $Assume_role_policy =~ "$awsaccountid" ]]; then
+                continue
+            fi
+
+            Updated_Assume_role_policy="$(echo $Assume_role_policy | jq --arg awsaccountid "$awsaccountid" '.Statement[0].Principal.AWS |= .+["arn:aws:iam::'$awsaccountid':root"]' 2>/dev/null )"
+            Assume_role_policy=$Updated_Assume_role_policy
+            append_status=$?
+        done
+
+        if [[ $append_status -eq 0 ]]; then
+            aws iam update-assume-role-policy --role-name ZCSPM-Remediation-Invocation-Role --policy-document "$Updated_Assume_role_policy" 2>/dev/null
+            update_status=$?
+        else
+            echo "Something went wrong! Please contact ZCSPM support!"
+            exit 1
+        fi
+
+        if [[ $update_status -eq 0 ]]; then
+            echo "Successfully updated the remediation framework role with Account(s) in the AWS Organization!!"
+        else
+            echo "Something went wrong! Please contact ZCSPM support!"
+        fi
+        
+    fi
+fi
+
 #Regional deployments for framework
 echo "Configuring Regional Deployments...."
 cd ..
@@ -229,7 +299,7 @@ if [[ "$secondary_regions" != "na" ]] && [[ "$s3_status" -eq 0 ]]; then
             if [[ "$Regional_stack_status" -ne 0 ]] && [[ "$Lambda_status" -eq 0 ]]; then
                 echo "Region $region is not configured because of existing resources, please delete them and redeploy framework to configure this region"
             else
-                aws cloudformation deploy --template-file deploy-invoker-function.yml --stack-name zcspm-rem-$env-$region-$acc_sha --parameter-overrides Stack=zcspm-rem-$env-$region-$acc_sha awsaccountid=$awsaccountid region=$region remediationregion=$primary_deployment --region $region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+                aws cloudformation deploy --template-file deploy-invoker-function.yml --stack-name zcspm-rem-$env-$region-$acc_sha  --region $region --parameter-overrides awsaccountid=$awsaccountid --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
                 Regional_stack="$(aws cloudformation describe-stacks --stack-name zcspm-rem-$env-$region-$acc_sha --region $region 2>/dev/null)"
                 Regional_stack_status=$?
 

@@ -167,6 +167,7 @@ Resources:
               - cloudtrail:GetTrailStatus
               - iam:Get*
               - iam:List*
+              - lambda:UpdateFunctionConfiguration
               Resource: "*"
             - Sid: AllowAssumeRoleForLambdaPolicy
               Effect: Allow

@@ -31,7 +31,7 @@ def getCredentials(roleArn, roleSessionName='ZCSPM-RemSession'):
         response = sts_client.assume_role(RoleArn=roleArn,RoleSessionName=roleSessionName)
     except Exception as e:
         print(e)
-        raise customException("Error when getting AssumeRole")
+        raise customException("Error while trying to AssumeRole")
     cred = response['Credentials']
     return cred['AccessKeyId'], cred['SecretAccessKey'], cred['SessionToken']
 
