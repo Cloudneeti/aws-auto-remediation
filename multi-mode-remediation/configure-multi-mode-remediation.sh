@@ -193,7 +193,7 @@ if [[ "$invoker_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq
 else
     #Deploy framework from scratch
     echo "Deploying remediation framework...."
-    aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name zcspm-multirem-$env-$acc_sha --parameter-overrides Stack=zcspm-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$remawsaccountid region=$region remediationversion=$version --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+    aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name zcspm-multirem-$env-$acc_sha --parameter-overrides Stack=zcspm-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$remawsaccountid region=$primary_deployment remediationversion=$version --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
     lambda_det="$(aws lambda get-function --function-name zcspm-aws-auto-remediate-invoker --region $primary_deployment 2>/dev/null)"
     lambda_status=$?
 
