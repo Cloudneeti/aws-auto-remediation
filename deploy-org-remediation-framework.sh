@@ -185,8 +185,23 @@ for i in $(jq '.Accounts | keys | .[]' <<< "$org_detail"); do
     fi
 done
 
+if [[ $memberaccounts == "na" ]]; then
+    multimode_deployment="no"
+elif [[ $memberaccounts == "all" ]]; then
+    multimode_deployment="yes"
+    org_memberaccounts=("${organization_accounts[@]}")
+else
+    multimode_deployment="yes"
+    org_memberaccounts="${memberaccounts[@]}"
+fi
+
+IFS=, read -a org_memberaccounts <<<"${org_memberaccounts[@]}"
+printf -v ips ',"%s"' "${org_memberaccounts[@]}"
+ips="${ips:1}"
+org_memberaccounts=($(echo "${org_memberaccounts[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+
 valid_memberaccounts=()
-for account in "${memberaccounts[@]}"; do
+for account in "${org_memberaccounts[@]}"; do
     if [[ ${#account} != 12 ]] || ! [[ "$account" =~ ^[0-9]+$ ]]; then
         echo "Incorrect member account id(s) provided. Expected values are: ${organization_accounts[@]}"
         exit 1
@@ -198,16 +213,7 @@ for account in "${memberaccounts[@]}"; do
     done
 done
 
-if [[ $memberaccounts == "na" ]]; then
-    multimode_deployment="no"
-elif [[ $memberaccounts == "all" ]]; then
-    multimode_deployment="yes"
-    valid_memberaccounts=("${organization_accounts[@]}")
-else
-    multimode_deployment="yes"
-fi
-
-echo "Account and region validations complete. Enter Account Id(s) and region(s) are in correct format."
+echo "Account and region validations complete. Entered AWS Account Id(s) and region(s) are in correct format."
 
 masterawsaccountid=$awsaccountid
 
