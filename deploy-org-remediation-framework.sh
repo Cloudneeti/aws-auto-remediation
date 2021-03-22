@@ -293,7 +293,6 @@ if [[ $org_detail ]]; then
 
         echo
         echo "Updating invocation role with the specified member Account(s) in the AWS Organization...."
-
         role_detail="$(aws iam get-role --role-name ZCSPM-Remediation-Invocation-Role --output json 2>/dev/null)"
         role_status=$?
         if [[ $role_status -ne 0 ]]; then
@@ -309,7 +308,6 @@ if [[ $org_detail ]]; then
             exit 1
         fi
 
-        echo "Updating existing role..."
         Updated_Assume_role_policy=""
         for awsaccountid in "${valid_memberaccounts[@]}"; do
 
@@ -374,8 +372,6 @@ if [[ $lambda_status -eq 0 ]]; then
 else
     echo "Something went wrong! Please contact ZCSPM support for more details"
 fi
-
-echo "$masterawsaccountid"
 
 if [[ $org_detail ]] && [[ "$multimode_deployment" -eq "yes" ]]; then
 
