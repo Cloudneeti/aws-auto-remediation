@@ -286,52 +286,6 @@ else
     echo "Successfully deployed master remediation setup in region $primary_deployment of AWS account: $awsaccountid"
 fi
 
-if [[ $org_detail ]]; then
-    org_account_count="$(aws organizations list-accounts --output json | jq '.Accounts' | jq length 2>/dev/null)"
-
-    if [[ $org_account_count -ne 0 ]]; then
-
-        echo
-        echo "Updating invocation role with the specified member Account(s) in the AWS Organization...."
-        role_detail="$(aws iam get-role --role-name ZCSPM-Remediation-Invocation-Role --output json 2>/dev/null)"
-        role_status=$?
-        if [[ $role_status -ne 0 ]]; then
-            echo "Remediation role does not exist!! Please verify if the remediation framework is correctly deployed or not."
-            exit 1
-        fi
-
-        Assume_role_policy="$(aws iam get-role --role-name ZCSPM-Remediation-Invocation-Role --output json | jq '.Role.AssumeRolePolicyDocument' 2>/dev/null )"
-        role_status=$?
-
-        if [[ $role_status -ne 0 ]]; then
-            echo "Unable to get role details. Please contact ZCSPM support!"
-            exit 1
-        fi
-
-        Updated_Assume_role_policy=""
-        for awsaccountid in "${valid_memberaccounts[@]}"; do
-
-            if [[ $Assume_role_policy =~ "$awsaccountid" ]]; then
-                continue
-            else
-                Updated_Assume_role_policy="$(echo $Assume_role_policy | jq --arg awsaccountid "$awsaccountid" '.Statement[0].Principal.AWS |= .+["arn:aws:iam::'$awsaccountid':root"]' 2>/dev/null )"
-                Assume_role_policy=$Updated_Assume_role_policy
-            fi
-        done
-
-        if [[ $Updated_Assume_role_policy != "" ]]; then
-            aws iam update-assume-role-policy --role-name ZCSPM-Remediation-Invocation-Role --policy-document "$Updated_Assume_role_policy" 2>/dev/null
-            update_status=$?
-
-            if [[ $update_status -eq 0 ]]; then
-                echo "Successfully updated the remediation framework role with the specified member Account(s) in the AWS Organization!!"
-            else
-                echo "Something went wrong! Please contact ZCSPM support!"
-            fi
-        fi
-    fi
-fi
-
 #Regional deployments for framework
 echo
 echo "Configuring Regional Deployments...."
@@ -375,11 +329,50 @@ fi
 
 if [[ $org_detail ]] && [[ "$multimode_deployment" -eq "yes" ]]; then
 
-    cd ./multi-mode-remediation/
+    echo
+    echo "Updating invocation role with the specified member Account(s) in the AWS Organization...."
+    role_detail="$(aws iam get-role --role-name ZCSPM-Remediation-Invocation-Role --output json 2>/dev/null)"
+    role_status=$?
+    if [[ $role_status -ne 0 ]]; then
+        echo "Remediation role does not exist!! Please verify if the remediation framework is correctly deployed or not."
+        exit 1
+    fi
+
+    Assume_role_policy="$(aws iam get-role --role-name ZCSPM-Remediation-Invocation-Role --output json | jq '.Role.AssumeRolePolicyDocument' 2>/dev/null )"
+    role_status=$?
+
+    if [[ $role_status -ne 0 ]]; then
+        echo "Unable to get role details. Please contact ZCSPM support!"
+        exit 1
+    fi
+
+    Updated_Assume_role_policy=""
+    for awsaccountid in "${valid_memberaccounts[@]}"; do
+
+        if [[ $Assume_role_policy =~ "$awsaccountid" ]]; then
+            continue
+        else
+            Updated_Assume_role_policy="$(echo $Assume_role_policy | jq --arg awsaccountid "$awsaccountid" '.Statement[0].Principal.AWS |= .+["arn:aws:iam::'$awsaccountid':root"]' 2>/dev/null )"
+            Assume_role_policy=$Updated_Assume_role_policy
+        fi
+    done
+
+    if [[ $Updated_Assume_role_policy != "" ]]; then
+        aws iam update-assume-role-policy --role-name ZCSPM-Remediation-Invocation-Role --policy-document "$Updated_Assume_role_policy" 2>/dev/null
+        update_status=$?
+
+        if [[ $update_status -eq 0 ]]; then
+            echo "Successfully updated the remediation framework role with the specified member Account(s) in the AWS Organization!!"
+        else
+            echo "Something went wrong! Please contact ZCSPM support!"
+        fi
+    fi
 
     echo    
     echo "Deploying framework in member accounts of the organization..."
     
+    cd ./multi-mode-remediation/
+
     for awsaccountid in "${valid_memberaccounts[@]}"; do
         roleName='OrganizationAccountAccessRole'
 
@@ -399,7 +392,7 @@ if [[ $org_detail ]] && [[ "$multimode_deployment" -eq "yes" ]]; then
 
             acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
 
-            echo "Checking if the remediation is already enabled for the account $awsaccountid....."
+            echo "Checking if the remediation is already enabled for the account $awsaccountid"
 
             invoker_role_det="$(aws iam get-role --role-name ZCSPM-Auto-Remediation-Invoker 2>/dev/null)"
             invoker_role=$?
@@ -459,7 +452,7 @@ if [[ $org_detail ]] && [[ "$multimode_deployment" -eq "yes" ]]; then
 
             #Regional deployments for framework
             echo
-            echo "Configuring regional deployments for member account: $awsaccountid...."
+            echo "Configuring regional deployments for member account: $awsaccountid"
             s3_status=$?
 
             if [[ "$secondary_regions" -ne "na" ]] && [[ "$s3_status" -eq 0 ]]; then
