@@ -162,7 +162,6 @@ cd remediation-functions/
 
 acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
 env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
-isOrgMasterAccount=" "
 
 echo "Checking if the remediation framework already exists in the configured account....."
 
@@ -222,63 +221,6 @@ else
     else
         echo "Something went wrong! Please contact ZCSPM support for more details"
         exit 1
-    fi
-fi
-
-isOrgMasterAccount="$(aws organizations list-accounts 2>/dev/null)"
-
-if [[ $isOrgMasterAccount ]]; then
-    org_account_count="$(aws organizations list-accounts --output json | jq '.Accounts' | jq length 2>/dev/null)"
-
-    if [[ $org_account_count -ne 0 ]]; then
-
-        echo "Updating invocation role with all Account(s) in the AWS Organization...."
-
-        role_detail="$(aws iam get-role --role-name ZCSPM-Remediation-Invocation-Role --output json 2>/dev/null)"
-        role_status=$?
-        if [[ $role_status -ne 0 ]]; then
-            echo "Remediation role does not exist!! Please verify if the remediation framework is correctly deployed or not."
-            exit 1
-        fi
-
-        Assume_role_policy="$(aws iam get-role --role-name ZCSPM-Remediation-Invocation-Role --output json | jq '.Role.AssumeRolePolicyDocument' 2>/dev/null )"
-        role_status=$?
-
-        if [[ $role_status -ne 0 ]]; then
-            echo "Unable to get role details. Please contact ZCSPM support!"
-            exit 1
-        fi
-
-        org_detail="$(aws organizations list-accounts --output json 2>/dev/null)"
-
-        echo "Updating existing role..."
-        for i in $(jq '.Accounts | keys | .[]' <<< "$org_detail"); do
-            account_detail=$(jq -r ".Accounts[$i]" <<< "$org_detail")
-            awsaccountid=$(jq -r '.Id' <<< "$account_detail")
-
-            if [[ $Assume_role_policy =~ "$awsaccountid" ]]; then
-                continue
-            fi
-
-            Updated_Assume_role_policy="$(echo $Assume_role_policy | jq --arg awsaccountid "$awsaccountid" '.Statement[0].Principal.AWS |= .+["arn:aws:iam::'$awsaccountid':root"]' 2>/dev/null )"
-            Assume_role_policy=$Updated_Assume_role_policy
-            append_status=$?
-        done
-
-        if [[ $append_status -eq 0 ]]; then
-            aws iam update-assume-role-policy --role-name ZCSPM-Remediation-Invocation-Role --policy-document "$Updated_Assume_role_policy" 2>/dev/null
-            update_status=$?
-        else
-            echo "Something went wrong! Please contact ZCSPM support!"
-            exit 1
-        fi
-
-        if [[ $update_status -eq 0 ]]; then
-            echo "Successfully updated the remediation framework role with Account(s) in the AWS Organization!!"
-        else
-            echo "Something went wrong! Please contact ZCSPM support!"
-        fi
-        
     fi
 fi
 
