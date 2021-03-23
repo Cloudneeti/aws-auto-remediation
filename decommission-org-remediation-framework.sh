@@ -3,7 +3,7 @@
 : '
 
 #SYNOPSIS
-    Decommissioning Remediation Framework.
+    Decommissioning of AWS Organization based multi-mode Remediation Framework.
 .DESCRIPTION
     This script will remove all the services deployed for the remediation framework.
 
@@ -31,7 +31,7 @@
       - Run this script in any bash shell (linux command prompt)
 
 .EXAMPLE
-    Command to execute : bash decommission-remediation-framework.sh [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>]
+    Command to execute : bash decommission-remediation-framework.sh [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>] [-m organization member accounts from where framework components are to be removed]
 
 .INPUTS
     **Mandatory(-a)Account Id: 12-digit AWS account Id of the account where you want the remediation framework to be deployed
@@ -40,12 +40,12 @@
     (-s)Region list: Comma seperated list(with no spaces) of the regions from where the auto-remediation is to be decommissioned(eg: us-east-1,us-east-2)
         **Pass "all" if you want to decommission auto-remediation from all other available regions
         **Pass "na" if you do not want to decommission auto-remediation from any other region
-
+    (-m) Member AWS Account Id(s): Comma seperated list of 12-digit organization member AWS Account Id(s), where the framework components are to be removed
 .OUTPUTS
     None
 '
 
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>] [-m organization member accounts from where framework components are to be removed]" 1>&2; exit 1; }
 env="dev"
 version="2.2"
 secondaryregions=('na')

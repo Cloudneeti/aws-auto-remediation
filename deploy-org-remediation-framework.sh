@@ -3,7 +3,7 @@
 : '
 
 #SYNOPSIS
-    Deployment of Remediation Framework.
+    Deployment of Organization based multi-mode Remediation Framework.
 .DESCRIPTION
     This script will deploy all the services required for the remediation framework.
 
