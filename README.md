@@ -153,7 +153,7 @@ In case you want to use same remediation framework for remediation of multiple A
 	
 	Note: Primary AWS Account [-a] for organization based multi-mode remeidation setup should always be the master AWS account of the Organization.
 
-	`# bash deploy-remediation-framework.sh [-a <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed]`
+	`# bash deploy-org-remediation-framework.sh [-a <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed]`
 
    This command creates the required resources like Cloudtrail, Cloudwatch event rules, Remediation functions and roles required to perform cross-account remediation across the member accounts in the organization.
 ## Configure remediation on ZCSPM Account

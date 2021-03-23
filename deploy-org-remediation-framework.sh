@@ -35,7 +35,7 @@
             Default output format: json  
       - Run this script in any bash shell (linux command prompt)
 .EXAMPLE
-    Command to execute : bash deploy-remediation-framework.sh [-a <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed]
+    Command to execute : bash deploy-org-remediation-framework.sh [-a <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed]
 
 .INPUTS
     **Mandatory(-a)Account Id: 12-digit AWS account Id of the account where you want the remediation framework to be deployed
