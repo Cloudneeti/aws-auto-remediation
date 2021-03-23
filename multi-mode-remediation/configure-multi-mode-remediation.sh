@@ -93,8 +93,10 @@ else
     exit 1
 fi
 
+echo
 echo "Validating input parameters..."
 
+echo
 echo "Validating framework version"
 
 if [[ "$inputversion" != "$version" ]]; then
@@ -104,6 +106,7 @@ fi
 
 echo "Framework version that will be deployed is: $version"
 
+echo
 echo "Verifying entered AWS Account Id(s) and region(s)..."
 
 configure_account="$(aws sts get-caller-identity)"
@@ -149,6 +152,7 @@ echo "Input validation complete!"
 acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
 env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
 
+echo
 echo "Checking if the remediation is already enabled for the account....."
 
 invoker_role_det="$(aws iam get-role --role-name ZCSPM-Auto-Remediation-Invoker 2>/dev/null)"
@@ -192,7 +196,8 @@ if [[ "$invoker_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq
     fi
 else
     #Deploy framework from scratch
-    echo "Deploying remediation framework...."
+    echo
+    echo "Existing remediation setup not found. Deploying new setup for remediation framework...."
     aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name zcspm-multirem-$env-$acc_sha --parameter-overrides Stack=zcspm-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$remawsaccountid region=$primary_deployment remediationversion=$version --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
     lambda_det="$(aws lambda get-function --function-name zcspm-aws-auto-remediate-invoker --region $primary_deployment 2>/dev/null)"
     lambda_status=$?
@@ -205,9 +210,11 @@ else
         echo "Something went wrong! Please contact ZCSPM support for more details"
         exit 1
     fi
+    echo "Successfully deployed remediation setup in region $primary_deployment of AWS account: $awsaccountid"
 fi
 
 #Regional deployments for framework
+echo
 echo "Configuring regional deployments...."
 s3_status=$?
 
@@ -229,7 +236,7 @@ if [[ "$secondary_regions" -ne "na" ]] && [[ "$s3_status" -eq 0 ]]; then
                 Regional_stack_status=$?
                 
                 if [[ "$Regional_stack_status" -eq 0 ]]; then
-                    echo "Successfully configured region $region in remediation framework"
+                    echo "Successfully deployed remediation framework components in region $region"
                     #Enabling termination protection for stack(s)
                     aws cloudformation update-termination-protection --enable-termination-protection --stack-name "zcspm-multirem-$env-$region-$acc_sha" --region $region 2>/dev/null
                 else

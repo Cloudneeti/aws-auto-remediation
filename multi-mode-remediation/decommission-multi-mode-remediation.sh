@@ -68,6 +68,19 @@ done
 shift $((OPTIND-1))
 valid_values=( "na" "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
 
+echo
+echo "Validating input parameters..."
+
+echo
+echo "Validating if AWS CLI is configured for the entered AWS account Id.."
+
+configure_account="$(aws sts get-caller-identity)"
+
+if [[ "$configure_account" != *"$awsaccountid"* ]];then
+    echo "AWS CLI configuration AWS account Id and entered AWS account Id does not match. Please try again with correct AWS Account Id."
+    exit 1
+fi
+
 #Verify input for regional deployment
 if [[ $secondaryregions == "na" ]]; then
     valid_regions=${valid_values[0]}
@@ -95,15 +108,17 @@ for valid_val in "${valid_values[@]}"; do
     fi
 done
 
-
 #validate aws account-id and region
 if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ $primary_deployment == "" ]]; then
     usage
 fi
 
+echo "Account and region validations complete. Entered AWS Account Id(s) and region(s) are in correct format."
+
 acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
 env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
 
+echo
 echo "Validating environment prefix..."
 sleep 5
 
@@ -115,9 +130,12 @@ if [[ $stack_status -ne 0 ]]; then
     exit 1
 fi
 
+echo "Remediation framework stack exists with entered prefix. Initiating cleanup of remediation framework."
+
 s3_detail="$(aws s3api get-bucket-versioning --bucket zcspm-multirem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
 
+echo
 echo "Checking if the deployment bucket was correctly deleted... "
 
 if [[ $s3_status -eq 0 ]]; then
@@ -134,6 +152,9 @@ aws cloudformation delete-stack --stack-name zcspm-multirem-$env-$acc_sha --regi
 Lambda_det="$(aws lambda get-function --function-name zcspm-aws-auto-remediate-invoker --region $primary_deployment 2>/dev/null)"
 Lambda_status=$?
 
+echo "Successfully completed the cleanup of master remediation framework"
+
+echo
 echo "Deleting Regional Deployments...."
 
 if [[ "$secondary_regions" -ne "na" ]]; then

@@ -113,13 +113,16 @@ env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
 stack_detail="$(aws cloudformation describe-stacks --stack-name zcspm-rem-$env-$acc_sha --region $primary_deployment 2>/dev/null)"
 stack_status=$?
 
+echo
 echo "Validating environment prefix..."
 
 if [[ $stack_status -ne 0 ]]; then
     echo "Invaild environment prefix. No relevant stack found. Please enter current environment prefix and try to re-run the script again."
     exit 1
 fi
+echo "Remediation framework stack exists with entered prefix."
 
+echo
 echo "Verifying role deployment...."
 orches_role_det="$(aws iam get-role --role-name ZCSPM-Remediation-Invocation-Role)"
 orches_role=$?
@@ -140,6 +143,7 @@ Lambda_status=$?
 s3_detail="$(aws s3api get-bucket-versioning --bucket zcspm-rem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
 
+echo
 if [[ "$orches_role" -ne 0 ]] && [[ "$Rem_role" -ne 0 ]] && [[ "$CT_status" -ne 0 ]] && [[ "$Lambda_status" -ne 0 ]] && [[ "$s3_status" -ne 0 ]]; then
    echo "Remediation framework is not deployed"
 elif [[ "$orches_role" -ne 0 ]] || [[ "$Rem_role" -ne 0 ]];
@@ -161,6 +165,7 @@ else
    echo "Something went wrong!"
 fi
 
+echo
 echo "Verifying Regional Configuration...."
 
 Invoker_rem_role_det="$(aws iam get-role --role-name ZCSPM-Auto-Remediation-Invoker)"

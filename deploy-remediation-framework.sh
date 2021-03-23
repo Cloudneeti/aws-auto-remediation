@@ -94,6 +94,7 @@ fi
 
 echo "Validating input parameters..."
 
+echo
 echo "Validating framework version"
 
 if [[ "$inputversion" != "$version" ]]; then
@@ -103,6 +104,7 @@ fi
 
 echo "Framework version that will be deployed is: $version"
 
+echo
 echo "Verifying entered AWS Account Id(s) and region(s)..."
 
 configure_account="$(aws sts get-caller-identity)"
@@ -155,7 +157,7 @@ else
     fi
 fi
 
-echo "Input validation complete!"
+echo "Account and region validations complete. Entered AWS Account Id(s) and region(s) are in correct format."
 
 #Verify deployment of remediation framework
 cd remediation-functions/
@@ -208,7 +210,7 @@ if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 
     fi
 else
     #Deploy framework from scratch
-    echo "Deploying remediation framework...."
+    echo "Existing remediation setup not found. Deploying new setup for remediation framework...."
     aws cloudformation deploy --template-file deployment-bucket.yml --stack-name zcspm-rem-$env-$acc_sha --parameter-overrides Stack=zcspm-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$primary_deployment --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
     s3_status=$?
     if [[ "$s3_status" -eq 0 ]]; then
@@ -222,6 +224,7 @@ else
         echo "Something went wrong! Please contact ZCSPM support for more details"
         exit 1
     fi
+    echo "Successfully deployed master remediation setup in region $primary_deployment of AWS account: $awsaccountid"
 fi
 
 #Regional deployments for framework

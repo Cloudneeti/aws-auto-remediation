@@ -72,6 +72,19 @@ done
 shift $((OPTIND-1))
 valid_values=( "na" "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
 
+echo
+echo "Validating input parameters..."
+
+echo
+echo "Validating if AWS CLI is configured for the entered AWS account Id.."
+
+configure_account="$(aws sts get-caller-identity)"
+
+if [[ "$configure_account" != *"$awsaccountid"* ]];then
+    echo "AWS CLI configuration AWS account Id and entered AWS account Id does not match. Please try again with correct AWS Account Id."
+    exit 1
+fi
+
 echo "Verifying if pre-requisites are set-up.."
 sleep 5
 if [[ "$(which serverless)" != "" ]] && [[ "$(which aws)" != "" ]] && [[ "$(which jq)" != "" ]];then
@@ -112,12 +125,15 @@ if [[ "$env" == "" ]] || [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ 
     usage
 fi
 
+echo "Account and region validations complete. Entered AWS Account Id(s) and region(s) are in correct format."
+
 acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
 env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
 
 stack_detail="$(aws cloudformation describe-stacks --stack-name zcspm-multirem-$env-$acc_sha --region $primary_deployment 2>/dev/null)"
 stack_status=$?
 
+echo
 echo "Validating environment prefix..."
 
 if [[ $stack_status -ne 0 ]]; then
@@ -125,6 +141,7 @@ if [[ $stack_status -ne 0 ]]; then
     exit 1
 fi
 
+echo "Remediation framework stack exists with entered prefix."
 echo "Verifying role deployment...."
 invoker_role_det="$(aws iam get-role --role-name ZCSPM-Auto-Remediation-Invoker 2>/dev/null)"
 invoker_role=$?
@@ -201,8 +218,7 @@ else
     echo "Regional Deployments verification skipped with input na!.."
 fi
 
-
-echo "............."
+echo
 echo "Verifying if role in the remediation framework is correctly deployed or not!"
 rem_role="$(aws sts assume-role --role-arn arn:aws:iam::$remawsaccountid:role/ZCSPM-Remediation-Invocation-Role --role-session-name zcspm-session 2>/dev/null)"
 rem_role_status=$?

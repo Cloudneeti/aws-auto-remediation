@@ -190,7 +190,7 @@ if [[ $stack_status -ne 0 ]]; then
 fi
 
 
-echo "Remediation framework stack exists with enetered prefix. Initiating cleanup of remediation framework."
+echo "Remediation framework stack exists with entered prefix. Initiating cleanup of remediation framework."
 
 s3_detail="$(aws s3api get-bucket-versioning --bucket zcspm-rem-$env-$acc_sha 2>/dev/null)"
 s3_status=$?
@@ -287,7 +287,7 @@ if [[ $org_detail ]] && [[ "$multimode_deployment" -eq "yes" ]]; then
                 exit 1
             fi
 
-            echo "Remediation framework stack exists with enetered prefix. Initiating cleanup of remediation framework."
+            echo "Remediation framework stack exists with entered prefix. Initiating cleanup of remediation framework."
             s3_detail="$(aws s3api get-bucket-versioning --bucket zcspm-multirem-$env-$acc_sha 2>/dev/null)"
             s3_status=$?
 

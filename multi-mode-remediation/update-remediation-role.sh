@@ -70,6 +70,7 @@ else
     exit 1
 fi
 
+echo
 echo "Getting existing role details...."
 
 role_detail="$(aws iam get-role --role-name ZCSPM-Remediation-Invocation-Role --output json 2>/dev/null)"
@@ -93,6 +94,7 @@ then
    exit 1
 fi
 
+echo
 echo "Updating existing role..."
 
 Updated_Assume_role_policy="$(echo $Assume_role_policy | jq --arg awsaccountid "$awsaccountid" '.Statement[.Statement| length] |= .+{"Effect": "Allow","Principal": {"AWS": "arn:aws:iam::'$awsaccountid':root"},"Action": "sts:AssumeRole"}' 2>/dev/null )"

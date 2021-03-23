@@ -118,9 +118,7 @@ In case you want to use same remediation framework for remediation of multiple A
 4. Switch to `multi-mode-remediation` directory
 
 	`# cd multi-mode-remediation`
-5. Configure multi-account remediation using below commands to deploy in specific or all regions
-	
-	Note: Primary region for multi account deployment should be the same as that of the remediation framework primary region for single account deployment
+5. Configure multi-account remediation using below commands to deploy in specific or all regions:
 
 	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <list of regions where auto-remediation is to enabled>`
 
@@ -137,6 +135,27 @@ In case you want to use same remediation framework for remediation of multiple A
 
 	`# bash verify-multi-mode-remediation-setup.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -s <all>`
 
+### Configure Multi-Account Remediation for AWS Organization based setup
+
+In case you want to use same remediation framework for remediation of multiple AWS accounts based in a single AWS organization setup, then perform the below steps to configure organization based multi-account remediation setup:
+
+1. Configure AWS account using the organization master account credentials
+
+	`# aws configure`
+
+   Enter the required inputs:
+   - AWS Access Key ID: Access key of any admin user of the account in consideration.
+   - AWS Secret Access Key: Secret Access Key of any admin user of the account in consideration
+   - Default region name: AWS region name (eg: us-east-1)
+   - Default output format: json
+
+2. Configure organization based multi-account remediation using below commands to deploy in specific or all member AWS accounts and regions: 
+	
+	Note: Primary AWS Account [-a] for organization based multi-mode remeidation setup should always be the master AWS account of the Organization.
+
+	`# bash deploy-remediation-framework.sh [-a <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed]`
+
+   This command creates the required resources like Cloudtrail, Cloudwatch event rules, Remediation functions and roles required to perform cross-account remediation across the member accounts in the organization.
 ## Configure remediation on ZCSPM Account
 
 On ZCSPM you need to have AWS account on-boarded. 
