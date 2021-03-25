@@ -35,10 +35,11 @@
             Default output format: json  
       - Run this script in any bash shell (linux command prompt)
 .EXAMPLE
-    Command to execute : bash deploy-org-remediation-framework.sh [-a <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed]
+    Command to execute : bash deploy-org-remediation-framework.sh [-a <12-digit AWS organization master account-id>] [-r <12-digit-aws-account-id>] [-z <12-digit-zcspm-aws-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed] [-o organization IAM role name]
 
 .INPUTS
-    **Mandatory(-a)Account Id: 12-digit AWS account Id of the account where you want the remediation framework to be deployed
+    **Mandatory(-a)Account Id: 12-digit account Id of the master AWS Account of the Organization
+    **Mandatory(-r)Remediation Account Id: 12-digit AWS account Id of the account where the primary remediation framework is to be deployed
     **Optional(-z)ZCSPM Account Id : Enter 12-digit account Id of ZCSPM AWS Account, only if you wish to integrate the remediation framework with ZCSPM
     **Mandatory(-p)AWS Region: Region where you want to deploy all major components of remediation framework
     (-e)Environment prefix: Enter any suitable prefix for your deployment
@@ -47,18 +48,24 @@
         **Pass "all" if you want to enable auto-remediation in all other available regions
         **Pass "na" if you do not want to enable auto-remediation in any other region
     (-m) Member AWS Account Id(s): Comma seperated list of 12-digit organization member AWS Account Id(s), where the framework components are to be deployed
+    (-o) Organization IAM Role Name: Name of the IAM role used by AWS organizations to manage the member accounts
 .OUTPUTS
     None
 '
 
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-a <12-digit AWS organization master account-id>] [-r <12-digit-aws-account-id>] [-z <12-digit-zcspm-aws-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed] [-o organization IAM role name]" 1>&2; exit 1; }
+reset_env_variables() { export AWS_ACCESS_KEY_ID=""; export AWS_SECRET_ACCESS_KEY=""; export AWS_SESSION_TOKEN=""; }
 env="dev"
 version="2.2"
 secondaryregions=('na')
-while getopts "a:z:p:e:v:s:m:" o; do
+#organizationrole='OrganizationAccountAccessRole'
+while getopts "a:r:z:p:e:v:s:m:o:" o; do
     case "${o}" in
         a)
             awsaccountid=${OPTARG}
+            ;;
+        r)
+            remawsaccountid=${OPTARG}
             ;;
         z)
             zcspmawsaccountid=${OPTARG}
@@ -78,6 +85,9 @@ while getopts "a:z:p:e:v:s:m:" o; do
         m) 
             memberaccounts=${OPTARG}
             ;;
+        o) 
+            organizationrole=${OPTARG}
+            ;;
         *)
             usage
             ;;
@@ -86,6 +96,14 @@ done
 shift $((OPTIND-1))
 
 valid_values=( "na" "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
+
+#validate aws account-id and region
+if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ "$remawsaccountid" == "" ]] || ! [[ "$remawsaccountid" =~ ^[0-9]+$ ]] || [[ ${#remawsaccountid} != 12 ]] || [[ $primaryregion == "" ]] || [[ $memberaccounts == "" ]] || [[ $organizationrole == "" ]]; then
+    echo "Entered AWS Account Id(s) or the primary deployment region are invalid!!"
+    usage
+fi
+        
+roleName=$organizationrole
 
 echo "Verifying if pre-requisites are set-up.."
 sleep 5
@@ -101,6 +119,13 @@ echo "Validating input parameters..."
 
 echo
 echo "Validating if AWS CLI is configured for the master Organization account.."
+
+configured_account="$(aws sts get-caller-identity | jq '.Account')"
+
+if [[ "$configured_account" != *"$awsaccountid"* ]];then
+    echo "AWS CLI is configured for $configured_account whereas input AWS Account Id entered is $awsaccountid. Please ensure that CLI configuration and the input Account Id is for the same AWS Account."
+    exit 1
+fi
 
 org_detail=""
 
@@ -124,13 +149,6 @@ echo "Framework version that will be deployed is: $version"
 
 echo
 echo "Verifying entered AWS Account Id(s) and region(s)..."
-
-configure_account="$(aws sts get-caller-identity)"
-
-if [[ "$configure_account" != *"$awsaccountid"* ]];then
-    echo "AWS CLI configuration AWS account Id and entered AWS account Id does not match. Please try again with correct AWS Account Id."
-    exit 1
-fi
 
 #Verify input for regional deployment
 if [[ $secondaryregions == "na" ]]; then
@@ -159,19 +177,13 @@ for valid_val in "${valid_values[@]}"; do
     fi
 done
 
-#validate aws account-id and region
-if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ $primary_deployment == "" ]]; then
-    echo "Entered AWS Account Id or the primary deployment region are invalid!!"
-    usage
-fi
-
 if [[ "$zcspmawsaccountid" == "" ]] || [[ "$zcspmawsaccountid" == "na" ]]; then
     read -p "The ZCSPM Account Id parameter (-z) was not passed as an input. This signifies that the remediation framework cannot be integrated with ZCSPM portal. Do you still want to continue? (Y/N): " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1
     zcspmawsaccountid=$awsaccountid
 else
     if [[ ${#zcspmawsaccountid} != 12 ]] || ! [[ "$zcspmawsaccountid" =~ ^[0-9]+$ ]]; then
-    echo "Entered ZCSPM AWS Account Id is invalid!!"
-    usage
+        echo "Entered ZCSPM AWS Account Id is invalid!!"
+        usage
     fi
 fi
 
@@ -180,28 +192,22 @@ organization_accounts=()
 for i in $(jq '.Accounts | keys | .[]' <<< "$org_detail"); do
     account_detail=$(jq -r ".Accounts[$i]" <<< "$org_detail")
     memberaccountid=$(jq -r '.Id' <<< "$account_detail")
-    if ! [[ "$memberaccountid" =~ "$awsaccountid" ]]; then
-        organization_accounts+=("$memberaccountid")
-    fi
+    organization_accounts+=("$memberaccountid")
 done
 
-if [[ $memberaccounts == "na" ]]; then
-    multimode_deployment="no"
-elif [[ $memberaccounts == "all" ]]; then
-    multimode_deployment="yes"
-    org_memberaccounts=("${organization_accounts[@]}")
+if [[ $memberaccounts == "all" ]]; then
+    input_memberaccounts=("${organization_accounts[@]}")
 else
-    multimode_deployment="yes"
-    org_memberaccounts="${memberaccounts[@]}"
+    input_memberaccounts="${memberaccounts[@]}"
 fi
 
-IFS=, read -a org_memberaccounts <<<"${org_memberaccounts[@]}"
-printf -v ips ',"%s"' "${org_memberaccounts[@]}"
+IFS=, read -a input_memberaccounts <<<"${input_memberaccounts[@]}"
+printf -v ips ',"%s"' "${input_memberaccounts[@]}"
 ips="${ips:1}"
-org_memberaccounts=($(echo "${org_memberaccounts[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+input_memberaccounts=($(echo "${input_memberaccounts[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
 
 valid_memberaccounts=()
-for account in "${org_memberaccounts[@]}"; do
+for account in "${input_memberaccounts[@]}"; do
     if [[ ${#account} != 12 ]] || ! [[ "$account" =~ ^[0-9]+$ ]]; then
         echo "Incorrect member account id(s) provided. Expected values are: ${organization_accounts[@]}"
         exit 1
@@ -213,14 +219,44 @@ for account in "${org_memberaccounts[@]}"; do
     done
 done
 
+if ! [[ "${valid_memberaccounts[@]}" =~ "${remawsaccountid}" ]]; then
+    echo "Remediation account id $remawsaccountid provided is not a part of the current AWS Organization. Expected values are: ${organization_accounts[@]}"
+    exit 1
+fi
+
 echo "Account and region validations complete. Entered AWS Account Id(s) and region(s) are in correct format."
 
-masterawsaccountid=$awsaccountid
+orgmasterawsaccountid=$awsaccountid
 
 #Verify deployment of remediation framework
-cd remediation-functions/
+cd ../remediation-functions/
 
-acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
+echo
+echo "Deploying master remediation framework in AWS Account: $remawsaccountid"
+
+if [[ "$orgmasterawsaccountid" -ne "$remawsaccountid" ]]; then
+    roleArn='arn:aws:iam::'$remawsaccountid':role/'$roleName
+
+    sts_assumerole="$(aws sts assume-role --role-arn $roleArn --role-session-name zcspm-session --output json 2>/dev/null)"
+    assumerole_status=$?
+
+    if [[ "$assumerole_status" -ne "0" ]]; then
+        echo "Error while trying to Assume Role. Unable to deploy master remediation framework setup on : $awsaccountid."
+        echo "Please verify the Organization IAM Role ARM provided and try again."
+        exit 1
+    fi
+    
+    credentials="$(echo $sts_assumerole | jq .Credentials )"
+    AccessKey="$(echo $credentials | jq -r .AccessKeyId)"
+    SecretAccessKey="$(echo $credentials | jq -r .SecretAccessKey)"
+    SessionToken="$(echo $credentials | jq -r .SessionToken)"
+    
+    export AWS_ACCESS_KEY_ID=$AccessKey
+    export AWS_SECRET_ACCESS_KEY=$SecretAccessKey
+    export AWS_SESSION_TOKEN=$SessionToken
+fi
+
+acc_sha="$(echo -n "${remawsaccountid}" | md5sum | cut -d" " -f1)"
 env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
 
 echo
@@ -250,7 +286,7 @@ if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 
     if [[ "$s3_status" -eq 0 ]]; then
         if [[ $primary_location == $primary_deployment ]]; then
             echo "Redeploying framework....."
-            serverless deploy --env $env --accounthash $env-$acc_sha --aws-account-id $awsaccountid --zcspm-aws-account-id $zcspmawsaccountid --region $primary_deployment --remediationversion $version
+            serverless deploy --env $env --accounthash $env-$acc_sha --aws-account-id $remawsaccountid --zcspm-aws-account-id $zcspmawsaccountid --region $primary_deployment --remediationversion $version
             Lambda_det="$(aws lambda get-function --function-name zcspm-aws-remediate-orchestrator --region $primary_deployment 2>/dev/null)"
             Lambda_status=$?
 
@@ -261,19 +297,21 @@ if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 
             fi
         else
             echo "Remediation components already exist in $primary_location region. Please run deploy-remediation-framework.sh with primary region as $primary_location !"
+            reset_env_variables
             exit 1
         fi
     else
         echo "Remediation components already exist with a different environment prefix. Please run verify-remediation-setup.sh for more details !"
+        reset_env_variables
         exit 1
     fi
 else
     #Deploy framework from scratch
     echo "Existing remediation setup not found. Deploying new setup for remediation framework...."
-    aws cloudformation deploy --template-file deployment-bucket.yml --stack-name zcspm-rem-$env-$acc_sha --parameter-overrides Stack=zcspm-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$primary_deployment --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+    aws cloudformation deploy --template-file deployment-bucket.yml --stack-name zcspm-rem-$env-$acc_sha --parameter-overrides Stack=zcspm-rem-$env-$acc_sha awsaccountid=$remawsaccountid region=$primary_deployment --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
     s3_status=$?
     if [[ "$s3_status" -eq 0 ]]; then
-        serverless deploy --env $env --accounthash $env-$acc_sha --aws-account-id $awsaccountid --zcspm-aws-account-id $zcspmawsaccountid --region $primary_deployment --remediationversion $version
+        serverless deploy --env $env --accounthash $env-$acc_sha --aws-account-id $remawsaccountid --zcspm-aws-account-id $zcspmawsaccountid --region $primary_deployment --remediationversion $version
         lambda_status=$?
 
         #Enabling termination protection for stack(s)
@@ -281,9 +319,10 @@ else
         aws cloudformation update-termination-protection --enable-termination-protection --stack-name "zcspm-rem-functions-$env-$acc_sha" --region $primary_deployment 2>/dev/null
     else
         echo "Something went wrong! Please contact ZCSPM support for more details"
+        reset_env_variables
         exit 1
     fi
-    echo "Successfully deployed master remediation setup in region $primary_deployment of AWS account: $awsaccountid"
+    echo "Successfully deployed master remediation setup in region $primary_deployment of AWS account: $remawsaccountid"
 fi
 
 #Regional deployments for framework
@@ -304,7 +343,7 @@ if [[ "$secondary_regions" != "na" ]] && [[ "$s3_status" -eq 0 ]]; then
             if [[ "$Regional_stack_status" -ne 0 ]] && [[ "$Lambda_status" -eq 0 ]]; then
                 echo "Region $region is not configured because of existing resources, please delete them and redeploy framework to configure this region"
             else
-                aws cloudformation deploy --template-file deploy-invoker-function.yml --stack-name zcspm-rem-$env-$region-$acc_sha  --region $region --parameter-overrides awsaccountid=$awsaccountid --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+                aws cloudformation deploy --template-file deploy-invoker-function.yml --stack-name zcspm-rem-$env-$region-$acc_sha  --region $region --parameter-overrides awsaccountid=$remawsaccountid --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
                 Regional_stack="$(aws cloudformation describe-stacks --stack-name zcspm-rem-$env-$region-$acc_sha --region $region 2>/dev/null)"
                 Regional_stack_status=$?
 
@@ -327,7 +366,7 @@ else
     echo "Something went wrong! Please contact ZCSPM support for more details"
 fi
 
-if [[ $org_detail ]] && [[ "$multimode_deployment" -eq "yes" ]]; then
+if [[ $org_detail ]]; then
 
     echo
     echo "Updating invocation role with the specified member Account(s) in the AWS Organization...."
@@ -335,6 +374,7 @@ if [[ $org_detail ]] && [[ "$multimode_deployment" -eq "yes" ]]; then
     role_status=$?
     if [[ $role_status -ne 0 ]]; then
         echo "Remediation role does not exist!! Please verify if the remediation framework is correctly deployed or not."
+        reset_env_variables
         exit 1
     fi
 
@@ -343,6 +383,7 @@ if [[ $org_detail ]] && [[ "$multimode_deployment" -eq "yes" ]]; then
 
     if [[ $role_status -ne 0 ]]; then
         echo "Unable to get role details. Please contact ZCSPM support!"
+        reset_env_variables
         exit 1
     fi
 
@@ -368,20 +409,30 @@ if [[ $org_detail ]] && [[ "$multimode_deployment" -eq "yes" ]]; then
         fi
     fi
 
+    if [[ "$orgmasterawsaccountid" -ne "$remawsaccountid" ]]; then
+        reset_env_variables
+    fi
+
     echo    
     echo "Deploying framework in member accounts of the organization..."
     
     cd ./multi-mode-remediation/
 
     for awsaccountid in "${valid_memberaccounts[@]}"; do
-        roleName='OrganizationAccountAccessRole'
-
-        if [[ "$awsaccountid" -ne "$masterawsaccountid" ]]; then
+        if [[ "$awsaccountid" -ne "$remawsaccountid" ]]; then
             echo
             echo "Deploying framework in member account: $awsaccountid"
             roleArn='arn:aws:iam::'$awsaccountid':role/'$roleName
 
-            credentials="$(aws sts assume-role --role-arn $roleArn --role-session-name zcspm-session --output json | jq .Credentials 2>/dev/null)"
+            sts_assumerole="$(aws sts assume-role --role-arn $roleArn --role-session-name zcspm-session --output json 2>/dev/null)"
+            assumerole_status=$?
+
+            if [[ "$assumerole_status" -ne 0 ]]; then
+                echo "Error while trying to Assume Role. Skipping deployment for AWS Account: $awsaccountid "
+                continue
+            fi
+
+            credentials="$(echo $sts_assumerole | jq .Credentials )"
             AccessKey="$(echo $credentials | jq -r .AccessKeyId)"
             SecretAccessKey="$(echo $credentials | jq -r .SecretAccessKey)"
             SessionToken="$(echo $credentials | jq -r .SessionToken)"
@@ -415,7 +466,7 @@ if [[ $org_detail ]] && [[ "$multimode_deployment" -eq "yes" ]]; then
                 if [[ "$s3_status" -eq 0 ]]; then
                     if [[ $primary_location == $primary_deployment ]]; then
                         echo "Redeploying framework....."
-                        aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name zcspm-multirem-$env-$acc_sha --parameter-overrides Stack=zcspm-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$masterawsaccountid region=$primary_deployment remediationversion=$version --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM
+                        aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name zcspm-multirem-$env-$acc_sha --parameter-overrides Stack=zcspm-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$remawsaccountid region=$primary_deployment remediationversion=$version --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM
                         Lambda_det="$(aws lambda get-function --function-name zcspm-aws-auto-remediate-invoker --region $primary_deployment 2>/dev/null)"
                         Lambda_status=$?
                         
@@ -423,20 +474,23 @@ if [[ $org_detail ]] && [[ "$multimode_deployment" -eq "yes" ]]; then
                             echo "Successfully deployed remediation framework with latest updates!!"
                         else
                             echo "Something went wrong! Please contact ZCSPM support for more details"
+                            reset_env_variables
                             exit 1
                         fi
                     else
                         echo "Remediation components already exist in $primary_location region. Please run configure-multi-mode-remediation.sh with primary region as $primary_location !"
+                        reset_env_variables
                         exit 1
                     fi
                 else
                     echo "Remediation components already exist with a different environment prefix. Please run verify-remediation-setup.sh for more details !"
+                    reset_env_variables
                     exit 1
                 fi
             else
                 #Deploy framework from scratch
                 echo "Existing remediation setup not found. Deploying required setup for remediation framework...."
-                aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name zcspm-multirem-$env-$acc_sha --parameter-overrides Stack=zcspm-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$masterawsaccountid region=$primary_deployment remediationversion=$version --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+                aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name zcspm-multirem-$env-$acc_sha --parameter-overrides Stack=zcspm-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$remawsaccountid region=$primary_deployment remediationversion=$version --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
                 lambda_det="$(aws lambda get-function --function-name zcspm-aws-auto-remediate-invoker --region $primary_deployment 2>/dev/null)"
                 lambda_status=$?
 
@@ -446,6 +500,7 @@ if [[ $org_detail ]] && [[ "$multimode_deployment" -eq "yes" ]]; then
                     aws cloudformation update-termination-protection --enable-termination-protection --stack-name "zcspm-multirem-$env-$acc_sha" --region $primary_deployment
                 else
                     echo "Something went wrong! Please contact ZCSPM support for more details"
+                    reset_env_variables
                     exit 1
                 fi
             fi
@@ -468,7 +523,7 @@ if [[ $org_detail ]] && [[ "$multimode_deployment" -eq "yes" ]]; then
                         if [[ "$Regional_stack_status" -ne 0 ]] && [[ "$Lambda_status" -eq 0 ]]; then
                             echo "Region $region is not configured because of existing resources, please delete them and redeploy framework to configure this region"
                         else
-                            aws cloudformation deploy --template-file deploy-invoker-multi-mode.yml --stack-name zcspm-multirem-$env-$region-$acc_sha --parameter-overrides awsaccountid=$awsaccountid remaccountid=$masterawsaccountid --region $region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+                            aws cloudformation deploy --template-file deploy-invoker-multi-mode.yml --stack-name zcspm-multirem-$env-$region-$acc_sha --parameter-overrides awsaccountid=$awsaccountid remaccountid=$remawsaccountid --region $region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
                             Regional_stack="$(aws cloudformation describe-stacks --stack-name zcspm-multirem-$env-$region-$acc_sha --region $region 2>/dev/null)"
                             Regional_stack_status=$?
                             
@@ -491,10 +546,7 @@ if [[ $org_detail ]] && [[ "$multimode_deployment" -eq "yes" ]]; then
             else
                 echo "Something went wrong! Please contact ZCSPM support for more details"
             fi
-            #reset environment variables
-            export AWS_ACCESS_KEY_ID=""
-            export AWS_SECRET_ACCESS_KEY=""
-            export AWS_SESSION_TOKEN=""
+            reset_env_variables
         fi
     done
 else

@@ -72,16 +72,20 @@ done
 shift $((OPTIND-1))
 valid_values=( "na" "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
 
+if [[ "$env" == "" ]] || [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ "$remawsaccountid" == "" ]] || ! [[ "$remawsaccountid" =~ ^[0-9]+$ ]] || [[ ${#remawsaccountid} != 12 ]] || [[ $primary_deployment == "" ]]; then
+    usage
+fi
+
 echo
 echo "Validating input parameters..."
 
 echo
 echo "Validating if AWS CLI is configured for the entered AWS account Id.."
 
-configure_account="$(aws sts get-caller-identity)"
+configured_account="$(aws sts get-caller-identity | jq '.Account')"
 
-if [[ "$configure_account" != *"$awsaccountid"* ]];then
-    echo "AWS CLI configuration AWS account Id and entered AWS account Id does not match. Please try again with correct AWS Account Id."
+if [[ "$configured_account" != *"$awsaccountid"* ]];then
+    echo "AWS CLI is configured for $configured_account whereas input AWS Account Id entered is $awsaccountid. Please ensure that CLI configuration and the input Account Id is for the same AWS Account."
     exit 1
 fi
 
@@ -120,10 +124,6 @@ for valid_val in "${valid_values[@]}"; do
         primary_deployment=$primaryregion
     fi
 done
-
-if [[ "$env" == "" ]] || [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ "$remawsaccountid" == "" ]] || ! [[ "$remawsaccountid" =~ ^[0-9]+$ ]] || [[ ${#remawsaccountid} != 12 ]] || [[ $primary_deployment == "" ]]; then
-    usage
-fi
 
 echo "Account and region validations complete. Entered AWS Account Id(s) and region(s) are in correct format."
 

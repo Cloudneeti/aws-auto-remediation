@@ -83,6 +83,12 @@ shift $((OPTIND-1))
 
 valid_values=( "na" "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
 
+#validate aws account-id and region
+if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ $primary_deployment == "" ]]; then
+    echo "Entered AWS Account Id or the primary deployment region are invalid!!"
+    usage
+fi
+
 echo "Verifying if pre-requisites are set-up.."
 sleep 5
 if [[ "$(which serverless)" != "" ]] && [[ "$(which aws)" != "" ]];then
@@ -107,10 +113,10 @@ echo "Framework version that will be deployed is: $version"
 echo
 echo "Verifying entered AWS Account Id(s) and region(s)..."
 
-configure_account="$(aws sts get-caller-identity)"
+configured_account="$(aws sts get-caller-identity | jq '.Account')"
 
-if [[ "$configure_account" != *"$awsaccountid"* ]];then
-    echo "AWS CLI configuration AWS account Id and entered AWS account Id does not match. Please try again with correct AWS Account Id."
+if [[ "$configured_account" != *"$awsaccountid"* ]];then
+    echo "AWS CLI is configured for $configured_account whereas input AWS Account Id entered is $awsaccountid. Please ensure that CLI configuration and the input Account Id is for the same AWS Account."
     exit 1
 fi
 
@@ -140,12 +146,6 @@ for valid_val in "${valid_values[@]}"; do
         primary_deployment=$primaryregion
     fi
 done
-
-#validate aws account-id and region
-if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ $primary_deployment == "" ]]; then
-    echo "Entered AWS Account Id or the primary deployment region are invalid!!"
-    usage
-fi
 
 if [[ "$zcspmawsaccountid" == "" ]] || [[ "$zcspmawsaccountid" == "na" ]]; then
     read -p "The ZCSPM Account Id parameter (-z) was not passed as an input. This signifies that the remediation framework cannot be integrated with ZCSPM portal. Do you still want to continue? (Y/N): " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1

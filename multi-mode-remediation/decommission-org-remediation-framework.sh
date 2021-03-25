@@ -5,7 +5,7 @@
 #SYNOPSIS
     Decommissioning of AWS Organization based multi-mode Remediation Framework.
 .DESCRIPTION
-    This script will remove all the services deployed for the remediation framework.
+    This script will remove all the services deployed for the remediation framework from the secondary account [acounts leveraging a master framework deployed in some other account] only.
 
 .NOTES
 
@@ -31,28 +31,35 @@
       - Run this script in any bash shell (linux command prompt)
 
 .EXAMPLE
-    Command to execute : bash decommission-org-remediation-framework.sh [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>] [-m organization member accounts from where framework components are to be removed]
+    Command to execute : bash decommission-org-remediation-framework.sh [-a <12-digit-account-id>] [-r <12-digit-aws-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>] [-m organization member accounts from where framework components are to be removed] [-o organization-access-IAM-role]
 
 .INPUTS
-    **Mandatory(-a)Account Id: 12-digit AWS account Id of the account where you want the remediation framework to be deployed
+    **Mandatory(-a)Account Id: 12-digit account Id of the master AWS Account of the Organization
+    **Mandatory(-r)Remediation Account Id: 12-digit AWS account Id of the account where the primary remediation framework is deployed
     **Mandatory(-p)AWS Region: Region where you want to deploy all major resources of remediation framework
     (-e)Environment prefix: Enter any suitable prefix for your deployment
     (-s)Region list: Comma seperated list(with no spaces) of the regions from where the auto-remediation is to be decommissioned(eg: us-east-1,us-east-2)
         **Pass "all" if you want to decommission auto-remediation from all other available regions
         **Pass "na" if you do not want to decommission auto-remediation from any other region
     (-m) Member AWS Account Id(s): Comma seperated list of 12-digit organization member AWS Account Id(s), from where the framework components are to be removed
+    (-o) Organization IAM Role Name: Name of the IAM role used by AWS organizations to manage the member accounts
 .OUTPUTS
     None
 '
 
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>] [-m organization member accounts from where framework components are to be removed]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-r <12-digit-aws-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>] [-m organization member accounts from where framework components are to be removed] [-o organization IAM role name]" 1>&2; exit 1; }
+reset_env_variables() { export AWS_ACCESS_KEY_ID=""; export AWS_SECRET_ACCESS_KEY=""; export AWS_SESSION_TOKEN=""; }
 env="dev"
 version="2.2"
 secondaryregions=('na')
-while getopts "a:p:e:s:m:" o; do
+#organizationrole='OrganizationAccountAccessRole'
+while getopts "a:r:p:e:s:m:o:" o; do
     case "${o}" in
         a)
             awsaccountid=${OPTARG}
+            ;;
+        r)
+            remawsaccountid=${OPTARG}
             ;;
         p)
             primaryregion=${OPTARG}
@@ -66,6 +73,9 @@ while getopts "a:p:e:s:m:" o; do
         m) 
             memberaccounts=${OPTARG}
             ;;
+        o) 
+            organizationrole=${OPTARG}
+            ;;
         *)
             usage
             ;;
@@ -73,6 +83,14 @@ while getopts "a:p:e:s:m:" o; do
 done
 shift $((OPTIND-1))
 valid_values=( "na" "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
+
+#validate aws account-id and region
+if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ "$remawsaccountid" == "" ]] || ! [[ "$remawsaccountid" =~ ^[0-9]+$ ]] || [[ ${#remawsaccountid} != 12 ]] || [[ $primaryregion == "" ]] || [[ $memberaccounts == "" ]] || [[ $organizationrole == "" ]]; then
+    echo "Entered AWS Account Id(s) or the primary region are invalid!!"
+    usage
+fi
+
+roleName=$organizationrole
 
 echo
 echo "Validating input parameters..."
@@ -93,17 +111,15 @@ echo "AWS CLI is configured for master organization account: $awsaccountid"
 echo
 echo "Verifying entered AWS Account Id(s) and region(s)..."
 
-configure_account="$(aws sts get-caller-identity)"
+configured_account="$(aws sts get-caller-identity | jq '.Account')"
 
-if [[ "$configure_account" != *"$awsaccountid"* ]];then
-    echo "AWS CLI configuration AWS account Id and entered AWS account Id does not match. Please try again with correct AWS Account Id."
+if [[ "$configured_account" != *"$awsaccountid"* ]];then
+    echo "AWS CLI is configured for $configured_account whereas input AWS Account Id entered is $awsaccountid. Please ensure that CLI configuration and the input Account Id is for the same AWS Account."
     exit 1
 fi
 
 #Verify input for regional deployment
-if [[ $secondaryregions == "na" ]]; then
-    valid_regions=${valid_values[0]}
-elif [[ $secondaryregions == "all" ]]; then
+if [[ $secondaryregions == "all" ]]; then
     valid_regions=("${valid_values[@]:1:15}")
 else
     valid_regions="${secondaryregions[@]}"
@@ -127,28 +143,17 @@ for valid_val in "${valid_values[@]}"; do
     fi
 done
 
-#validate aws account-id and region
-if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ $primary_deployment == "" ]]; then
-    usage
-fi
-
 organization_accounts=()
 
 for i in $(jq '.Accounts | keys | .[]' <<< "$org_detail"); do
     account_detail=$(jq -r ".Accounts[$i]" <<< "$org_detail")
     memberaccountid=$(jq -r '.Id' <<< "$account_detail")
-    if ! [[ "$memberaccountid" =~ "$awsaccountid" ]]; then
-        organization_accounts+=("$memberaccountid")
-    fi
+    organization_accounts+=("$memberaccountid")
 done
 
-if [[ $memberaccounts == "na" ]]; then
-    multimode_deployment="no"
-elif [[ $memberaccounts == "all" ]]; then
-    multimode_deployment="yes"
+if [[ $memberaccounts == "all" ]]; then
     org_memberaccounts=("${organization_accounts[@]}")
 else
-    multimode_deployment="yes"
     org_memberaccounts="${memberaccounts[@]}"
 fi
 
@@ -172,100 +177,26 @@ done
 
 echo "Account and region validations complete. Entered AWS Account Id(s) and region(s) are in correct format."
 
-masterawsaccountid=$awsaccountid
-
-acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
-env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
-
-stack_detail="$(aws cloudformation describe-stacks --stack-name zcspm-rem-functions-$env-$acc_sha --region $primary_deployment 2>/dev/null)"
-stack_status=$?
-
-echo
-echo "Validating environment prefix..."
-sleep 5
-
-if [[ $stack_status -ne 0 ]]; then
-    echo "Invaild environment prefix. No relevant stack found. Please enter current environment prefix and try to re-run the script again."
-    exit 1
-fi
-
-
-echo "Remediation framework stack exists with entered prefix. Initiating cleanup of remediation framework."
-
-s3_detail="$(aws s3api get-bucket-versioning --bucket zcspm-rem-$env-$acc_sha 2>/dev/null)"
-s3_status=$?
-
-echo "Checking if the deployment bucket was correctly deleted..."
-sleep 5
-
-if [[ $s3_status -eq 0 ]]; then
-    echo "Deployment bucket is still not deleted. Please delete bucket zcspm-rem-$env-$acc_sha and try to re-run the script again."
-    exit 1
-fi
-
-echo
-echo "Deleting deployment stack..."
-#remove termination protection from stack
-aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name zcspm-rem-functions-$env-$acc_sha --region $primary_deployment 2>/dev/null
-aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name zcspm-rem-$env-$acc_sha --region $primary_deployment 2>/dev/null
-
-#Delete remediation framework stack
-aws cloudformation delete-stack --stack-name zcspm-rem-functions-$env-$acc_sha --region $primary_deployment 2>/dev/null
-lambda_status=$?
-
-aws cloudformation delete-stack --stack-name zcspm-rem-$env-$acc_sha --region $primary_deployment 2>/dev/null
-bucket_status=$?
-
-echo "Successfully completed the cleanup of master remediation framework"
-
-echo
-echo "Deleting Regional Deployments...."
-
-if [[ "$secondary_regions" -ne "na" ]]; then
-    #Delete Regional Stack
-    for region in "${secondary_regions[@]}"; do
-        if [[ "$region" != "$primary_deployment" ]]; then
-            stack_detail="$(aws cloudformation describe-stacks --stack-name zcspm-rem-$env-$region-$acc_sha --region $region 2>/dev/null)"
-            stack_status=$?
-            
-            if [[ $stack_status -eq 0 ]]; then
-                echo
-                echo "Initiating cleanup of remediation framework components in region: $region"
-                #remove termination protection
-                aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name zcspm-rem-$env-$region-$acc_sha --region $region 2>/dev/null
-                #delete stack from other regions
-                aws cloudformation delete-stack --stack-name zcspm-rem-$env-$region-$acc_sha --region $region 2>/dev/null
-                echo "Successfully completed the cleanup of remediation framework component in region: $region"
-            else
-                echo "Region $region is not configured in remediation framework"
-            fi
-        fi
-    done
-else
-    echo "Regional Stack deletion skipped with input na!.."
-fi
-
-if [[ $lambda_status -eq 0 ]]  && [[ $bucket_status -eq 0 ]]; then
-    echo "Successfully deleted deployment stack!"
-else
-    echo "Something went wrong! Please contact ZCSPM support!"
-fi
-
-if [[ $org_detail ]] && [[ "$multimode_deployment" -eq "yes" ]]; then
+if [[ $org_detail ]]; then
     echo    
     echo "Initiating framework cleanup in member accounts of the organization..."
-    
-    cd ./multi-mode-remediation/
 
     for awsaccountid in "${valid_memberaccounts[@]}"; do
-        roleName='OrganizationAccountAccessRole'
 
-        if [[ "$awsaccountid" -ne "$masterawsaccountid" ]]; then
+        if [[ "$awsaccountid" -ne "$remawsaccountid" ]]; then
             echo
             echo "Decommissioning framework from member account: $awsaccountid"
             roleArn='arn:aws:iam::'$awsaccountid':role/'$roleName
 
-            credentials="$(aws sts assume-role --role-arn $roleArn --role-session-name zcspm-session --output json | jq .Credentials 2>/dev/null)"
+            sts_assumerole="$(aws sts assume-role --role-arn $roleArn --role-session-name zcspm-session --output json 2>/dev/null)"
+            assumerole_status=$?
+
+            if [[ "$assumerole_status" -ne "0" ]]; then
+                echo "Error while trying to Assume Role. Unable to decommission remediation framework setup from AWS Account : $awsaccountid."
+                continue
+            fi
+
+            credentials="$(echo $sts_assumerole | jq .Credentials )"
             AccessKey="$(echo $credentials | jq -r .AccessKeyId)"
             SecretAccessKey="$(echo $credentials | jq -r .SecretAccessKey)"
             SessionToken="$(echo $credentials | jq -r .SessionToken)"
@@ -283,8 +214,9 @@ if [[ $org_detail ]] && [[ "$multimode_deployment" -eq "yes" ]]; then
             stack_status=$?
 
             if [[ $stack_status -ne 0 ]]; then
-                echo "Invaild environment prefix. No relevant stack found. Please enter current environment prefix and try to re-run the script again."#
-                exit 1
+                echo "Invaild environment prefix. No relevant stack found. Skipping decommissiong for AWS Account $awsaccountid."
+                reset_env_variables
+                continue
             fi
 
             echo "Remediation framework stack exists with entered prefix. Initiating cleanup of remediation framework."
@@ -294,8 +226,9 @@ if [[ $org_detail ]] && [[ "$multimode_deployment" -eq "yes" ]]; then
             echo "Checking if the deployment bucket was correctly deleted... "
 
             if [[ $s3_status -eq 0 ]]; then
-                echo "Deployment bucket is still not deleted. Please delete zcspm-multirem-$env-$acc_sha and try to re-run the script again."
-                exit 1
+                echo "Deployment bucket is still not deleted. Skipping decommissiong of framework. Please delete zcspm-multirem-$env-$acc_sha and try to re-run the script again for Account $awsaccountid."
+                reset_env_variables
+                continue
             fi
 
             echo "Deleting deployment stack..."
@@ -334,19 +267,11 @@ if [[ $org_detail ]] && [[ "$multimode_deployment" -eq "yes" ]]; then
             fi
 
             if [[ $Lambda_status -eq 0 ]] && [[ $bucket_status -eq 0 ]]; then
-                echo "Successfully deleted deployment stack!"
+                echo "Successfully deleted remediation stack for AWS Account: $awsaccountid!"
             else
                 echo "Something went wrong! Please contact ZCSPM support!"
             fi
-
-            #reset environment variables
-            export AWS_ACCESS_KEY_ID=""
-            export AWS_SECRET_ACCESS_KEY=""
-            export AWS_SESSION_TOKEN=""
-
+            reset_env_variables
         fi
     done
 fi
-
-echo
-echo "Remediation framework and its components have been successfully deleted from the mentioned AWS account(s) and region(s)"
