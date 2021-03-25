@@ -35,7 +35,7 @@
             Default output format: json  
       - Run this script in any bash shell (linux command prompt)
 .EXAMPLE
-    Command to execute : bash deploy-remediation-framework.sh [-a <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>]
+    Command to execute : bash deploy-remediation-framework.sh [-a <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-g <select auto remediation deployment for global services>]
 
 .INPUTS
     **Mandatory(-a)Account Id: 12-digit AWS account Id of the account where you want the remediation framework to be deployed
@@ -43,6 +43,7 @@
     **Mandatory(-p)AWS Region: Region where you want to deploy all major components of remediation framework
     (-e)Environment prefix: Enter any suitable prefix for your deployment
     (-v)Version: Enter the remediation framework version (Would be provided by ZCSPM)
+    (-g)Global Services: Enable Auto remediation for global services (Using "US East (N. Virginia)us-east-1" Region)
     (-s)Region list: Comma seperated list(with no spaces) of the regions where the auto-remediation is to be enabled(eg: us-east-1,us-east-2)
         **Pass "all" if you want to enable auto-remediation in all other available regions
         **Pass "na" if you do not want to enable auto-remediation in any other region
@@ -50,11 +51,11 @@
     None
 '
 
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-g <select auto remediation deployment for global services>]" 1>&2; exit 1; }
 env="dev"
 version="2.2"
 secondaryregions=('na')
-while getopts "a:z:p:e:v:s:" o; do
+while getopts "a:z:p:e:v:s:g:" o; do
     case "${o}" in
         a)
             awsaccountid=${OPTARG}
@@ -73,6 +74,9 @@ while getopts "a:z:p:e:v:s:" o; do
             ;;
         s) 
             secondaryregions=${OPTARG}
+            ;;
+        g) 
+            globalservices=${OPTARG}
             ;;
         *)
             usage
@@ -97,6 +101,13 @@ else
     echo "Package(s)/tool(s) mentioned as pre-requisites have not been correctly installed. Please verify the installation and try re-running the script."
     exit 1
 fi
+
+# Validate global service integration
+if [[ -z "$globalservices" ]]; then
+    read -p "The AWS Global Services Auto Remediation integration is not selected [i.e. parameter (-g)]. This signifies that the auto remediation will not be enabled for AWS Global Services. Do you still want to continue? (Y/N): " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1
+    globalservices="No"
+fi
+globalservices=${globalservices,,}
 
 echo "Validating input parameters..."
 
@@ -259,6 +270,27 @@ if [[ "$secondary_regions" != "na" ]] && [[ "$s3_status" -eq 0 ]]; then
     done
 else
     echo "Regional Deployments skipped with input na!.."
+fi
+
+echo "Deploying Global Services Autoremediation Template...."
+
+#Global services deployment
+if [[ "$globalservices" == "yes" ]] || [[ "$globalservices" == "y" ]]; then
+    aws cloudformation deploy --template-file deploy-global-services-invoker-function.yml --stack-name zcspm-rem-global-resources-$env-$acc_sha --parameter-overrides awsaccountid=$awsaccountid remediationregion=$primary_deployment --region "us-east-1" --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+
+    sleep 5
+    # Validate deployment
+    Global_services_stack="$(aws cloudformation describe-stacks --stack-name zcspm-rem-global-resources-$env-$acc_sha --region "us-east-1" 2>/dev/null)"
+    Global_services_stack_status=$?
+    
+    if [[ "$Global_services_stack_status" -eq 0 ]]; then
+        echo "Successfully enabled autoremediation for global services"
+        aws cloudformation update-termination-protection --enable-termination-protection --stack-name "zcspm-rem-global-resources-$env-$acc_sha" --region "us-east-1" 2>/dev/null
+    else
+        echo "Failed to configure auto remediation for global services"
+    fi
+else
+    echo "Global Services Autoremediation Support is Not Enabled!.."
 fi
 
 if [[ $lambda_status -eq 0 ]]; then

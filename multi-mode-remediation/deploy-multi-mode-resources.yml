@@ -343,7 +343,7 @@ Resources:
               - "LambdaFunction"
               - "Arn"
           Id: "TargetFunctionV1"
-  PermissionForCloudtrailEventsToInvokeLambda: 
+  PermissionForCloudformationToInvokeLambda: 
     Type: AWS::Lambda::Permission
     Properties: 
       FunctionName: 
@@ -494,40 +494,6 @@ Resources:
       SourceArn: 
         Fn::GetAtt: 
           - "ELBEventRule"
-          - "Arn"
-  IAMEventRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Name: "zcspm-aws-iam-event-rule"
-      Description: "CloudWatch Event triggered on iam changes"
-      EventPattern:
-        source:
-          - "aws.iam"
-        detail-type:
-          - "AWS API Call via CloudTrail"
-        detail:
-          eventSource:
-            - "iam.amazonaws.com"
-          eventName:
-            - "UpdateAccountPasswordPolicy"
-            - "DeleteAccountPasswordPolicy"
-      Targets: 
-        - 
-          Arn: 
-            Fn::GetAtt: 
-              - "LambdaFunction"
-              - "Arn"
-          Id: "TargetFunctionV1"
-  PermissionForKinesisEventsToInvokeLambda: 
-    Type: AWS::Lambda::Permission
-    Properties: 
-      FunctionName: 
-        Ref: "LambdaFunction"
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn: 
-        Fn::GetAtt: 
-          - "IAMEventRule"
           - "Arn"
   KinesisEventRule:
     Type: AWS::Events::Rule

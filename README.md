@@ -78,11 +78,11 @@ Perform below steps to deploy remediation framework on configured AWS account
 
 	Note: Primary region for multi account deployment should be the same as that of the remediation framework primary region for single account deployment
 
-	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -z <12-digit-zcspm-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <list of regions where auto-remediation is to be enabled>`
+	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -z <12-digit-zcspm-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <list of regions where auto-remediation is to be enabled> -g <select auto remediation deployment for global services>`
 
 	OR
 
-	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -z <12-digit-zcspm-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <all>`
+	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -z <12-digit-zcspm-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <all> -g <select auto remediation deployment for global services>`
 
 	The ZCSPM Account Id parameter(-z), can be skipped if the user does not want to integrate the Auto remediation framework with ZCSPM.
 
@@ -120,11 +120,11 @@ In case you want to use same remediation framework for remediation of multiple A
 	`# cd multi-mode-remediation`
 5. Configure multi-account remediation using below commands to deploy in specific or all regions:
 
-	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <list of regions where auto-remediation is to enabled>`
+	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <list of regions where auto-remediation is to enabled>  -g <select auto remediation deployment for global services>`
 
 	OR
 
-	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <all>`
+	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <all>  -g <select auto remediation deployment for global services>`
 
    This command creates the required resources like Cloudtrail, Cloudwatch event rules, Remediation functions and roles required to perform cross-account remediation 
 6. Verify multi-account remediation setup

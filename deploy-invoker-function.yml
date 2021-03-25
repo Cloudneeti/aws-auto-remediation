@@ -170,7 +170,7 @@ Resources:
               - "LambdaFunction"
               - "Arn"
           Id: "TargetFunctionV1"
-  PermissionForCloudtrailEventsToInvokeLambda: 
+  PermissionForCloudformationToInvokeLambda: 
     Type: AWS::Lambda::Permission
     Properties: 
       FunctionName: 
