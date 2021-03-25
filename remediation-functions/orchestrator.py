@@ -604,10 +604,13 @@ def lambda_handler(event, context):
                 #region ec2 instance suborchestrator call
                 if EventName in ["RunInstances", "StartInstances", "ModifyInstanceAttribute","UnmonitorInstances"]:
                     try:
-                        if EventName == "ModifyInstanceAttribute":
-                            InstanceID = cw_event_data["requestParameters"]["instanceId"]
-                        else:
-                            InstanceID = cw_event_data["responseElements"]["instancesSet"]["items"][0]["instanceId"]
+                        try:
+                            if EventName == "ModifyInstanceAttribute":
+                                InstanceID = cw_event_data["requestParameters"]["instanceId"]
+                            else:
+                                InstanceID = cw_event_data["responseElements"]["instancesSet"]["items"][0]["instanceId"]
+                        except:
+                            print("EC2 Event "+EventName+" Not Supported due to lack of data")
                         Region = cw_event_data["awsRegion"]
 
                         remediationObj = {
@@ -633,7 +636,10 @@ def lambda_handler(event, context):
                 #sqs sub-orchestrator call
                 if EventName in ["CreateQueue", "SetQueueAttributes"]:
                     try:
-                        Queue_Url = cw_event_data["requestParameters"]["queueUrl"]
+                        try:
+                            Queue_Url = cw_event_data["requestParameters"]["queueUrl"]
+                        except:
+                            Queue_Url = cw_event_data["responseElements"]["queueUrl"]
                         Region = cw_event_data["awsRegion"]
                         remediationObj = {
                             "accountId": AWSAccId,
@@ -904,8 +910,6 @@ def lambda_handler(event, context):
             try:
                 invokeLambda = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=runtime_region)
                 response = invokeLambda.invoke(FunctionName = 'zcspm-aws-auto-remediate-invoker', InvocationType = 'RequestResponse', Payload = json.dumps(event))
-                RelayAccess = json.loads(response['Payload'].read())
-                response_iam = invokeLambda.invoke(FunctionName = 'zcspm-aws-global-services-auto-remediate-invoker', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 RelayAccess = json.loads(response['Payload'].read())
             except:
                 RelayAccess = False                
@@ -1189,4 +1193,3 @@ def lambda_handler(event, context):
             'statusCode': response['statusCode'],
             'body': response['body']
         }
-        

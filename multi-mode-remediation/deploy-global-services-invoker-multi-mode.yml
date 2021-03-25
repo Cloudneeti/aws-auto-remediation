@@ -16,7 +16,7 @@ Resources:
   LambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: zcspm-aws-auto-remediate-invoker
+      FunctionName: zcspm-aws-global-services-remediate-invoker
       Role: 
         Fn::Join:
           - ""
