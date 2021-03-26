@@ -172,7 +172,7 @@ fi
 echo
 echo "Verifying Regional Configuration...."
 
-Invoker_rem_role_det="$(aws iam get-role --role-name ZCSPM-Auto-Remediation-Invoker)"
+Invoker_rem_role_det="$(aws iam get-role --role-name ZCSPM-AutoRem-InvokerFunction-Role)"
 Invoker_Rem_role=$?
 
 if [[ "$secondary_regions" -ne "na" ]] && [[ "$s3_status" -eq 0 ]]; then

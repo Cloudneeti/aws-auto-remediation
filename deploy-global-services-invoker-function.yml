@@ -4,9 +4,13 @@
 #THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 Parameters:
-    awsaccountid:
-        Description: AWS Account ID
-        Type: String
+  awsaccountid:
+    Description: AWS Account ID
+    Type: String
+  remediationregion:
+    Description: Region of framework
+    Type: String
+    Default: us-east-1
 
 Resources:
   LambdaFunction:
@@ -19,11 +23,14 @@ Resources:
           - - 'arn:aws:iam::'
             - !Ref awsaccountid
             - ':'
-            - role/ZCSPM-Auto-Remediation-Invoker
+            - role/ZCSPM-AutoRem-InvokerFunction-Role
       Runtime: python3.7
       Handler: index.lambda_handler
       Timeout: 900 #seconds
       MemorySize: 3008 #max memory foot print
+      Environment:
+        Variables: 
+          remfwRegion: !Ref remediationregion
       Code:
         ZipFile:  |
           import os
@@ -32,11 +39,16 @@ Resources:
 
           def lambda_handler(event, context):
             try:
+              primary_region=os.environ['remfwRegion']
+            except:
+              primary_region=''
+
+            try:
               cw_event_data = event['detail']
             except:
               cw_event_data = ''
 
-            if cw_event_data:
+            if cw_event_data and primary_region:
               try:
                 AWSAccId = cw_event_data["userIdentity"]["accountId"]
                 EventSource = cw_event_data["userIdentity"]["arn"]
@@ -44,54 +56,15 @@ Resources:
                 return {'statusCode': 400,'body': json.dumps(str(e))}
 
               if "assumed-role/ZCSPM-Auto-Remediation-Role" not in str(EventSource):        
+                remdiationfunc_rolearn = 'arn:aws:iam::' + AWSAccId + ':role/ZCSPM-Remediation-Invocation-Role'
                 try:
-                  remdiationfunc_rolearn = 'arn:aws:iam::' + AWSAccId + ':role/ZCSPM-Remediation-Invocation-Role'
-                  try:
-                    sts_client = boto3.client('sts')
-                    response = sts_client.assume_role(RoleArn=remdiationfunc_rolearn,RoleSessionName='ZCSPM-RemSession')
-                  except Exception as e:
-                    return {'statusCode': 400,'body': json.dumps(str(e))}
+                  sts_client = boto3.client('sts')
+                  response = sts_client.assume_role(RoleArn=remdiationfunc_rolearn,RoleSessionName='ZCSPM-RemSession')
 
                   cred = response['Credentials']
                   aws_access_key_id=cred['AccessKeyId']
                   aws_secret_access_key=cred['SecretAccessKey']
                   aws_session_token=cred['SessionToken']
-                except Exception as e:
-                  return {'statusCode': 400,'body': json.dumps(str(e))}
-          
-                try:
-                  primary_region=os.environ['remfwRegion']
-                except:
-                  primary_region=''
-                  
-                if not primary_region:
-                  regions=[]
-                  enabled_regions = []
-                  session = boto3.session.Session()
-                  
-                  regions = session.get_available_regions('lambda')
-                  
-                  for region in regions:
-                    sts_client = session.client('sts', region_name=region)
-                    try:
-                        sts_client.get_caller_identity()
-                        enabled_regions.append(region)
-                    except:
-                        pass
-                  
-                  for region in enabled_regions:           
-                    lambda_client = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=region)
-                    try:
-                      remfunctiondetail = lambda_client.get_function(FunctionName='zcspm-aws-remediate-orchestrator')
-                      if remfunctiondetail:
-                        primary_region=region
-                        break
-                    except:
-                      pass
-
-                try:
-                  invoker_client = boto3.client('lambda')      
-                  invoker_client.update_function_configuration(FunctionName='zcspm-aws-global-services-remediate-invoker', Environment={'Variables': {'remfwRegion':primary_region}})               
                 except Exception as e:
                   return {'statusCode': 400,'body': json.dumps(str(e))}
 
@@ -112,7 +85,7 @@ Resources:
                 return {'statusCode': 200,'body': json.dumps("Policies not configured for remediation")}
             
             else:
-                return {'statusCode': 200,'body': json.dumps("Invalid event source!")}
+                return {'statusCode': 400,'body': json.dumps("Either the event source or the primary remediation framework region is invalid!")}
   IAMEventRule:
     Type: AWS::Events::Rule
     Properties:

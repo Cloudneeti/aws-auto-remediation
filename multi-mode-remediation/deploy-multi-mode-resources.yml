@@ -4,23 +4,23 @@
 #THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 Parameters:
-    Stack:
-        Description: Stack name
-        Type: String
-        Default: dev
-    awsaccountid:
-        Description: AWS Account ID
-        Type: String
-    remaccountid:
-        Description: AWS Account ID
-        Type: String
-    region:
-        Description: Region of deployment
-        Type: String
-        Default: us-east-1
-    remediationversion:
-        Description: Remediation framework region
-        Type: String
+  Stack:
+    Description: Stack name
+    Type: String
+    Default: dev
+  awsaccountid:
+    Description: AWS Account ID
+    Type: String
+  remaccountid:
+    Description: AWS Account ID
+    Type: String
+  region:
+    Description: Region of deployment
+    Type: String
+    Default: us-east-1
+  remediationversion:
+    Description: Remediation framework region
+    Type: String
 Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
@@ -178,7 +178,7 @@ Resources:
         - ''
         - - 'arn:aws:iam::'
           - !Ref awsaccountid
-          - ':role/ZCSPM-Auto-Remediation-Invoker'
+          - ':role/ZCSPM-AutoRem-InvokerFunction-Role'
       Runtime: python3.7
       Handler: index.lambda_handler
       Timeout: 900 #seconds
@@ -770,7 +770,7 @@ Resources:
   ZCSPMLambdaRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: ZCSPM-Auto-Remediation-Invoker
+      RoleName: ZCSPM-AutoRem-InvokerFunction-Role
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:

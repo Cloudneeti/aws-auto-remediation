@@ -143,7 +143,7 @@ fi
 
 echo "Remediation framework stack exists with entered prefix."
 echo "Verifying role deployment...."
-invoker_role_det="$(aws iam get-role --role-name ZCSPM-Auto-Remediation-Invoker 2>/dev/null)"
+invoker_role_det="$(aws iam get-role --role-name ZCSPM-AutoRem-InvokerFunction-Role 2>/dev/null)"
 invoker_role=$?
 
 rem_role_det="$(aws iam get-role --role-name ZCSPM-Auto-Remediation-Role 2>/dev/null)"

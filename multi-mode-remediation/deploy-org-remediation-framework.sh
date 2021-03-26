@@ -287,7 +287,7 @@ orches_role=$?
 rem_role_det="$(aws iam get-role --role-name ZCSPM-Auto-Remediation-Role 2>/dev/null)"
 Rem_role=$?
 
-invoker_role_det="$(aws iam get-role --role-name ZCSPM-Auto-Remediation-Invoker 2>/dev/null)"
+invoker_role_det="$(aws iam get-role --role-name ZCSPM-AutoRem-InvokerFunction-Role 2>/dev/null)"
 invoker_role=$?
 
 CT_det="$(aws cloudtrail get-trail-status --name zcspm-remediation-trail --region $primary_deployment 2>/dev/null)"
@@ -362,7 +362,7 @@ if [[ "$secondary_regions" != "na" ]] && [[ "$s3_status" -eq 0 ]]; then
             if [[ "$Regional_stack_status" -ne 0 ]] && [[ "$Lambda_status" -eq 0 ]]; then
                 echo -e "${YELLOW}Region $region is not configured because of existing resources, please delete them and redeploy framework to configure this region${NC}"
             else
-                aws cloudformation deploy --template-file deploy-invoker-function.yml --stack-name zcspm-rem-$env-$region-$acc_sha  --region $region --parameter-overrides awsaccountid=$remawsaccountid --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+                aws cloudformation deploy --template-file deploy-invoker-function.yml --stack-name zcspm-rem-$env-$region-$acc_sha  --region $region --parameter-overrides awsaccountid=$remawsaccountid remediationregion=$primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
                 Regional_stack="$(aws cloudformation describe-stacks --stack-name zcspm-rem-$env-$region-$acc_sha --region $region 2>/dev/null)"
                 Regional_stack_status=$?
 
@@ -383,7 +383,7 @@ echo "Deploying Global Services Auto remediation Template...."
 
 #Global services deployment
 if [[ "$globalservices" == "yes" ]] || [[ "$globalservices" == "y" ]]; then
-    aws cloudformation deploy --template-file deploy-global-services-invoker-function.yml --stack-name zcspm-rem-global-resources-$env-$acc_sha --parameter-overrides awsaccountid=$awsaccountid --region "us-east-1" --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+    aws cloudformation deploy --template-file deploy-global-services-invoker-function.yml --stack-name zcspm-rem-global-resources-$env-$acc_sha --parameter-overrides awsaccountid=$awsaccountid remediationregion=$primary_deployment --region "us-east-1" --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
 
     sleep 5
     # Validate deployment
@@ -485,7 +485,7 @@ if [[ $org_detail ]]; then
 
             echo "Checking if the remediation is already enabled for the account $awsaccountid"
 
-            invoker_role_det="$(aws iam get-role --role-name ZCSPM-Auto-Remediation-Invoker 2>/dev/null)"
+            invoker_role_det="$(aws iam get-role --role-name ZCSPM-AutoRem-InvokerFunction-Role 2>/dev/null)"
             invoker_role=$?
 
             rem_role_det="$(aws iam get-role --role-name ZCSPM-Auto-Remediation-Role 2>/dev/null)"

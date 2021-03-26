@@ -171,7 +171,7 @@ env="$(echo "$env" | tr "[:upper:]" "[:lower:]")"
 echo
 echo "Checking if the remediation is already enabled for the account....."
 
-invoker_role_det="$(aws iam get-role --role-name ZCSPM-Auto-Remediation-Invoker 2>/dev/null)"
+invoker_role_det="$(aws iam get-role --role-name ZCSPM-AutoRem-InvokerFunction-Role 2>/dev/null)"
 invoker_role=$?
 
 rem_role_det="$(aws iam get-role --role-name ZCSPM-Auto-Remediation-Role 2>/dev/null)"

@@ -546,7 +546,7 @@ resources:
               Principal:
                 AWS:
                   - "arn:aws:iam::${opt:zcspm-aws-account-id}:root"  # Add the ZCSPM AWS Account ID
-                  - "arn:aws:iam::${opt:aws-account-id}:role/ZCSPM-Auto-Remediation-Invoker"
+                  - "arn:aws:iam::${opt:aws-account-id}:role/ZCSPM-AutoRem-InvokerFunction-Role"
               Action: sts:AssumeRole
         Policies:
           - PolicyName: zcspm-lambda-policy
