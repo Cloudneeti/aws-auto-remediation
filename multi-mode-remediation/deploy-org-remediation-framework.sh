@@ -225,6 +225,9 @@ for account in "${input_memberaccounts[@]}"; do
     for memberaccount in "${organization_accounts[@]}"; do
         if [[ "$account" == "$memberaccount" ]]; then
             valid_memberaccounts+=("$account")
+        else
+            echo "Incorrect member account id(s) provided. Expected values are: ${organization_accounts[@]}"
+            exit 1
         fi
     done
 done
