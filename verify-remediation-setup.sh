@@ -65,6 +65,11 @@ done
 shift $((OPTIND-1))
 valid_values=( "na" "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
 
+RED='\033[1;31m'
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
 #validate aws account-id and region
 if [[ "$env" == "" ]] || [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ $primary_deployment == "" ]]; then
     usage
@@ -73,9 +78,9 @@ fi
 echo "Verifying if pre-requisites are set-up.."
 sleep 5
 if [[ "$(which serverless)" != "" ]] && [[ "$(which aws)" != "" ]] && [[ "$(which jq)" != "" ]];then
-    echo "All pre-requisite packages are installed!!"
+    echo -e "${GREEN}All pre-requisite packages are installed!!${NC}"
 else
-    echo "Package(s)/tool(s) mentioned as pre-requisites have not been correctly installed. Please verify the installation and try re-running the script."
+    echo -e "${RED}Package(s)/tool(s) mentioned as pre-requisites have not been correctly installed. Please verify the installation and try re-running the script.${NC}"
     exit 1
 fi
 
@@ -116,7 +121,7 @@ echo
 echo "Validating environment prefix..."
 
 if [[ $stack_status -ne 0 ]]; then
-    echo "Invaild environment prefix. No relevant stack found. Please enter current environment prefix and try to re-run the script again."
+    echo -e "${RED}Invaild environment prefix. No relevant stack found. Please enter current environment prefix and try to re-run the script again.${NC}"
     exit 1
 fi
 echo "Remediation framework stack exists with entered prefix."
@@ -144,24 +149,24 @@ s3_status=$?
 
 echo
 if [[ "$orches_role" -ne 0 ]] && [[ "$Rem_role" -ne 0 ]] && [[ "$CT_status" -ne 0 ]] && [[ "$Lambda_status" -ne 0 ]] && [[ "$s3_status" -ne 0 ]]; then
-   echo "Remediation framework is not deployed"
+   echo -e "${YELLOW}Remediation framework is not deployed${NC}"
 elif [[ "$orches_role" -ne 0 ]] || [[ "$Rem_role" -ne 0 ]];
 then
-   echo "Required roles not found. Please delete and redeploy the framework"
+   echo -e "${YELLOW}Required roles not found. Please delete and redeploy the framework${NC}"
 elif [[ "$Lambda_status" -ne 0 ]];
 then
-   echo "Remediation functions not found. Please delete and redeploy the framework"
+   echo -e "${YELLOW}Remediation functions not found. Please delete and redeploy the framework${NC}"
 elif [[ "$CT_status" -ne 0 ]] || [[ "$CT_log" -ne true ]];
 then
-   echo "Remediation framework cloudtrail trail is not deployed correctly. Please delete and redeploy the framework"
+   echo -e "${YELLOW}Remediation framework cloudtrail trail is not deployed correctly. Please delete and redeploy the framework${NC}"
 elif [[ "$s3_status" -ne 0 ]];
 then
-   echo "Remediation framework s3-bucket is not deployed correctly or deleted. Please delete and redeploy the framework"
+   echo -e "${YELLOW}Remediation framework s3-bucket is not deployed correctly or deleted. Please delete and redeploy the framework${NC}"
 elif [[ "$orches_role" -eq 0 ]] && [[ "$Rem_role" -eq 0 ]] && [[ "$CT_status" -eq 0 ]] && [[ "$Lambda_status" -eq 0 ]] && [[ "$s3_status" -eq 0 ]];
 then
-   echo "Remediation framework is correctly deployed"
+   echo -e "${GREEN}Remediation framework is correctly deployed${NC}"
 else
-   echo "Something went wrong!"
+   echo -e "${RED}Something went wrong!${NC}"
 fi
 
 echo
@@ -182,13 +187,13 @@ if [[ "$secondary_regions" -ne "na" ]] && [[ "$s3_status" -eq 0 ]]; then
 
             if [[ "$regional_stack_status" -ne 0 ]] && [[ "$Invoker_Lambda_status" -ne 0 ]];
             then
-                echo "Remediation framework is not configured in region $region. Please redploy the framework with region $region as input"
+                echo -e "${YELLOW}Remediation framework is not configured in region $region. Please redploy the framework with region $region as input${NC}"
             elif [[ "$Invoker_Lambda_status" -ne 0 ]];
             then
-                echo "Remediation framework is not configured in region $region. Please redploy the framework with region $region as input"
+                echo -e "${YELLOW}Remediation framework is not configured in region $region. Please redploy the framework with region $region as input${NC}"
             elif [[ "$regional_stack_status" -ne 0 ]];
             then
-                echo "Remediation framework is not configured in region $region. Please redploy the framework with region $region as input"
+                echo -e "${YELLOW}Remediation framework is not configured in region $region. Please redploy the framework with region $region as input${NC}"
             elif [[ "$regional_stack_status" -eq 0 ]] && [[ "$Invoker_Lambda_status" -eq 0 ]] && [[ "$Invoker_Rem_role" -eq 0 ]];
             then
                 echo "Remediation framework is correctly deployed in region $region"
@@ -196,11 +201,11 @@ if [[ "$secondary_regions" -ne "na" ]] && [[ "$s3_status" -eq 0 ]]; then
                 echo "Something went wrong!"
             fi
         else
-            echo "Region $primary_deployment is configured as primary region."
+            echo -e "${GREEN}Region $primary_deployment is configured as primary region.${NC}"
         fi
     done
 else
-    echo "Regional Deployments verification skipped with input na!.."
+    echo -e "${YELLOW}Regional Deployments verification skipped with input na!..${NC}"
 fi
 
 echo "Verifying Global Services Integration...."
@@ -208,7 +213,7 @@ global_stack="$(aws cloudformation describe-stacks --stack-name zcspm-rem-global
 global_stack_detail=$?
 
 if [[ "$global_stack_detail" -eq 0 ]]; then
-    echo "Global Services Auto Remediation is enabled"
+    echo -e "${GREEN}Global Services Auto Remediation is enabled${NC}"
 else
-    echo "Global Services Auto Remediation is disabled"
+    echo -e "${YELLOW}Global Services Auto Remediation is disabled${NC}"
 fi

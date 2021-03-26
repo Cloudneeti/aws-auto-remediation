@@ -85,16 +85,16 @@ echo "Validating if AWS CLI is configured for the entered AWS account Id.."
 configured_account="$(aws sts get-caller-identity | jq '.Account')"
 
 if [[ "$configured_account" != *"$awsaccountid"* ]];then
-    echo "AWS CLI is configured for $configured_account whereas input AWS Account Id entered is $awsaccountid. Please ensure that CLI configuration and the input Account Id is for the same AWS Account."
+    echo -e "${RED}AWS CLI is configured for $configured_account whereas input AWS Account Id entered is $awsaccountid. Please ensure that CLI configuration and the input Account Id is for the same AWS Account.${NC}"
     exit 1
 fi
 
 echo "Verifying if pre-requisites are set-up.."
 sleep 5
 if [[ "$(which serverless)" != "" ]] && [[ "$(which aws)" != "" ]] && [[ "$(which jq)" != "" ]];then
-    echo "All pre-requisite packages are installed!!"
+    echo -e "${GREEN}All pre-requisite packages are installed!!${NC}"
 else
-    echo "Package(s)/tool(s) mentioned as pre-requisites have not been correctly installed. Please verify the installation and try re-running the script."
+    echo -e "${RED}Package(s)/tool(s) mentioned as pre-requisites have not been correctly installed. Please verify the installation and try re-running the script.${NC}"
     exit 1
 fi
 
@@ -137,7 +137,7 @@ echo
 echo "Validating environment prefix..."
 
 if [[ $stack_status -ne 0 ]]; then
-    echo "Invaild environment prefix. No relevant stack found. Please enter current environment prefix and try to re-run the script again."
+    echo -e "${RED}Invaild environment prefix. No relevant stack found. Please enter current environment prefix and try to re-run the script again.${NC}"
     exit 1
 fi
 
@@ -163,24 +163,24 @@ s3_detail="$(aws s3api get-bucket-versioning --bucket zcspm-multirem-$env-$acc_s
 s3_status=$?
 
 if [[ "$invoker_role" -ne 0 ]] && [[ "$Rem_role" -ne 0 ]] && [[ "$CT_status" -ne 0 ]] && [[ "$Lambda_status" -ne 0 ]] && [[ "$s3_status" -ne 0 ]]; then
-   echo "Remediation framework is not deployed"
+   echo -e "${YELLOW}Remediation framework is not deployed${NC}"
 elif [[ "$invoker_role" -ne 0 ]] || [[ "$Rem_role" -ne 0 ]];
 then
-   echo "Required roles not found. Please delete and redeploy the framework"
+   echo -e "${YELLOW}Required roles not found. Please delete and redeploy the framework${NC}"
 elif [[ "$Lambda_status" -ne 0 ]];
 then
-   echo "Remediation functions not found. Please delete and redeploy the framework"
+   echo -e "${YELLOW}Remediation functions not found. Please delete and redeploy the framework${NC}"
 elif [[ "$CT_status" -ne 0 ]] || [[ "$CT_log" -ne true ]];
 then
-   echo "Remediation framework cloudtrail trail is not deployed correctly, Please delete and redeploy the framework"
+   echo -e "${YELLOW}Remediation framework cloudtrail trail is not deployed correctly, Please delete and redeploy the framework${NC}"
 elif [[ "$s3_status" -ne 0 ]];
 then
-   echo "Remediation framework s3-bucket is not deployed correctly or deleted. Please delete and redeploy the framework"
+   echo -e "${YELLOW}Remediation framework s3-bucket is not deployed correctly or deleted. Please delete and redeploy the framework${NC}"
 elif [[ "$invoker_role" -eq 0 ]] && [[ "$Rem_role" -eq 0 ]] && [[ "$CT_status" -eq 0 ]] && [[ "$Lambda_status" -eq 0 ]] && [[ "$s3_status" -eq 0 ]];
 then
-   echo "Remediation framework is correctly deployed"
+   echo -e "${GREEN}Remediation framework is correctly deployed${NC}"
 else
-   echo "Something went wrong!"
+   echo -e "${RED}Something went wrong!${NC}"
 fi
 
 echo "Verifying Regional Configuration...."
@@ -197,21 +197,21 @@ if [[ "$secondary_regions" -ne "na" ]] && [[ "$s3_status" -eq 0 ]]; then
 
             if [[ "$regional_stack_status" -ne 0 ]] && [[ "$Invoker_Lambda_status" -ne 0 ]];
             then
-                echo "Remediation framework is not configured in region $region. Please redeploy the framework with region $region as input"
+                echo -e "${YELLOW}Remediation framework is not configured in region $region. Please redeploy the framework with region $region as input${NC}"
             elif [[ "$Invoker_Lambda_status" -ne 0 ]];
             then
-                echo "Remediation framework is not configured in region $region. Please redeploy the framework with region $region as input"
+                echo -e "${YELLOW}Remediation framework is not configured in region $region. Please redeploy the framework with region $region as input${NC}"
             elif [[ "$regional_stack_status" -ne 0 ]];
             then
-                echo "Remediation framework is not configured in region $region. Please redeploy the framework with region $region as input"
+                echo -e "${YELLOW}Remediation framework is not configured in region $region. Please redeploy the framework with region $region as input${NC}"
             elif [[ "$regional_stack_status" -eq 0 ]] && [[ "$Invoker_Lambda_status" -eq 0 ]] && [[ "$invoker_role" -eq 0 ]];
             then
-                echo "Remediation framework is correctly deployed in region $region"
+                echo -e "${GREEN}Remediation framework is correctly deployed in region $region ${NC}"
             else
-                echo "Something went wrong!"
+                echo -e "${RED}Something went wrong!${NC}"
             fi
         else
-            echo "Region $primary_deployment is configured as primary region."
+            echo -e "${YELLOW}Region $primary_deployment is configured as primary region.${NC}"
         fi
     done
 else
@@ -223,9 +223,9 @@ echo "Verifying if role in the remediation framework is correctly deployed or no
 rem_role="$(aws sts assume-role --role-arn arn:aws:iam::$remawsaccountid:role/ZCSPM-Remediation-Invocation-Role --role-session-name zcspm-session 2>/dev/null)"
 rem_role_status=$?
 if [[ $rem_role_status -ne 0 ]]; then
-    echo "The role in the account with remediation framework is not updated with the current account details! Please run update-remediation-role.sh to update the role!"
+    echo -e "${YELLOW}The role in the account with remediation framework is not updated with the current account details! Please run update-remediation-role.sh to update the role!${NC}"
 else
-    echo "Remediation account role is correctly updated!!"
+    echo -e "${GREEN}Remediation account role is correctly updated!!${NC}"
 fi
 
 echo "Verifying Global Services Integration...."
@@ -233,7 +233,7 @@ global_stack="$(aws cloudformation describe-stacks --stack-name zcspm-multirem-g
 global_stack_detail=$?
 
 if [[ "$global_stack_detail" -eq 0 ]]; then
-    echo "Global Services Auto Remediation is enabled"
+    echo -e "${GREEN}Global Services Auto Remediation is enabled${NC}"
 else
-    echo "Global Services Auto Remediation is disabled"
+    echo -e "${YELLOW}Global Services Auto Remediation is disabled${NC}"
 fi

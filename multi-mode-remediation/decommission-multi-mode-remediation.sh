@@ -68,6 +68,11 @@ done
 shift $((OPTIND-1))
 valid_values=( "na" "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
 
+RED='\033[1;31m'
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
 #validate aws account-id and region
 if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ $primaryregion == "" ]]; then
     usage
@@ -82,7 +87,7 @@ echo "Validating if AWS CLI is configured for the entered AWS account Id.."
 configured_account="$(aws sts get-caller-identity | jq '.Account')"
 
 if [[ "$configured_account" != *"$awsaccountid"* ]];then
-    echo "AWS CLI is configured for $configured_account whereas input AWS Account Id entered is $awsaccountid. Please ensure that CLI configuration and the input Account Id is for the same AWS Account."
+    echo -e "${RED}AWS CLI is configured for $configured_account whereas input AWS Account Id entered is $awsaccountid. Please ensure that CLI configuration and the input Account Id is for the same AWS Account.${NC}"
     exit 1
 fi
 
@@ -126,7 +131,7 @@ stack_detail="$(aws cloudformation describe-stacks --stack-name zcspm-multirem-$
 stack_status=$?
 
 if [[ $stack_status -ne 0 ]]; then
-    echo "Invaild environment prefix. No relevant stack found. Please enter current environment prefix and try to re-run the script again."#
+    echo -e "${RED}Invaild environment prefix. No relevant stack found. Please enter current environment prefix and try to re-run the script again.${NC}"
     exit 1
 fi
 
@@ -139,7 +144,7 @@ echo
 echo "Checking if the deployment bucket was correctly deleted... "
 
 if [[ $s3_status -eq 0 ]]; then
-    echo "Deployment bucket is still not deleted. Please delete zcspm-multirem-$env-$acc_sha and try to re-run the script again."
+    echo -e "${RED}Deployment bucket is still not deleted. Please delete zcspm-multirem-$env-$acc_sha and try to re-run the script again.${NC}"
     exit 1
 fi
 
@@ -152,7 +157,7 @@ aws cloudformation delete-stack --stack-name zcspm-multirem-$env-$acc_sha --regi
 Lambda_det="$(aws lambda get-function --function-name zcspm-aws-auto-remediate-invoker --region $primary_deployment 2>/dev/null)"
 Lambda_status=$?
 
-echo "Successfully completed the cleanup of master remediation framework"
+echo -e "${GREEN}Successfully completed the cleanup of master remediation framework${NC}"
 
 echo
 echo "Deleting Regional Deployments...."
@@ -170,12 +175,12 @@ if [[ "$secondary_regions" -ne "na" ]]; then
                 #delete stack from other regions
                 aws cloudformation delete-stack --stack-name zcspm-multirem-$env-$region-$acc_sha --region $region
             else
-                echo "Region $region is not configured in remediation framework"
+                echo -e "${YELLOW}Region $region is not configured in remediation framework${NC}"
             fi
         fi
     done
 else
-    echo "Regional Stack deletion skipped with input na!.."
+    echo -e "${YELLOW}Regional Stack deletion skipped with input na!..${NC}"
 fi
 
 echo "Verify and decommision global services deployments...."
@@ -189,12 +194,12 @@ if [[ $global_stack_status -eq 0 ]]; then
     #delete stack for global services
     aws cloudformation delete-stack --stack-name zcspm-multirem-global-resources-$env-$acc_sha --region "us-east-1" 2>/dev/null
 else
-    echo "Auto remediation is already disabled for Global Services, No stack found!"
+    echo -e "${YELLOW}Auto remediation is already disabled for Global Services, No stack found!${NC}"
 fi
 
 
 if [[ $Lambda_status -eq 0 ]] && [[ $bucket_status -eq 0 ]]; then
-    echo "Successfully deleted deployment stack!"
+    echo -e "${GREEN}Successfully deleted deployment stack!${NC}"
 else
-    echo "Something went wrong! Please contact ZCSPM support!"
+    echo -e "${RED}Something went wrong! Please contact ZCSPM support!${NC}"
 fi

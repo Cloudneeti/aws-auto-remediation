@@ -84,9 +84,14 @@ done
 shift $((OPTIND-1))
 valid_values=( "na" "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
 
+RED='\033[1;31m'
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
 #validate aws account-id and region
 if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ "$remawsaccountid" == "" ]] || ! [[ "$remawsaccountid" =~ ^[0-9]+$ ]] || [[ ${#remawsaccountid} != 12 ]] || [[ $primaryregion == "" ]] || [[ $memberaccounts == "" ]] || [[ $organizationrole == "" ]]; then
-    echo "Entered AWS Account Id(s) or the primary region are invalid!!"
+    echo -e "${YELLOW}Entered AWS Account Id(s) or the primary region are invalid!!${NC}"
     usage
 fi
 
@@ -103,7 +108,7 @@ org_detail=""
 org_detail="$(aws organizations list-accounts --output json 2>/dev/null)"
 
 if [[ $org_detail == "" ]]; then
-    echo "AWS CLI is not configured for master Organization account. Please verify the credentials and try again"
+    echo -e "${RED}AWS CLI is not configured for master Organization account. Please verify the credentials and try again${NC}"
     exit 1
 fi
 echo "AWS CLI is configured for master organization account: $awsaccountid"
@@ -114,7 +119,7 @@ echo "Verifying entered AWS Account Id(s) and region(s)..."
 configured_account="$(aws sts get-caller-identity | jq '.Account')"
 
 if [[ "$configured_account" != *"$awsaccountid"* ]];then
-    echo "AWS CLI is configured for $configured_account whereas input AWS Account Id entered is $awsaccountid. Please ensure that CLI configuration and the input Account Id is for the same AWS Account."
+    echo -e "${RED}AWS CLI is configured for $configured_account whereas input AWS Account Id entered is $awsaccountid. Please ensure that CLI configuration and the input Account Id is for the same AWS Account.${NC}"
     exit 1
 fi
 
@@ -165,7 +170,7 @@ org_memberaccounts=($(echo "${org_memberaccounts[@]}" | tr ' ' '\n' | sort -u | 
 valid_memberaccounts=()
 for account in "${org_memberaccounts[@]}"; do
     if [[ ${#account} != 12 ]] || ! [[ "$account" =~ ^[0-9]+$ ]]; then
-        echo "Incorrect member account id(s) provided. Expected values are: ${organization_accounts[@]}"
+        echo -e "${RED}Incorrect member account id(s) provided. Expected values are: ${organization_accounts[@]} ${NC}"
         exit 1
     fi
     for memberaccount in "${organization_accounts[@]}"; do
@@ -192,7 +197,7 @@ if [[ $org_detail ]]; then
             assumerole_status=$?
 
             if [[ "$assumerole_status" -ne "0" ]]; then
-                echo "Error while trying to Assume Role. Unable to decommission remediation framework setup from AWS Account : $awsaccountid."
+                echo -e "${RED}Error while trying to Assume Role. Unable to decommission remediation framework setup from AWS Account : $awsaccountid.${NC}"
                 continue
             fi
 
@@ -214,7 +219,7 @@ if [[ $org_detail ]]; then
             stack_status=$?
 
             if [[ $stack_status -ne 0 ]]; then
-                echo "Invaild environment prefix. No relevant stack found. Skipping decommissiong for AWS Account $awsaccountid."
+                echo -e "${RED}Invaild environment prefix. No relevant stack found. Skipping decommissiong for AWS Account $awsaccountid.${NC}"
                 reset_env_variables
                 continue
             fi
@@ -226,7 +231,7 @@ if [[ $org_detail ]]; then
             echo "Checking if the deployment bucket was correctly deleted... "
 
             if [[ $s3_status -eq 0 ]]; then
-                echo "Deployment bucket is still not deleted. Skipping decommissiong of framework. Please delete zcspm-multirem-$env-$acc_sha and try to re-run the script again for Account $awsaccountid."
+                echo -e "${RED}Deployment bucket is still not deleted. Skipping decommissiong of framework. Please delete zcspm-multirem-$env-$acc_sha and try to re-run the script again for Account $awsaccountid.${NC}"
                 reset_env_variables
                 continue
             fi
@@ -256,20 +261,34 @@ if [[ $org_detail ]]; then
                             aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name zcspm-multirem-$env-$region-$acc_sha --region $region 2>/dev/null
                             #delete stack from other regions
                             aws cloudformation delete-stack --stack-name zcspm-multirem-$env-$region-$acc_sha --region $region
-                            echo "Successfully completed the cleanup of remediation framework component in region: $region"
+                            echo -e "${GREEN}Successfully completed the cleanup of remediation framework component in region: $region ${NC}"
                         else
-                            echo "Region $region is not configured in remediation framework"
+                            echo -e "${RED}Region $region is not configured in remediation framework${NC}"
                         fi
                     fi
                 done
             else
-                echo "Regional Stack deletion skipped with input na!.."
+                echo -e "${YELLOW}Regional Stack deletion skipped with input na!..${NC}"
+            fi
+
+            echo "Verify and decommision global services deployments...."
+
+            global_stack_detail="$(aws cloudformation describe-stacks --stack-name zcspm-multirem-global-resources-$env-$acc_sha --region "us-east-1" 2>/dev/null)"
+            global_stack_status=$?
+
+            if [[ $global_stack_status -eq 0 ]]; then
+                #remove termination protection
+                aws cloudformation update-termination-protection --no-enable-termination-protection --stack-name zcspm-multirem-global-resources-$env-$acc_sha --region "us-east-1" 2>/dev/null
+                #delete stack for global services
+                aws cloudformation delete-stack --stack-name zcspm-multirem-global-resources-$env-$acc_sha --region "us-east-1" 2>/dev/null
+            else
+                echo -e "${YELLOW}Auto remediation is already disabled for Global Services, No stack found!${NC}"
             fi
 
             if [[ $Lambda_status -eq 0 ]] && [[ $bucket_status -eq 0 ]]; then
-                echo "Successfully deleted remediation stack for AWS Account: $awsaccountid!"
+                echo -e "${GREEN}Successfully deleted remediation stack for AWS Account: $awsaccountid!${NC}"
             else
-                echo "Something went wrong! Please contact ZCSPM support!"
+                echo -e "${RED}Something went wrong! Please contact ZCSPM support!${NC}"
             fi
             reset_env_variables
         fi

@@ -91,7 +91,7 @@ Resources:
 
                 try:
                   invoker_client = boto3.client('lambda')      
-                  invoker_client.update_function_configuration(FunctionName='zcspm-aws-auto-remediate-invoker', Environment={'Variables': {'remfwRegion':primary_region}})               
+                  invoker_client.update_function_configuration(FunctionName='zcspm-aws-global-services-remediate-invoker', Environment={'Variables': {'remfwRegion':primary_region}})               
                 except Exception as e:
                   return {'statusCode': 400,'body': json.dumps(str(e))}
 
