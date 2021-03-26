@@ -229,7 +229,7 @@ for account in "${input_memberaccounts[@]}"; do
     done
 done
 
-if ! [[ "${valid_memberaccounts[@]}" =~ "${remawsaccountid}" ]]; then
+if ! [[ "${organization_accounts[@]}" =~ "${remawsaccountid}" ]]; then
     echo "Remediation account id $remawsaccountid provided is not a part of the current AWS Organization. Expected values are: ${organization_accounts[@]}"
     exit 1
 fi
