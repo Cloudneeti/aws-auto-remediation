@@ -102,14 +102,15 @@ else
     exit 1
 fi
 
+
+echo "Validating input parameters..."
+
 # Validate global service integration
 if [[ -z "$globalservices" ]]; then
     read -p "The AWS Global Services Auto Remediation integration is not selected [i.e. parameter (-g)]. This signifies that the auto remediation will not be enabled for AWS Global Services. Do you still want to continue? (Y/N): " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1
     globalservices="No"
 fi
 globalservices=${globalservices,,}
-
-echo "Validating input parameters..."
 
 echo
 echo "Validating framework version"
@@ -272,11 +273,11 @@ else
     echo "Regional Deployments skipped with input na!.."
 fi
 
-echo "Deploying Global Services Autoremediation Template...."
+echo "Deploying Global Services Auto remediation Template...."
 
 #Global services deployment
 if [[ "$globalservices" == "yes" ]] || [[ "$globalservices" == "y" ]]; then
-    aws cloudformation deploy --template-file deploy-global-services-invoker-function.yml --stack-name zcspm-rem-global-resources-$env-$acc_sha --parameter-overrides awsaccountid=$awsaccountid remediationregion=$primary_deployment --region "us-east-1" --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+    aws cloudformation deploy --template-file deploy-global-services-invoker-function.yml --stack-name zcspm-rem-global-resources-$env-$acc_sha --parameter-overrides awsaccountid=$awsaccountid --region "us-east-1" --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
 
     sleep 5
     # Validate deployment

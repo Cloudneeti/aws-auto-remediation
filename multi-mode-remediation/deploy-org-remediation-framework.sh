@@ -88,6 +88,9 @@ while getopts "a:r:z:p:e:v:s:m:o:" o; do
         o) 
             organizationrole=${OPTARG}
             ;;
+        g) 
+            globalservices=${OPTARG}
+            ;;
         *)
             usage
             ;;
@@ -116,6 +119,13 @@ fi
 
 echo
 echo "Validating input parameters..."
+
+# Validate global service integration
+if [[ -z "$globalservices" ]]; then
+    read -p "The AWS Global Services Auto Remediation integration is not selected [i.e. parameter (-g)]. This signifies that the auto remediation will not be enabled for AWS Global Services. Do you still want to continue? (Y/N): " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1
+    globalservices="No"
+fi
+globalservices=${globalservices,,}
 
 echo
 echo "Validating if AWS CLI is configured for the master Organization account.."
@@ -360,6 +370,27 @@ else
     echo "Regional Deployments skipped with input na!.."
 fi
 
+echo "Deploying Global Services Auto remediation Template...."
+
+#Global services deployment
+if [[ "$globalservices" == "yes" ]] || [[ "$globalservices" == "y" ]]; then
+    aws cloudformation deploy --template-file deploy-global-services-invoker-function.yml --stack-name zcspm-rem-global-resources-$env-$acc_sha --parameter-overrides awsaccountid=$awsaccountid --region "us-east-1" --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+
+    sleep 5
+    # Validate deployment
+    Global_services_stack="$(aws cloudformation describe-stacks --stack-name zcspm-rem-global-resources-$env-$acc_sha --region "us-east-1" 2>/dev/null)"
+    Global_services_stack_status=$?
+    
+    if [[ "$Global_services_stack_status" -eq 0 ]]; then
+        echo "Successfully enabled autoremediation for global services"
+        aws cloudformation update-termination-protection --enable-termination-protection --stack-name "zcspm-rem-global-resources-$env-$acc_sha" --region "us-east-1" 2>/dev/null
+    else
+        echo "Failed to configure auto remediation for global services"
+    fi
+else
+    echo "Global Services Autoremediation Support is Not Enabled!.."
+fi
+
 if [[ $lambda_status -eq 0 ]]; then
     echo "Successfully deployed remediation framework!!"
 else
@@ -539,6 +570,28 @@ if [[ $org_detail ]]; then
                 done
             else
                 echo "Regional Deployments skipped with input na!.."
+            fi
+
+            echo
+            echo "Deploying Global Services Autoremediation Template for member account: $awsaccountid"
+
+            #Global services deployment
+            if [[ "$globalservices" == "yes" ]] || [[ "$globalservices" == "y" ]]; then
+                aws cloudformation deploy --template-file deploy-global-services-invoker-multi-mode.yml --stack-name zcspm-multirem-global-resources-$env-$acc_sha --parameter-overrides awsaccountid=$awsaccountid remaccountid=$remawsaccountid --region "us-east-1" --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+
+                sleep 5
+                # Validate deployment
+                Global_services_stack="$(aws cloudformation describe-stacks --stack-name zcspm-multirem-global-resources-$env-$acc_sha --region "us-east-1" 2>/dev/null)"
+                Global_services_stack_status=$?
+                
+                if [[ "$Global_services_stack_status" -eq 0 ]]; then
+                    echo "Successfully enabled auto remediation for global services"
+                    aws cloudformation update-termination-protection --enable-termination-protection --stack-name "zcspm-multirem-global-resources-$env-$acc_sha" --region "us-east-1" 2>/dev/null
+                else
+                    echo "Failed to configure auto remediation for global services"
+                fi
+            else
+                echo "Global Services auto remediation Support is not selected for member account: $awsaccountid!.."
             fi
 
             if [[ $lambda_status -eq 0 ]]; then

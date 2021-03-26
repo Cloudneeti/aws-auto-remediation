@@ -7,10 +7,6 @@ Parameters:
     awsaccountid:
         Description: AWS Account ID
         Type: String
-    remediationregion:
-        Description: Region of framework
-        Type: String
-        Default: us-east-1
 
 Resources:
   LambdaFunction:
@@ -27,93 +23,96 @@ Resources:
       Runtime: python3.7
       Handler: index.lambda_handler
       Timeout: 900 #seconds
-      Environment:
-        Variables: 
-          referenceregion : !Ref remediationregion
       MemorySize: 3008 #max memory foot print
       Code:
         ZipFile:  |
           import os
           import json
           import boto3
-          from botocore.exceptions import ClientError
 
           def lambda_handler(event, context):
-            #regional-event customer account CW event
-            
-            try:
-              runtime_region = os.environ['referenceregion']
-            except:
-              runtime_region = 'us-east-1'
-
             try:
               cw_event_data = event['detail']
             except:
               cw_event_data = ''
 
-            #trigger by cw logs
             if cw_event_data:
               try:
-                records = ""
                 AWSAccId = cw_event_data["userIdentity"]["accountId"]
-                EventName = cw_event_data["eventName"]
                 EventSource = cw_event_data["userIdentity"]["arn"]
-              except ClientError as e:
-                print(e)
-                return {'statusCode': 400,'body': json.dumps(str(e))}
               except Exception as e:
-                print(e)
                 return {'statusCode': 400,'body': json.dumps(str(e))}
 
-              # Invoke remediation orchestrator
               if "assumed-role/ZCSPM-Auto-Remediation-Role" not in str(EventSource):        
-                try:  # common code
+                try:
                   remdiationfunc_rolearn = 'arn:aws:iam::' + AWSAccId + ':role/ZCSPM-Remediation-Invocation-Role'
                   try:
                     sts_client = boto3.client('sts')
                     response = sts_client.assume_role(RoleArn=remdiationfunc_rolearn,RoleSessionName='ZCSPM-RemSession')
                   except Exception as e:
-                    print(e)
-                    return {
-                      'statusCode': 200,
-                      'body': json.dumps("Error when getting AssumeRole")
-                    }
+                    return {'statusCode': 400,'body': json.dumps(str(e))}
+
                   cred = response['Credentials']
                   aws_access_key_id=cred['AccessKeyId']
                   aws_secret_access_key=cred['SecretAccessKey']
                   aws_session_token=cred['SessionToken']
-                except ClientError as e:
-                  print(e)
-                  return {'statusCode': 400,'body': json.dumps(str(e))}
                 except Exception as e:
-                  print(e)
+                  return {'statusCode': 400,'body': json.dumps(str(e))}
+          
+                try:
+                  primary_region=os.environ['remfwRegion']
+                except:
+                  primary_region=''
+                  
+                if not primary_region:
+                  regions=[]
+                  enabled_regions = []
+                  session = boto3.session.Session()
+                  
+                  regions = session.get_available_regions('lambda')
+                  
+                  for region in regions:
+                    sts_client = session.client('sts', region_name=region)
+                    try:
+                        sts_client.get_caller_identity()
+                        enabled_regions.append(region)
+                    except:
+                        pass
+                  
+                  for region in enabled_regions:           
+                    lambda_client = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=region)
+                    try:
+                      remfunctiondetail = lambda_client.get_function(FunctionName='zcspm-aws-remediate-orchestrator')
+                      if remfunctiondetail:
+                        primary_region=region
+                        break
+                    except:
+                      pass
+
+                try:
+                  invoker_client = boto3.client('lambda')      
+                  invoker_client.update_function_configuration(FunctionName='zcspm-aws-auto-remediate-invoker', Environment={'Variables': {'remfwRegion':primary_region}})               
+                except Exception as e:
                   return {'statusCode': 400,'body': json.dumps(str(e))}
 
                 try:
-                  invokeLambda = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=runtime_region)
-                  response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-orchestrator', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                  lambda_client = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=primary_region)
+                  response = lambda_client.invoke(FunctionName = 'zcspm-aws-remediate-orchestrator', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                   t = json.loads(response['Payload'].read())
                   print(t['body'])
                   return {
                       'statusCode': 200,
                       'body': json.dumps(t)
                   }
-                except ClientError as e:
-                  print(e)
-                  return {'statusCode': 400,'body': json.dumps(str(e))}
                 except Exception as e:
-                  print(e)
                   return {'statusCode': 400,'body': json.dumps(str(e))}
-              #endregion
-              
-              #No Events
+
               else:
                 print("Policies not configured for remediation")
                 return {'statusCode': 200,'body': json.dumps("Policies not configured for remediation")}
-              #endregion
             
             else:
-              return {'statusCode': 200,'body': json.dumps("Invalid event source!")}
+                return {'statusCode': 200,'body': json.dumps("Invalid event source!")}
   IAMEventRule:
     Type: AWS::Events::Rule
     Properties:

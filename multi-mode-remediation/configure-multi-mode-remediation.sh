@@ -104,6 +104,12 @@ fi
 echo
 echo "Validating input parameters..."
 
+if [[ -z "$globalservices" ]]; then
+    read -p "The AWS Global Services Auto Remediation integration is not selected [i.e. parameter (-g)]. This signifies that the auto remediation will not be enabled for AWS Global Services. Do you still want to continue? (Y/N): " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1
+    globalservices="No"
+fi
+globalservices=${globalservices,,}
+
 echo
 echo "Validating framework version"
 
@@ -124,11 +130,6 @@ if [[ "$configured_account" != *"$awsaccountid"* ]];then
     exit 1
 fi
 
-if [[ -z "$globalservices" ]]; then
-    read -p "The AWS Global Services Auto Remediation integration is not selected [i.e. parameter (-g)]. This signifies that the auto remediation will not be enabled for AWS Global Services. Do you still want to continue? (Y/N): " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1
-    globalservices="No"
-fi
-globalservices=${globalservices,,}
 
 #Verify input for regional deployment
 if [[ $secondaryregions == "na" ]]; then
@@ -263,7 +264,7 @@ echo "Deploying Global Services Autoremediation Template...."
 
 #Global services deployment
 if [[ "$globalservices" == "yes" ]] || [[ "$globalservices" == "y" ]]; then
-    aws cloudformation deploy --template-file deploy-global-services-invoker-multi-mode.yml --stack-name zcspm-multirem-global-resources-$env-$acc_sha --parameter-overrides awsaccountid=$awsaccountid remediationregion=$primary_deployment --region "us-east-1" --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+    aws cloudformation deploy --template-file deploy-global-services-invoker-multi-mode.yml --stack-name zcspm-multirem-global-resources-$env-$acc_sha --parameter-overrides awsaccountid=$awsaccountid remaccountid=$remawsaccountid --region "us-east-1" --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
 
     sleep 5
     # Validate deployment
