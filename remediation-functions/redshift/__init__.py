@@ -1,1 +1,1 @@
-__all__ = [ "redshift_autoversionupgrade", "redshift_automatic_retention", "redshift_not_public", "redshift_ssl_dataintransit"]
+__all__ = [ "redshift_autoversionupgrade", "redshift_automatic_retention", "redshift_not_public"]

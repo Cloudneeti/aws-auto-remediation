@@ -11,7 +11,7 @@ provider:
   stage: ${opt:accounthash}
   region: ${opt:region, 'us-east-1'}
   remediationversion: ${opt:remediationversion, '2.2'}
-  memorySize: 3008
+  memorySize: 10240
   versionFunctions: false
   deploymentBucket:
     name: zcspm-rem-${self:provider.stage}
@@ -116,20 +116,6 @@ functions:
                 - CreateLoadBalancer
                 - ModifyLoadBalancerAttributes
       - cloudwatchEvent:
-          name: 'zcspm-aws-iam-event-rule'
-          description: 'CloudWatch Event triggered on iam'
-          event:
-            source:
-              - aws.iam
-            detail-type:
-              - AWS API Call via CloudTrail
-            detail:
-              eventSource:
-                - iam.amazonaws.com
-              eventName:
-                - UpdateAccountPasswordPolicy
-                - DeleteAccountPasswordPolicy
-      - cloudwatchEvent:
           name: 'zcspm-aws-kinesis-event-rule'
           description: 'CloudWatch Event triggered on kinesis'
           event:
@@ -233,7 +219,7 @@ functions:
   cloudtrail:
     handler: cloudtrail/cloudtrail_suborchestrator.lambda_handler
     name: zcspm-aws-remediate-cloudtrail
-    timeout: 300
+    timeout: 900
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
@@ -244,7 +230,7 @@ functions:
   elb:
     handler: elb/elb_suborchestrator.lambda_handler
     name: zcspm-aws-remediate-elb
-    timeout: 300
+    timeout: 900
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
@@ -255,7 +241,7 @@ functions:
   elbv2:
     handler: elbv2/elbv2_suborchestrator.lambda_handler
     name: zcspm-aws-remediate-elbv2
-    timeout: 300
+    timeout: 900
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
@@ -266,7 +252,7 @@ functions:
   iam:
     handler: iam/iam_suborchestrator.lambda_handler
     name: zcspm-aws-remediate-iam
-    timeout: 300
+    timeout: 900
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
@@ -288,7 +274,7 @@ functions:
   kms:
     handler: kms/kms_suborchestrator.lambda_handler
     name: zcspm-aws-remediate-kms
-    timeout: 300
+    timeout: 900
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
@@ -332,7 +318,7 @@ functions:
   s3:
     handler: s3/s3_suborchestrator.lambda_handler
     name: zcspm-aws-remediate-s3-bucket
-    timeout: 300
+    timeout: 900
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
@@ -365,7 +351,7 @@ functions:
   ec2:
     handler: ec2/ec2instance_suborchestrator.lambda_handler
     name: zcspm-aws-remediate-ec2-instance
-    timeout: 300
+    timeout: 900
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
@@ -376,7 +362,7 @@ functions:
   dynamodb:
     handler: dynamodb/dynamodb_suborchestrator.lambda_handler
     name: zcspm-aws-remediate-dynamodb
-    timeout: 300
+    timeout: 900
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
@@ -387,7 +373,7 @@ functions:
   asg:
     handler: asg/asg_suborchestrator.lambda_handler
     name: zcspm-aws-remediate-asg
-    timeout: 300
+    timeout: 900
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
@@ -398,7 +384,7 @@ functions:
   cloudformation:
     handler: cloudformation/cloudformation_suborchestrator.lambda_handler
     name: zcspm-aws-remediate-cloudformation
-    timeout: 300
+    timeout: 900
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
@@ -409,7 +395,7 @@ functions:
   sqs:
     handler: sqs/sqs_suborchestrator.lambda_handler
     name: zcspm-aws-remediate-sqs
-    timeout: 300
+    timeout: 900
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
@@ -420,7 +406,7 @@ functions:
   rds_snapshots:
     handler: rds_snapshots/rdssnapshot_suborchestrator.lambda_handler
     name: zcspm-aws-remediate-rdssnapshot
-    timeout: 300
+    timeout: 900
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
@@ -431,7 +417,7 @@ functions:
   docdb_instance:
     handler: docdb_instance/docdbinstance_suborchestrator.lambda_handler
     name: zcspm-aws-remediate-documentdb-instance
-    timeout: 300
+    timeout: 900
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
@@ -442,7 +428,7 @@ functions:
   docdb_cluster:
     handler: docdb_cluster/docdbcluster_suborchestrator.lambda_handler
     name: zcspm-aws-remediate-documentdb-cluster
-    timeout: 300
+    timeout: 900
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
@@ -453,7 +439,7 @@ functions:
   fsx_windows:
     handler: fsx_windows/fsx_windows_suborchestrator.lambda_handler
     name: zcspm-aws-remediate-fsx-windows
-    timeout: 300
+    timeout: 900
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
@@ -464,7 +450,7 @@ functions:
   kinesis_firehose:
     handler: kinesis_firehose/kinesis_firehose_suborchestrator.lambda_handler
     name: zcspm-aws-remediate-kinesis-firehose
-    timeout: 300
+    timeout: 900
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda

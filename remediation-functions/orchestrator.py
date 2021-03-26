@@ -587,10 +587,13 @@ def lambda_handler(event, context):
                 #region ec2 instance suborchestrator call
                 if EventName in ["RunInstances", "StartInstances", "ModifyInstanceAttribute","UnmonitorInstances"]:
                     try:
-                        if EventName == "ModifyInstanceAttribute":
-                            InstanceID = cw_event_data["requestParameters"]["instanceId"]
-                        else:
-                            InstanceID = cw_event_data["responseElements"]["instancesSet"]["items"][0]["instanceId"]
+                        try:
+                            if EventName == "ModifyInstanceAttribute":
+                                InstanceID = cw_event_data["requestParameters"]["instanceId"]
+                            else:
+                                InstanceID = cw_event_data["responseElements"]["instancesSet"]["items"][0]["instanceId"]
+                        except:
+                            print("EC2 Event "+EventName+" Not Supported due to lack of data")
                         Region = cw_event_data["awsRegion"]
 
                         remediationObj = {
@@ -616,7 +619,10 @@ def lambda_handler(event, context):
                 #sqs sub-orchestrator call
                 if EventName in ["CreateQueue", "SetQueueAttributes"]:
                     try:
-                        Queue_Url = cw_event_data["requestParameters"]["queueUrl"]
+                        try:
+                            Queue_Url = cw_event_data["requestParameters"]["queueUrl"]
+                        except:
+                            Queue_Url = cw_event_data["responseElements"]["queueUrl"]
                         Region = cw_event_data["awsRegion"]
                         remediationObj = {
                             "accountId": AWSAccId,
