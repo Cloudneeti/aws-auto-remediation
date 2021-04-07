@@ -140,9 +140,9 @@ In case you want to use same remediation framework for remediation of multiple A
 
 In case you want to use same remediation framework for remediation of multiple AWS accounts based in a single AWS organization setup, then perform the below steps to configure organization based multi-account remediation setup
 
-For the Organization based setup to work, the user should have:
-	- AWS Accounts under an Organization
-	- A Common Organization Account Access IAM Role 
+For the Organization based setup to work, the user should have:	
+- AWS Accounts under an Organization
+- A Common Organization Account Access IAM Role 
 
 1. Configure AWS account using the organization master account credentials
 
