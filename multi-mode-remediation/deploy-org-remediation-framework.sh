@@ -138,11 +138,6 @@ echo "Validating if AWS CLI is configured for the master Organization account.."
 
 configured_account="$(aws sts get-caller-identity | jq '.Account')"
 
-if [[ "$configured_account" != *"$awsaccountid"* ]];then
-    echo -e "${YELLOW}AWS CLI is configured for $configured_account whereas input AWS Account Id entered is $awsaccountid. Please ensure that CLI configuration and the input Account Id is for the same AWS Account.${NC}"
-    exit 1
-fi
-
 org_detail=""
 
 org_detail="$(aws organizations list-accounts --output json 2>/dev/null)"
@@ -151,7 +146,7 @@ if [[ $org_detail == "" ]]; then
     echo "AWS CLI is not configured for master Organization account. Please verify the credentials and try again"
     exit 1
 fi
-echo -e "${YELLOW}AWS CLI is configured for master organization account: $awsaccountid ${NC}"
+echo -e "${YELLOW}AWS CLI is configured for master organization account: $configured_account ${NC}"
 
 echo
 echo "Validating framework version"
@@ -228,14 +223,13 @@ for account in "${input_memberaccounts[@]}"; do
         echo -e "${RED}Incorrect member account id(s) provided. Expected values are: ${organization_accounts[@]} ${NC}"
         exit 1
     fi
-    for memberaccount in "${organization_accounts[@]}"; do
-        if [[ "$account" == "$memberaccount" ]]; then
-            valid_memberaccounts+=("$account")
-        else
-            echo -e "${RED}Incorrect member account id(s) provided. Expected values are: ${organization_accounts[@]} ${NC}"
-            exit 1
-        fi
-    done
+
+    if [[ "${organization_accounts[@]}" =~ "${account}" ]]; then
+        valid_memberaccounts+=("$account")
+    else
+        echo -e "${RED}Incorrect member account id(s) provided. Expected values are: ${organization_accounts[@]} ${NC}"
+        exit 1
+    fi
 done
 
 if ! [[ "${organization_accounts[@]}" =~ "${remawsaccountid}" ]]; then
@@ -251,7 +245,7 @@ orgmasterawsaccountid=$awsaccountid
 cd ../remediation-functions/
 
 echo
-echo "Deploying master remediation framework in AWS Account: $remawsaccountid"
+echo "Deploying master remediation framework on AWS Account: $remawsaccountid"
 
 if [[ "$orgmasterawsaccountid" -ne "$remawsaccountid" ]]; then
     roleArn='arn:aws:iam::'$remawsaccountid':role/'$roleName
