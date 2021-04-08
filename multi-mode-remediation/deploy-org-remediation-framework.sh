@@ -244,6 +244,7 @@ orgmasterawsaccountid=$awsaccountid
 #Verify deployment of remediation framework
 cd ../remediation-functions/
 
+deployment_status=()
 echo
 echo "Deploying master remediation framework on AWS Account: $remawsaccountid"
 
@@ -305,6 +306,7 @@ if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 
 
             if [[ $lambda_status -eq 0 ]]; then
                 echo -e "${GREEN}Successfully deployed remediation framework with latest updates!!${NC}"
+                deployment_status+=("      $remawsaccountid      |       successful       ")
             else
                 echo -e "${RED}Something went wrong! Please contact ZCSPM support for more details${NC}"
             fi
@@ -331,11 +333,12 @@ else
         aws cloudformation update-termination-protection --enable-termination-protection --stack-name zcspm-rem-$env-$acc_sha --region $primary_deployment 2>/dev/null
         aws cloudformation update-termination-protection --enable-termination-protection --stack-name "zcspm-rem-functions-$env-$acc_sha" --region $primary_deployment 2>/dev/null
     else
-        echo -e "${RED}Something went wrong! Please contact ZCSPM support for more details${NC}"
+        echo -e "${RED}Something went wrong during remediaion framework deployment for account $remawsaccountid! Please contact ZCSPM support for more details${NC}"
         reset_env_variables
         exit 1
     fi
     echo -e "${GREEN}Successfully deployed master remediation setup in region $primary_deployment of AWS account: $remawsaccountid ${NC}"
+    deployment_status+=("      $remawsaccountid      |       successful       ")
 fi
 
 #Regional deployments for framework
@@ -397,7 +400,8 @@ fi
 if [[ $lambda_status -eq 0 ]]; then
     echo -e "${GREEN}Successfully deployed remediation framework!! ${NC}"
 else
-    echo -e "${RED}Something went wrong! Please contact ZCSPM support for more details${NC}"
+    echo -e "${RED}Something went wrong during remediation framework deployment for account $remawsaccountid! Please contact ZCSPM support for more details${NC}"
+    deployment_status+=("      $awsaccountid      |         failed         ")
 fi
 
 if [[ $org_detail ]]; then
@@ -463,6 +467,7 @@ if [[ $org_detail ]]; then
 
             if [[ "$assumerole_status" -ne 0 ]]; then
                 echo -e "${YELLOW}Error while trying to Assume Role. Skipping deployment for AWS Account: $awsaccountid ${NC}"
+                deployment_status+=("      $awsaccountid      |         failed         ")
                 continue
             fi
 
@@ -505,21 +510,21 @@ if [[ $org_detail ]]; then
                         Lambda_status=$?
                         
                         if [[ $Lambda_status -eq 0 ]]; then
-                            echo -e "${GREEN}Successfully deployed remediation framework with latest updates!!${NC}"
+                            echo -e "${GREEN}Successfully deployed remediation framework with latest updates for account: $awsaccountid!!${NC}"
+                            deployment_status+=("      $awsaccountid      |       successful       ")
                         else
-                            echo -e "${RED}Something went wrong! Please contact ZCSPM support for more details${NC}"
+                            deployment_status+=("      $awsaccountid      |         failed         ")
                             reset_env_variables
-                            exit 1
                         fi
                     else
-                        echo -e "${RED}Remediation components already exist in $primary_location region. Please run configure-multi-mode-remediation.sh with primary region as $primary_location !${NC}"
+                        echo -e "${RED}Remediation components already exist in $primary_location region for account: $awsaccountid. Please run configure-multi-mode-remediation.sh with primary region as $primary_location !${NC}"
+                        deployment_status+=("      $awsaccountid      |         failed         ")
                         reset_env_variables
-                        exit 1
                     fi
                 else
-                    echo -e "${RED}Remediation components already exist with a different environment prefix. Please run verify-remediation-setup.sh for more details !${NC}"
+                    echo -e "${RED}Remediation components already exist with a different environment prefix for account: $awsaccountid. Please run verify-remediation-setup.sh for more details !${NC}"
+                    deployment_status+=("      $awsaccountid      |         failed         ")
                     reset_env_variables
-                    exit 1
                 fi
             else
                 #Deploy framework from scratch
@@ -529,13 +534,13 @@ if [[ $org_detail ]]; then
                 lambda_status=$?
 
                 if [[ $lambda_status -eq 0 ]]; then
-                    echo -e "${GREEN}Successfully deployed remediation framework with latest updates!!${NC}"
+                    echo -e "${GREEN}Successfully deployed remediation framework with latest updates for account $awsaccountid!!${NC}"
+                    deployment_status+=("      $awsaccountid      |       successful       ")
                     #Enabling termination protection for stack(s)
                     aws cloudformation update-termination-protection --enable-termination-protection --stack-name "zcspm-multirem-$env-$acc_sha" --region $primary_deployment
                 else
-                    echo -e "${RED}Something went wrong! Please contact ZCSPM support for more details ${NC}"
+                    deployment_status+=("      $awsaccountid      |         failed         ")
                     reset_env_variables
-                    exit 1
                 fi
             fi
 
@@ -562,11 +567,11 @@ if [[ $org_detail ]]; then
                             Regional_stack_status=$?
                             
                             if [[ "$Regional_stack_status" -eq 0 ]]; then
-                                echo -e "${GREEN}Successfully configured region $region in remediation framework ${NC}"
+                                echo -e "${GREEN}Successfully configured region $region for account $awsaccountid in remediation framework ${NC}"
                                 #Enabling termination protection for stack(s)
                                 aws cloudformation update-termination-protection --enable-termination-protection --stack-name "zcspm-multirem-$env-$region-$acc_sha" --region $region 2>/dev/null
                             else
-                                echo -e "${RED}Failed to configure region $region in remediation framework ${NC}"
+                                echo -e "${RED}Failed to configure region $region for account $awsaccountid in remediation framework ${NC}"
                             fi
                         fi
                     fi
@@ -598,13 +603,25 @@ if [[ $org_detail ]]; then
             fi
 
             if [[ $lambda_status -eq 0 ]]; then
-                echo -e "${GREEN}Successfully deployed remediation framework!!${NC}"
+                echo -e "${GREEN}Successfully deployed remediation framework for account $awsaccountid!!${NC}"
             else
-                echo -e "${RED}Something went wrong! Please contact ZCSPM support for more details${NC}"
+                echo -e "${RED}Something went wrong during remediation framework deployment for account $awsaccountid! Please contact ZCSPM support for more details${NC}"
+                deployment_status+=("      $awsaccountid      |         failed         ")
             fi
             reset_env_variables
         fi
     done
+
+    echo
+    echo "***********Framework Deployment Summary**************"
+    echo "-----------------------------------------------------"
+    echo "|      AWS Account Id     |    Deployment Status    |"
+    echo "-----------------------------------------------------"
+    for status in "${deployment_status[@]}"; do
+        echo "| $status |"
+        echo "-----------------------------------------------------"
+    done
+
 else
     echo -e "${RED}Unable to fetch member accounts. Ensure that the configured account is master of the organization. ${NC}"
 fi
