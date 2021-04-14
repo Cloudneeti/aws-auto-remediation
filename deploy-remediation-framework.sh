@@ -43,10 +43,10 @@
     **Mandatory(-p)AWS Region: Region where you want to deploy all major components of remediation framework
     (-e)Environment prefix: Enter any suitable prefix for your deployment
     (-v)Version: Enter the remediation framework version (Would be provided by ZCSPM)
-    (-g)Global Services: Enable Auto remediation for global services (Using "US East (N. Virginia)us-east-1" Region)
     (-s)Region list: Comma seperated list(with no spaces) of the regions where the auto-remediation is to be enabled(eg: us-east-1,us-east-2)
         **Pass "all" if you want to enable auto-remediation in all other available regions
         **Pass "na" if you do not want to enable auto-remediation in any other region
+    (-g) Global resource support flag: Pass yes if auto-remediation for global services (like IAM) needs to be enabled. [Deployed in N. Virginia us-east-1 region by default]
 .OUTPUTS
     None
 '

@@ -35,7 +35,7 @@
             Default output format: json  
       - Run this script in any bash shell (linux command prompt)
 .EXAMPLE
-    Command to execute : bash deploy-org-remediation-framework.sh [-a <12-digit-aws-account-id>] [-z <12-digit-zcspm-aws-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed] [-o organization IAM role name]
+    Command to execute : bash deploy-org-remediation-framework.sh [-a <12-digit-aws-account-id>] [-z <12-digit-zcspm-aws-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed] [-o organization IAM role name] [-g <select auto remediation deployment for global services>]
 
 .INPUTS
     **Mandatory(-a)Account Id: 12-digit AWS account Id of the account where the primary remediation framework is to be deployed
@@ -49,6 +49,7 @@
         **Pass "na" if you do not want to enable auto-remediation in any other region
     (-m) Member AWS Account Id(s): Comma seperated list of 12-digit organization member AWS Account Id(s), where the framework components are to be deployed
     (-o) Organization IAM Role Name: Name of the IAM role used by AWS organizations to manage the member accounts
+    (-g) Global resource support flag: Pass yes if auto-remediation for global services (like IAM) needs to be enabled. [Deployed in N. Virginia us-east-1 region by default]
 .OUTPUTS
     None
 '
