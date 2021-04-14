@@ -35,11 +35,10 @@
             Default output format: json  
       - Run this script in any bash shell (linux command prompt)
 .EXAMPLE
-    Command to execute : bash deploy-org-remediation-framework.sh [-a <12-digit AWS organization master account-id>] [-r <12-digit-aws-account-id>] [-z <12-digit-zcspm-aws-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed] [-o organization IAM role name]
+    Command to execute : bash deploy-org-remediation-framework.sh [-a <12-digit-aws-account-id>] [-z <12-digit-zcspm-aws-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed] [-o organization IAM role name]
 
 .INPUTS
-    **Mandatory(-a)Account Id: 12-digit account Id of the master AWS Account of the Organization
-    **Mandatory(-r)Remediation Account Id: 12-digit AWS account Id of the account where the primary remediation framework is to be deployed
+    **Mandatory(-a)Account Id: 12-digit AWS account Id of the account where the primary remediation framework is to be deployed
     **Optional(-z)ZCSPM Account Id : Enter 12-digit account Id of ZCSPM AWS Account, only if you wish to integrate the remediation framework with ZCSPM
     **Mandatory(-p)AWS Region: Region where you want to deploy all major components of remediation framework
     (-e)Environment prefix: Enter any suitable prefix for your deployment
@@ -54,18 +53,15 @@
     None
 '
 
-usage() { echo "Usage: $0 [-a <12-digit AWS organization master account-id>] [-r <12-digit-aws-account-id>] [-z <12-digit-zcspm-aws-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed] [-o organization IAM role name] [-g <select auto remediation deployment for global services>]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-a <12-digit AWS organization master account-id>] [-z <12-digit-zcspm-aws-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed] [-o organization IAM role name] [-g <select auto remediation deployment for global services>]" 1>&2; exit 1; }
 reset_env_variables() { export AWS_ACCESS_KEY_ID=""; export AWS_SECRET_ACCESS_KEY=""; export AWS_SESSION_TOKEN=""; }
 env="dev"
 version="2.2"
 secondaryregions=('na')
 #organizationrole='OrganizationAccountAccessRole'
-while getopts "a:r:z:p:e:v:s:m:o:g:" o; do
+while getopts "a:z:p:e:v:s:m:o:g:" o; do
     case "${o}" in
         a)
-            awsaccountid=${OPTARG}
-            ;;
-        r)
             remawsaccountid=${OPTARG}
             ;;
         z)
@@ -107,7 +103,7 @@ NC='\033[0m'
 valid_values=( "na" "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
 
 #validate aws account-id and region
-if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ "$remawsaccountid" == "" ]] || ! [[ "$remawsaccountid" =~ ^[0-9]+$ ]] || [[ ${#remawsaccountid} != 12 ]] || [[ $primaryregion == "" ]] || [[ $memberaccounts == "" ]] || [[ $organizationrole == "" ]]; then
+if [[ "$remawsaccountid" == "" ]] || ! [[ "$remawsaccountid" =~ ^[0-9]+$ ]] || [[ ${#remawsaccountid} != 12 ]] || [[ $primaryregion == "" ]] || [[ $memberaccounts == "" ]] || [[ $organizationrole == "" ]]; then
     echo -e "${YELLOW}Entered AWS Account Id(s) or the primary deployment region are invalid!!${NC}"
     usage
 fi
@@ -134,7 +130,7 @@ fi
 globalservices=${globalservices,,}
 
 echo
-echo "Validating if AWS CLI is configured for the master Organization account.."
+echo "Validating if AWS CLI is configured for the Organization master account.."
 
 configured_account="$(aws sts get-caller-identity | jq '.Account')"
 
@@ -143,10 +139,10 @@ org_detail=""
 org_detail="$(aws organizations list-accounts --output json 2>/dev/null)"
 
 if [[ $org_detail == "" ]]; then
-    echo "AWS CLI is not configured for master Organization account. Please verify the credentials and try again"
+    echo "AWS CLI is not configured for Organization master account. Please verify the credentials and try again"
     exit 1
 fi
-echo -e "${YELLOW}AWS CLI is configured for master organization account: $configured_account ${NC}"
+echo -e "${YELLOW}AWS CLI is configured for organization master account: $configured_account ${NC}"
 
 echo
 echo "Validating framework version"
@@ -190,7 +186,7 @@ done
 
 if [[ "$zcspmawsaccountid" == "" ]] || [[ "$zcspmawsaccountid" == "na" ]]; then
     read -p "The ZCSPM Account Id parameter (-z) was not passed as an input. This signifies that the remediation framework cannot be integrated with ZCSPM portal. Do you still want to continue? (Y/N): " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1
-    zcspmawsaccountid=$awsaccountid
+    zcspmawsaccountid=$remawsaccountid
 else
     if [[ ${#zcspmawsaccountid} != 12 ]] || ! [[ "$zcspmawsaccountid" =~ ^[0-9]+$ ]]; then
         echo "Entered ZCSPM AWS Account Id is invalid!!"
@@ -239,8 +235,6 @@ fi
 
 echo "Account and region validations complete. Entered AWS Account Id(s) and region(s) are in correct format."
 
-orgmasterawsaccountid=$awsaccountid
-
 #Verify deployment of remediation framework
 cd ../remediation-functions/
 
@@ -248,14 +242,14 @@ deployment_status=()
 echo
 echo "Deploying master remediation framework on AWS Account: $remawsaccountid"
 
-if [[ "$orgmasterawsaccountid" -ne "$remawsaccountid" ]]; then
+if ! [[ $configured_account =~ "$remawsaccountid" ]]; then
     roleArn='arn:aws:iam::'$remawsaccountid':role/'$roleName
 
     sts_assumerole="$(aws sts assume-role --role-arn $roleArn --role-session-name zcspm-session --output json 2>/dev/null)"
     assumerole_status=$?
 
     if [[ "$assumerole_status" -ne "0" ]]; then
-        echo "Error while trying to Assume Role. Unable to deploy master remediation framework setup on : $awsaccountid."
+        echo "Error while trying to Assume Role. Unable to deploy master remediation framework setup on : $remawsaccountid."
         echo -e "${RED}Please verify the Organization IAM Role Name provided and try again.${NC}"
         exit 1
     fi
@@ -380,7 +374,7 @@ echo "Deploying Global Services Auto remediation Template...."
 
 #Global services deployment
 if [[ "$globalservices" == "yes" ]] || [[ "$globalservices" == "y" ]]; then
-    aws cloudformation deploy --template-file deploy-global-services-invoker-function.yml --stack-name zcspm-rem-global-resources-$env-$acc_sha --parameter-overrides awsaccountid=$awsaccountid remediationregion=$primary_deployment --region "us-east-1" --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+    aws cloudformation deploy --template-file deploy-global-services-invoker-function.yml --stack-name zcspm-rem-global-resources-$env-$acc_sha --parameter-overrides awsaccountid=$remawsaccountid remediationregion=$primary_deployment --region "us-east-1" --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
 
     sleep 5
     # Validate deployment
@@ -401,7 +395,7 @@ if [[ $lambda_status -eq 0 ]]; then
     echo -e "${GREEN}Successfully deployed remediation framework!! ${NC}"
 else
     echo -e "${RED}Something went wrong during remediation framework deployment for account $remawsaccountid! Please contact ZCSPM support for more details${NC}"
-    deployment_status+=("      $awsaccountid      |         failed         ")
+    deployment_status+=("      $remawsaccountid      |         failed         ")
 fi
 
 if [[ $org_detail ]]; then
@@ -447,7 +441,7 @@ if [[ $org_detail ]]; then
         fi
     fi
 
-    if [[ "$orgmasterawsaccountid" -ne "$remawsaccountid" ]]; then
+    if ! [[ $configured_account =~ "$remawsaccountid" ]]; then
         reset_env_variables
     fi
 
@@ -625,4 +619,3 @@ if [[ $org_detail ]]; then
 else
     echo -e "${RED}Unable to fetch member accounts. Ensure that the configured account is master of the organization. ${NC}"
 fi
-

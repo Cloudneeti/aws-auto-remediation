@@ -31,11 +31,10 @@
       - Run this script in any bash shell (linux command prompt)
 
 .EXAMPLE
-    Command to execute : bash decommission-org-remediation-framework.sh [-a <12-digit-account-id>] [-r <12-digit-aws-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>] [-m organization member accounts from where framework components are to be removed] [-o organization-access-IAM-role]
+    Command to execute : bash decommission-org-remediation-framework.sh [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>] [-m organization member accounts from where framework components are to be removed] [-o organization-access-IAM-role]
 
 .INPUTS
-    **Mandatory(-a)Account Id: 12-digit account Id of the master AWS Account of the Organization
-    **Mandatory(-r)Remediation Account Id: 12-digit AWS account Id of the account where the primary remediation framework is deployed
+    **Mandatory(-a)Account Id: 12-digit AWS account Id of the account where the primary remediation framework is deployed
     **Mandatory(-p)AWS Region: Region where you want to deploy all major resources of remediation framework
     (-e)Environment prefix: Enter any suitable prefix for your deployment
     (-s)Region list: Comma seperated list(with no spaces) of the regions from where the auto-remediation is to be decommissioned(eg: us-east-1,us-east-2)
@@ -47,18 +46,15 @@
     None
 '
 
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-r <12-digit-aws-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>] [-m organization member accounts from where framework components are to be removed] [-o organization IAM role name]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>] [-m organization member accounts from where framework components are to be removed] [-o organization IAM role name]" 1>&2; exit 1; }
 reset_env_variables() { export AWS_ACCESS_KEY_ID=""; export AWS_SECRET_ACCESS_KEY=""; export AWS_SESSION_TOKEN=""; }
 env="dev"
 version="2.2"
 secondaryregions=('na')
 #organizationrole='OrganizationAccountAccessRole'
-while getopts "a:r:p:e:s:m:o:" o; do
+while getopts "a:p:e:s:m:o:" o; do
     case "${o}" in
         a)
-            awsaccountid=${OPTARG}
-            ;;
-        r)
             remawsaccountid=${OPTARG}
             ;;
         p)
@@ -90,7 +86,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 #validate aws account-id and region
-if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ "$remawsaccountid" == "" ]] || ! [[ "$remawsaccountid" =~ ^[0-9]+$ ]] || [[ ${#remawsaccountid} != 12 ]] || [[ $primaryregion == "" ]] || [[ $memberaccounts == "" ]] || [[ $organizationrole == "" ]]; then
+if [[ "$remawsaccountid" == "" ]] || ! [[ "$remawsaccountid" =~ ^[0-9]+$ ]] || [[ ${#remawsaccountid} != 12 ]] || [[ $primaryregion == "" ]] || [[ $memberaccounts == "" ]] || [[ $organizationrole == "" ]]; then
     echo -e "${YELLOW}Entered AWS Account Id(s) or the primary region are invalid!!${NC}"
     usage
 fi
@@ -101,27 +97,22 @@ echo
 echo "Validating input parameters..."
 
 echo
-echo "Validating if AWS CLI is configured for the master Organization account.."
+echo "Validating if AWS CLI is configured for the Organization master account.."
+
+configured_account="$(aws sts get-caller-identity | jq '.Account')"
 
 org_detail=""
 
 org_detail="$(aws organizations list-accounts --output json 2>/dev/null)"
 
 if [[ $org_detail == "" ]]; then
-    echo -e "${RED}AWS CLI is not configured for master Organization account. Please verify the credentials and try again${NC}"
+    echo -e "${RED}AWS CLI is not configured for Organization master account. Please verify the credentials and try again${NC}"
     exit 1
 fi
-echo "AWS CLI is configured for master organization account: $awsaccountid"
+echo "AWS CLI is configured for Organization master account: $configured_account"
 
 echo
 echo "Verifying entered AWS Account Id(s) and region(s)..."
-
-configured_account="$(aws sts get-caller-identity | jq '.Account')"
-
-if [[ "$configured_account" != *"$awsaccountid"* ]];then
-    echo -e "${RED}AWS CLI is configured for $configured_account whereas input AWS Account Id entered is $awsaccountid. Please ensure that CLI configuration and the input Account Id is for the same AWS Account.${NC}"
-    exit 1
-fi
 
 #Verify input for regional deployment
 if [[ $secondaryregions == "all" ]]; then
