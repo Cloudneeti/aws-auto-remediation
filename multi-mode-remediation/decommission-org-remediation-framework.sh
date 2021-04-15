@@ -31,10 +31,10 @@
       - Run this script in any bash shell (linux command prompt)
 
 .EXAMPLE
-    Command to execute : bash decommission-org-remediation-framework.sh [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>] [-m organization member accounts from where framework components are to be removed] [-o organization-access-IAM-role]
+    Command to execute : bash decommission-org-remediation-framework.sh [-r <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>] [-m organization member accounts from where framework components are to be removed] [-o organization-access-IAM-role]
 
 .INPUTS
-    **Mandatory(-a)Account Id: 12-digit AWS account Id of the account where the primary remediation framework is deployed
+    **Mandatory(-r)Account Id: 12-digit AWS account Id of the account where the primary remediation framework is deployed
     **Mandatory(-p)AWS Region: Region where you want to deploy all major resources of remediation framework
     (-e)Environment prefix: Enter any suitable prefix for your deployment
     (-s)Region list: Comma seperated list(with no spaces) of the regions from where the auto-remediation is to be decommissioned(eg: us-east-1,us-east-2)
@@ -46,15 +46,15 @@
     None
 '
 
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>] [-m organization member accounts from where framework components are to be removed] [-o organization IAM role name]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-r <12-digit-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-s <list of regions from where the auto-remediation is to be decommissioned>] [-m organization member accounts from where framework components are to be removed] [-o organization IAM role name]" 1>&2; exit 1; }
 reset_env_variables() { export AWS_ACCESS_KEY_ID=""; export AWS_SECRET_ACCESS_KEY=""; export AWS_SESSION_TOKEN=""; }
 env="dev"
 version="2.2"
 secondaryregions=('na')
 #organizationrole='OrganizationAccountAccessRole'
-while getopts "a:p:e:s:m:o:" o; do
+while getopts "r:p:e:s:m:o:" o; do
     case "${o}" in
-        a)
+        r)
             remawsaccountid=${OPTARG}
             ;;
         p)
@@ -175,31 +175,33 @@ echo "Account and region validations complete. Entered AWS Account Id(s) and reg
 
 if [[ $org_detail ]]; then
     echo    
-    echo "Initiating framework cleanup in member accounts of the organization..."
+    echo "Initiating framework cleanup in mentioned member accounts..."
 
     for awsaccountid in "${valid_memberaccounts[@]}"; do
 
         if [[ "$awsaccountid" -ne "$remawsaccountid" ]]; then
-            echo
-            echo "Decommissioning framework from member account: $awsaccountid"
-            roleArn='arn:aws:iam::'$awsaccountid':role/'$roleName
+            if [[ "$awsaccountid" -ne "$configured_account" ]]; then
+                echo
+                echo "Decommissioning framework from member account: $awsaccountid"
+                roleArn='arn:aws:iam::'$awsaccountid':role/'$roleName
 
-            sts_assumerole="$(aws sts assume-role --role-arn $roleArn --role-session-name zcspm-session --output json 2>/dev/null)"
-            assumerole_status=$?
+                sts_assumerole="$(aws sts assume-role --role-arn $roleArn --role-session-name zcspm-session --output json 2>/dev/null)"
+                assumerole_status=$?
 
-            if [[ "$assumerole_status" -ne "0" ]]; then
-                echo -e "${RED}Error while trying to Assume Role. Unable to decommission remediation framework setup from AWS Account : $awsaccountid.${NC}"
-                continue
-            fi
+                if [[ "$assumerole_status" -ne "0" ]]; then
+                    echo -e "${RED}Error while trying to Assume Role. Unable to decommission remediation framework setup from AWS Account : $awsaccountid.${NC}"
+                    continue
+                fi
 
-            credentials="$(echo $sts_assumerole | jq .Credentials )"
-            AccessKey="$(echo $credentials | jq -r .AccessKeyId)"
-            SecretAccessKey="$(echo $credentials | jq -r .SecretAccessKey)"
-            SessionToken="$(echo $credentials | jq -r .SessionToken)"
+                credentials="$(echo $sts_assumerole | jq .Credentials )"
+                AccessKey="$(echo $credentials | jq -r .AccessKeyId)"
+                SecretAccessKey="$(echo $credentials | jq -r .SecretAccessKey)"
+                SessionToken="$(echo $credentials | jq -r .SessionToken)"
             
-            export AWS_ACCESS_KEY_ID=$AccessKey
-            export AWS_SECRET_ACCESS_KEY=$SecretAccessKey
-            export AWS_SESSION_TOKEN=$SessionToken
+                export AWS_ACCESS_KEY_ID=$AccessKey
+                export AWS_SECRET_ACCESS_KEY=$SecretAccessKey
+                export AWS_SESSION_TOKEN=$SessionToken
+            fi
 
             acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
             echo

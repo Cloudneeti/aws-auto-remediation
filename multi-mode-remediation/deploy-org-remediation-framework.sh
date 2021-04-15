@@ -35,10 +35,10 @@
             Default output format: json  
       - Run this script in any bash shell (linux command prompt)
 .EXAMPLE
-    Command to execute : bash deploy-org-remediation-framework.sh [-a <12-digit-aws-account-id>] [-z <12-digit-zcspm-aws-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed] [-o organization IAM role name] [-g <select auto remediation deployment for global services>]
+    Command to execute : bash deploy-org-remediation-framework.sh [-r <12-digit-aws-account-id>] [-z <12-digit-zcspm-aws-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed] [-o organization IAM role name] [-g <select auto remediation deployment for global services>]
 
 .INPUTS
-    **Mandatory(-a)Account Id: 12-digit AWS account Id of the account where the primary remediation framework is to be deployed
+    **Mandatory(-r)Account Id: 12-digit AWS account Id of the account where the primary remediation framework is to be deployed
     **Optional(-z)ZCSPM Account Id : Enter 12-digit account Id of ZCSPM AWS Account, only if you wish to integrate the remediation framework with ZCSPM
     **Mandatory(-p)AWS Region: Region where you want to deploy all major components of remediation framework
     (-e)Environment prefix: Enter any suitable prefix for your deployment
@@ -54,15 +54,15 @@
     None
 '
 
-usage() { echo "Usage: $0 [-a <12-digit AWS organization master account-id>] [-z <12-digit-zcspm-aws-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed] [-o organization IAM role name] [-g <select auto remediation deployment for global services>]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-r <12-digit AWS organization master account-id>] [-z <12-digit-zcspm-aws-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed] [-o organization IAM role name] [-g <select auto remediation deployment for global services>]" 1>&2; exit 1; }
 reset_env_variables() { export AWS_ACCESS_KEY_ID=""; export AWS_SECRET_ACCESS_KEY=""; export AWS_SESSION_TOKEN=""; }
 env="dev"
 version="2.2"
 secondaryregions=('na')
 #organizationrole='OrganizationAccountAccessRole'
-while getopts "a:z:p:e:v:s:m:o:g:" o; do
+while getopts "r:z:p:e:v:s:m:o:g:" o; do
     case "${o}" in
-        a)
+        r)
             remawsaccountid=${OPTARG}
             ;;
         z)
@@ -447,33 +447,35 @@ if [[ $org_detail ]]; then
     fi
 
     echo    
-    echo "Deploying framework in member accounts of the organization..."
+    echo "Deploying framework in mentioned member accounts..."
     
     cd ./multi-mode-remediation/
 
     for awsaccountid in "${valid_memberaccounts[@]}"; do
         if [[ "$awsaccountid" -ne "$remawsaccountid" ]]; then
-            echo
-            echo "Deploying framework in member account: $awsaccountid"
-            roleArn='arn:aws:iam::'$awsaccountid':role/'$roleName
+            if [[ "$awsaccountid" -ne "$configured_account" ]]; then
+                echo
+                echo "Deploying framework in member account: $awsaccountid"
+                roleArn='arn:aws:iam::'$awsaccountid':role/'$roleName
 
-            sts_assumerole="$(aws sts assume-role --role-arn $roleArn --role-session-name zcspm-session --output json 2>/dev/null)"
-            assumerole_status=$?
+                sts_assumerole="$(aws sts assume-role --role-arn $roleArn --role-session-name zcspm-session --output json 2>/dev/null)"
+                assumerole_status=$?
 
-            if [[ "$assumerole_status" -ne 0 ]]; then
-                echo -e "${YELLOW}Error while trying to Assume Role. Skipping deployment for AWS Account: $awsaccountid ${NC}"
-                deployment_status+=("      $awsaccountid      |         failed         ")
-                continue
-            fi
+                if [[ "$assumerole_status" -ne 0 ]]; then
+                    echo -e "${YELLOW}Error while trying to Assume Role. Skipping deployment for AWS Account: $awsaccountid ${NC}"
+                    deployment_status+=("      $awsaccountid      |         failed         ")
+                    continue
+                fi
 
-            credentials="$(echo $sts_assumerole | jq .Credentials )"
-            AccessKey="$(echo $credentials | jq -r .AccessKeyId)"
-            SecretAccessKey="$(echo $credentials | jq -r .SecretAccessKey)"
-            SessionToken="$(echo $credentials | jq -r .SessionToken)"
+                credentials="$(echo $sts_assumerole | jq .Credentials )"
+                AccessKey="$(echo $credentials | jq -r .AccessKeyId)"
+                SecretAccessKey="$(echo $credentials | jq -r .SecretAccessKey)"
+                SessionToken="$(echo $credentials | jq -r .SessionToken)"
             
-            export AWS_ACCESS_KEY_ID=$AccessKey
-            export AWS_SECRET_ACCESS_KEY=$SecretAccessKey
-            export AWS_SESSION_TOKEN=$SessionToken
+                export AWS_ACCESS_KEY_ID=$AccessKey
+                export AWS_SECRET_ACCESS_KEY=$SecretAccessKey
+                export AWS_SESSION_TOKEN=$SessionToken
+            fi
 
             acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
 

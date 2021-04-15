@@ -156,7 +156,7 @@ For the Organization based setup to work, the user should have:
 
 2. Configure organization based multi-account remediation using below commands to deploy in specific or all member AWS accounts and regions: 
 
-	`# bash deploy-org-remediation-framework.sh [-a <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed] [-g <select auto remediation deployment for global services>]`
+	`# bash deploy-org-remediation-framework.sh [-r <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed] [-g <select auto remediation deployment for global services>]`
 
    - If the user opts-in for global services [using -g parameter], remediation framework components will be deployed in US East (N. Virginia) region by default.
    - This command creates the required resources like Cloudtrail, Cloudwatch event rules, Remediation functions and roles required to perform cross-account remediation across the member accounts in the organization.
