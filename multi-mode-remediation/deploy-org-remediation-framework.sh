@@ -453,7 +453,7 @@ if [[ $org_detail ]]; then
 
     for awsaccountid in "${valid_memberaccounts[@]}"; do
         if [[ "$awsaccountid" -ne "$remawsaccountid" ]]; then
-            if [[ "$awsaccountid" -ne "$configured_account" ]]; then
+            if [[ "$awsaccountid" -ne $configured_account ]]; then
                 echo
                 echo "Deploying framework in member account: $awsaccountid"
                 roleArn='arn:aws:iam::'$awsaccountid':role/'$roleName
