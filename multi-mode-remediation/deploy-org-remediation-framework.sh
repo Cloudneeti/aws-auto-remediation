@@ -476,7 +476,7 @@ if [[ $org_detail ]]; then
                 export AWS_SECRET_ACCESS_KEY=$SecretAccessKey
                 export AWS_SESSION_TOKEN=$SessionToken
             fi
-
+            aws sts get-caller-identity
             acc_sha="$(echo -n "${awsaccountid}" | md5sum | cut -d" " -f1)"
 
             echo "Checking if the remediation is already enabled for the account $awsaccountid"
@@ -512,16 +512,20 @@ if [[ $org_detail ]]; then
                         else
                             deployment_status+=("      $awsaccountid      |         failed         ")
                             reset_env_variables
+                            echo "Error while deploying remediation framework. Skipping deployment for AWS Account: $awsaccountid"
+                            continue
                         fi
                     else
-                        echo -e "${RED}Remediation components already exist in $primary_location region for account: $awsaccountid. Please run configure-multi-mode-remediation.sh with primary region as $primary_location !${NC}"
+                        echo -e "${RED}Remediation components already exist in $primary_location region for account: $awsaccountid. Please run deploy-org-remediation-framework.sh with primary region as $primary_location !${NC}"
                         deployment_status+=("      $awsaccountid      |         failed         ")
                         reset_env_variables
+                        continue
                     fi
                 else
                     echo -e "${RED}Remediation components already exist with a different environment prefix for account: $awsaccountid. Please run verify-remediation-setup.sh for more details !${NC}"
                     deployment_status+=("      $awsaccountid      |         failed         ")
                     reset_env_variables
+                    continue
                 fi
             else
                 #Deploy framework from scratch
@@ -538,6 +542,8 @@ if [[ $org_detail ]]; then
                 else
                     deployment_status+=("      $awsaccountid      |         failed         ")
                     reset_env_variables
+                    echo "Error while deploying remediation framework. Skipping deployment for AWS Account: $awsaccountid"
+                    continue
                 fi
             fi
 
