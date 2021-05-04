@@ -34,9 +34,11 @@ def run_remediation(iam_client, params):
     try:
         password_configuration["MaxPasswordAge"]
         password_configuration["PasswordReusePrevention"]
+        password_configuration["HardExpiry"]
     except:
         password_configuration["MaxPasswordAge"] = 90
-        password_configuration["PasswordReusePrevention"] = 24  
+        password_configuration["PasswordReusePrevention"] = 24
+        password_configuration["HardExpiry"] = False  
 
     if password_configuration["MaxPasswordAge"] > 90:             
             

@@ -76,16 +76,16 @@ Perform below steps to deploy remediation framework on configured AWS account
 1. Open bash terminal
 2. Deploy remediation framework in selected regions or in all regions
 
-	Note: Primary region for multi account deployment should be the same as that of the remediation framework primary region for single account deployment
-
-	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -z <12-digit-zcspm-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <list of regions where auto-remediation is to be enabled>`
+	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -z <12-digit-zcspm-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <list of regions where auto-remediation is to be enabled> -g <select auto remediation deployment for global services>`
 
 	OR
 
-	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -z <12-digit-zcspm-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <all>`
+	`# bash deploy-remediation-framework.sh -a <12-digit-account-id> -z <12-digit-zcspm-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <all> -g <select auto remediation deployment for global services>`
 
-	The ZCSPM Account Id parameter(-z), can be skipped if the user does not want to integrate the Auto remediation framework with ZCSPM.
-
+	- The ZCSPM Account Id parameter(-z), can be skipped if the user does not want to integrate the Auto remediation framework with ZCSPM.
+	- If the user opts-in for global services [using -g parameter], remediation framework components will be deployed in US East (N. Virginia) region by default.
+	- This command creates the required resources like Cloudtrail, Cloudwatch event rules, Remediation functions and roles required to perform cross-account remediation 
+	
 3. Verify remediation framework setup
 
 	`# bash verify-remediation-setup.sh -a <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -s <list of regions where auto-remediation is to be verified>`
@@ -118,17 +118,16 @@ In case you want to use same remediation framework for remediation of multiple A
 4. Switch to `multi-mode-remediation` directory
 
 	`# cd multi-mode-remediation`
-5. Configure multi-account remediation using below commands to deploy in specific or all regions
-	
-	Note: Primary region for multi account deployment should be the same as that of the remediation framework primary region for single account deployment
+5. Configure multi-account remediation using below commands to deploy in specific or all regions:
 
-	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <list of regions where auto-remediation is to enabled>`
+	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <list of regions where auto-remediation is to enabled>  -g <select auto remediation deployment for global services>`
 
 	OR
 
-	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <all>`
+	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <all>  -g <select auto remediation deployment for global services>`
 
-   This command creates the required resources like Cloudtrail, Cloudwatch event rules, Remediation functions and roles required to perform cross-account remediation 
+   - If the user opts-in for global services [using -g parameter], remediation framework components will be deployed in US East (N. Virginia) region by default.
+   - This command creates the required resources like Cloudtrail, Cloudwatch event rules, Remediation functions and roles required to perform cross-account remediation 
 6. Verify multi-account remediation setup
 
 	`# bash verify-multi-mode-remediation-setup.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -s <list of regions where auto-remediation is to be verified>`
@@ -137,6 +136,30 @@ In case you want to use same remediation framework for remediation of multiple A
 
 	`# bash verify-multi-mode-remediation-setup.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -s <all>`
 
+### Configure Multi-Account Remediation for AWS Organization based setup
+
+In case you want to use same remediation framework for remediation of multiple AWS accounts based in a single AWS organization setup, then perform the below steps to configure organization based multi-account remediation setup
+
+For the Organization based setup to work, the user should have:	
+- AWS Accounts under an Organization
+- A Common Organization Account Access IAM Role 
+
+1. Configure AWS account using the organization master account credentials
+
+	`# aws configure`
+
+   Enter the required inputs:
+   - AWS Access Key ID: Access key of any admin user of the account in consideration.
+   - AWS Secret Access Key: Secret Access Key of any admin user of the account in consideration
+   - Default region name: AWS region name (eg: us-east-1)
+   - Default output format: json
+
+2. Configure organization based multi-account remediation using below commands to deploy in specific or all member AWS accounts and regions: 
+
+	`# bash deploy-org-remediation-framework.sh [-r <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-m organization member accounts where framework components are to be deployed] [-g <select auto remediation deployment for global services>]`
+
+   - If the user opts-in for global services [using -g parameter], remediation framework components will be deployed in US East (N. Virginia) region by default.
+   - This command creates the required resources like Cloudtrail, Cloudwatch event rules, Remediation functions and roles required to perform cross-account remediation across the member accounts in the organization.
 ## Configure remediation on ZCSPM Account
 
 On ZCSPM you need to have AWS account on-boarded. 

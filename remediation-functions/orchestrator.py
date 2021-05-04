@@ -41,9 +41,9 @@ def lambda_handler(event, context):
     kinesis_firehose_list = ["KinesisFirehoseEncryption"]
     
     try:
-        runtime_region = os.environ['AWS_REGION']
+        primary_region = os.environ['AWS_REGION']
     except:
-        runtime_region = 'us-east-1'
+        primary_region = 'us-east-1'
 
     try:
         policy_list = json.loads(event['body'])['RemediationPolicies']
@@ -67,22 +67,19 @@ def lambda_handler(event, context):
         VerifyAccess = json.loads(event['body'])['VerifyAccess']
     except:
         VerifyAccess = ''
+
+    try:        
+        envPrefix = os.environ['envPrefix']
+    except:
+        envPrefix = ''
+        pass
     
     #region Policy Discovery    
-    if policy_flag:   
-        try:  
-            RemediationAWSAccountId = json.loads(event['body'])['RemediationAWSAccountId']
-            RemAccHash = hashlib.md5(str(RemediationAWSAccountId).encode('utf-8')).hexdigest()
+    if policy_flag and envPrefix:
+        try:
+            rem_bucket = 'zcspm-rem-'+envPrefix              
             s3Client = boto3.client('s3')
-            buckets = s3Client.list_buckets()['Buckets']
-            for i in range(len(buckets)):
-                if RemAccHash in str(buckets[i]['Name']):
-                    rem_bucket = buckets[i]['Name']
-                    try:
-                        s3Client.get_bucket_versioning(Bucket=rem_bucket)
-                        break
-                    except:
-                        pass
+            s3Client.get_bucket_versioning(Bucket=rem_bucket)
         except ClientError as e: 
             print(e)
             return {
@@ -95,7 +92,7 @@ def lambda_handler(event, context):
                 'statusCode': 401,
                 'body': json.dumps(str(e))
             }  
-        # rem_bucket = 'zcspm-rem-cust-rem-acc'
+
         available_list = cloudtrail_list + elb_list + elbv2_list + iam_list + kinesis_list + kms_list + rds_cluster_list + rds_instance_list + redshift_list + s3_list + dynamodb_list + ec2instance_list + cloudformation_list + asg_list + sqs_list + neptune_instance_list + neptune_cluster_list + rds_snapshot_list + docdb_cluster_list + docdb_instance_list + fsx_windows_list + kinesis_firehose_list
             
         try:
@@ -134,7 +131,7 @@ def lambda_handler(event, context):
     #endregion    
 
     #region Auto-remediation
-    elif cw_event_data:
+    elif cw_event_data and envPrefix:
         try:
             records = ""
             AWSAccId = cw_event_data["userIdentity"]["accountId"]
@@ -152,12 +149,6 @@ def lambda_handler(event, context):
                 'statusCode': 401,
                 'body': json.dumps(str(e))
             }
-            
-        try:
-            sts = boto3.client('sts')
-            RemediationAWSAccountId = sts.get_caller_identity()['Account']
-        except:
-            RemediationAWSAccountId = AWSAccId
         
         if "assumed-role/ZCSPM-Auto-Remediation-Role" not in str(EventSource):    
             try:
@@ -178,18 +169,10 @@ def lambda_handler(event, context):
                 }
     
             try:
+                rem_bucket = 'zcspm-rem-'+envPrefix              
                 s3Client = boto3.client('s3')
-                buckets = s3Client.list_buckets()['Buckets']
-                RemAccHash = hashlib.md5(str(RemediationAWSAccountId).encode('utf-8')).hexdigest()
-                for i in range(len(buckets)):
-                    if RemAccHash in str(buckets[i]['Name']):
-                        rem_bucket = buckets[i]['Name']
-                        try:
-                            s3Client.get_bucket_versioning(Bucket=rem_bucket)
-                            break
-                        except:
-                            pass                
-                # SQL="select s.RemediationPolicies from s3object s where s.AWSAccountId = '" + cust_acc + "'"
+                s3Client.get_bucket_versioning(Bucket=rem_bucket)
+
                 SQL="select s.RemediationPolicies from s3object s"
                 data = s3Client.select_object_content(
                 Bucket=rem_bucket,
@@ -218,7 +201,7 @@ def lambda_handler(event, context):
             
             if records:
                 try:
-                    invokeLambda = boto3.client('lambda', region_name=runtime_region)
+                    invokeLambda = boto3.client('lambda', region_name=primary_region)
     
                 except ClientError as e: 
                     print(e)
@@ -604,10 +587,13 @@ def lambda_handler(event, context):
                 #region ec2 instance suborchestrator call
                 if EventName in ["RunInstances", "StartInstances", "ModifyInstanceAttribute","UnmonitorInstances"]:
                     try:
-                        if EventName == "ModifyInstanceAttribute":
-                            InstanceID = cw_event_data["requestParameters"]["instanceId"]
-                        else:
-                            InstanceID = cw_event_data["responseElements"]["instancesSet"]["items"][0]["instanceId"]
+                        try:
+                            if EventName == "ModifyInstanceAttribute":
+                                InstanceID = cw_event_data["requestParameters"]["instanceId"]
+                            else:
+                                InstanceID = cw_event_data["responseElements"]["instancesSet"]["items"][0]["instanceId"]
+                        except:
+                            print("EC2 Event "+EventName+" Not Supported due to lack of data")
                         Region = cw_event_data["awsRegion"]
 
                         remediationObj = {
@@ -633,7 +619,10 @@ def lambda_handler(event, context):
                 #sqs sub-orchestrator call
                 if EventName in ["CreateQueue", "SetQueueAttributes"]:
                     try:
-                        Queue_Url = cw_event_data["requestParameters"]["queueUrl"]
+                        try:
+                            Queue_Url = cw_event_data["requestParameters"]["queueUrl"]
+                        except:
+                            Queue_Url = cw_event_data["responseElements"]["queueUrl"]
                         Region = cw_event_data["awsRegion"]
                         remediationObj = {
                             "accountId": AWSAccId,
@@ -884,8 +873,9 @@ def lambda_handler(event, context):
     #endregion
             
     #region Verify-Access
-    elif VerifyAccess:       
+    elif VerifyAccess and envPrefix:       
         OrchestartorAccess, RelayAccess = (True,)*2
+        cloudtrailStatus, frameworkStackStatus = (False,)*2
 
         try:
             AWSAccId = json.loads(event['body'])['AWSAccountId']
@@ -896,17 +886,63 @@ def lambda_handler(event, context):
         if RemAccId != AWSAccId:            
         
             try:
-                cust_accid, remdiationfunc_rolearn = common.getRoleArn(event)      
+                cust_accid, remdiationfunc_rolearn = common.getRoleArn(event)
                 aws_access_key_id, aws_secret_access_key, aws_session_token = common.getCredentials(remdiationfunc_rolearn)
             except:
                 OrchestartorAccess = False
-            
+
+            invokerAccountVariable = 'invoker_region_' + str(cust_accid) 
             try:
-                invokeLambda = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=runtime_region)
+                invoker_region=os.environ[invokerAccountVariable]
+            except:
+                invoker_region=''
+                
+            if not invoker_region:
+                regions=[]
+                enabled_regions = []
+                session = boto3.session.Session()
+                
+                regions = session.get_available_regions('lambda')
+                
+                for region in regions:
+                    sts_client = session.client('sts', region_name=region)
+                    try:
+                        sts_client.get_caller_identity()
+                        enabled_regions.append(region)
+                    except:
+                        pass
+                
+                for region in enabled_regions:           
+                    invoker_client = boto3.client('cloudtrail', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=region)
+                    try:
+                        cloudtrailStatus = invoker_client.get_trail_status(Name='zcspm-remediation-trail')['IsLogging']
+                        if cloudtrailStatus:
+                            invoker_region=region
+                            break
+                    except:
+                        cloudtrailStatus = False
+                        pass
+
+                try:
+                    lambda_client = boto3.client('lambda')
+                    env_variables=lambda_client.get_function_configuration(FunctionName='zcspm-aws-remediate-orchestrator')['Environment']['Variables']
+                    env_variables[invokerAccountVariable]=invoker_region
+                    lambda_client.update_function_configuration(FunctionName='zcspm-aws-remediate-orchestrator', Environment={'Variables': env_variables})                
+                except Exception as e:
+                    return {'statusCode': 400,'body': json.dumps(str(e))}
+
+            try:
+                invokeLambda = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=invoker_region)
                 response = invokeLambda.invoke(FunctionName = 'zcspm-aws-auto-remediate-invoker', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                 RelayAccess = json.loads(response['Payload'].read())
             except:
-                RelayAccess = False                
+                RelayAccess = False
+                
+            try:
+                ct_client = boto3.client('cloudtrail', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=invoker_region)
+                cloudtrailStatus = ct_client.get_trail_status(Name='zcspm-remediation-trail')['IsLogging']
+            except:
+                cloudtrailStatus = False
         
         else:   
             try: 
@@ -915,13 +951,35 @@ def lambda_handler(event, context):
             except:
                 OrchestartorAccess = False
                 
-        return [RelayAccess, OrchestartorAccess]
+            try:
+                cloudtrail_client = boto3.client('cloudtrail', region_name=primary_region)
+                cloudtrailStatus = cloudtrail_client.get_trail_status(Name='zcspm-remediation-trail')['IsLogging']
+            except:
+                cloudtrailStatus = False
+                pass
+
+        try:
+            frameworkVersion = os.environ['Version']
+        except:
+            frameworkVersion = '2.2'
+
+        try:
+            StackName = 'zcspm-rem-functions-' + envPrefix
+            stack_client = boto3.client('cloudformation', region_name=primary_region)
+            StackStatus=stack_client.describe_stacks(StackName=StackName)['Stacks'][0]['StackStatus']
+            if StackStatus in ['CREATE_COMPLETE','UPDATE_COMPLETE']:
+                frameworkStackStatus = True
+        except:
+            frameworkStackStatus = False
+            pass
+                
+        return [RelayAccess, OrchestartorAccess, frameworkVersion, frameworkStackStatus, cloudtrailStatus]
     #endregion
 
     #region ZCSPM Portal Triggered remediation
     else:  
         try:  
-            invokeLambda = boto3.client('lambda', region_name=runtime_region)
+            invokeLambda = boto3.client('lambda', region_name=primary_region)
         except ClientError as e:
             print(e)
             response = {
@@ -1187,4 +1245,3 @@ def lambda_handler(event, context):
             'statusCode': response['statusCode'],
             'body': response['body']
         }
-        

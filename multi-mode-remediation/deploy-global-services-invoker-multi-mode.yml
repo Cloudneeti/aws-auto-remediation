@@ -1,0 +1,166 @@
+#Copyright (c) Cloudneeti. All rights reserved.
+#Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is  furnished to do so, subject to the following conditions:
+#The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Parameters:
+  awsaccountid:
+    Description: AWS Account ID
+    Type: String
+  remaccountid:
+    Description: AWS Account ID
+    Type: String
+
+Resources:
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: zcspm-aws-global-services-remediate-invoker
+      Role: 
+        Fn::Join:
+          - ""
+          - - 'arn:aws:iam::'
+            - !Ref awsaccountid
+            - ':'
+            - role/ZCSPM-AutoRem-InvokerFunction-Role
+      Runtime: python3.7
+      Handler: index.lambda_handler
+      Timeout: 900 #seconds
+      Environment:
+        Variables: 
+          remediationAccountId : !Ref remaccountid
+      MemorySize: 3008 #max memory foot print
+      Code:
+        ZipFile:  |
+          import json
+          import boto3
+          import os
+
+          def lambda_handler(event, context):
+            try:
+              cw_event_data = event['detail']
+            except:
+              cw_event_data = ''
+
+            try:
+              VerifyAccess = json.loads(event['body'])['VerifyAccess']
+            except:
+              VerifyAccess = '' 
+
+            if cw_event_data:
+              try:
+                AWSAccId = cw_event_data["userIdentity"]["accountId"]
+                EventSource = cw_event_data["userIdentity"]["arn"]
+              except Exception as e: 
+                return {'statusCode': 400,'body': json.dumps(str(e))}
+
+              if "assumed-role/ZCSPM-Auto-Remediation-Role" not in str(EventSource):
+                        
+                try:
+                  RemAccId = os.environ['remediationAccountId']
+                  remdiationfunc_rolearn = 'arn:aws:iam::' + RemAccId + ':role/ZCSPM-Remediation-Invocation-Role'
+                  try:
+                    sts_client = boto3.client('sts')
+                    response = sts_client.assume_role(RoleArn=remdiationfunc_rolearn,RoleSessionName='ZCSPM-RemSession')
+                  except Exception as e:
+                    return {'statusCode': 400,'body': json.dumps(str(e))}
+
+                  cred = response['Credentials']
+                  aws_access_key_id=cred['AccessKeyId']
+                  aws_secret_access_key=cred['SecretAccessKey']
+                  aws_session_token=cred['SessionToken']
+                except Exception as e:
+                  return {'statusCode': 400,'body': json.dumps(str(e))}
+
+                try:
+                  primary_region=os.environ['remfwRegion']
+                except:
+                  primary_region=''
+                  
+                if not primary_region:
+                  regions=[]
+                  enabled_regions = []
+                  session = boto3.session.Session()
+                  
+                  regions = session.get_available_regions('lambda')
+                  
+                  for region in regions:
+                    sts_client = session.client('sts', region_name=region)
+                    try:
+                      sts_client.get_caller_identity()
+                      enabled_regions.append(region)
+                    except:
+                      pass
+                  
+                  for region in enabled_regions:           
+                    lambda_client = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=region)
+                    try:
+                      remfunctiondetail = lambda_client.get_function(FunctionName='zcspm-aws-remediate-orchestrator')
+                      if remfunctiondetail:
+                        primary_region=region
+                        break
+                    except:
+                      pass
+
+                  try:
+                    invoker_client = boto3.client('lambda')
+                    env_variables=invoker_client.get_function_configuration(FunctionName='zcspm-aws-global-services-remediate-invoker')['Environment']['Variables']
+                    env_variables['remfwRegion']=primary_region     
+                    invoker_client.update_function_configuration(FunctionName='zcspm-aws-global-services-remediate-invoker', Environment={'Variables': env_variables})                
+                  except Exception as e:
+                    return {'statusCode': 400,'body': json.dumps(str(e))}
+
+                try:
+                  lambda_client = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=primary_region)
+                  response = lambda_client.invoke(FunctionName = 'zcspm-aws-remediate-orchestrator', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                  t = json.loads(response['Payload'].read())
+                  print(t['body'])
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps(t)
+                  }
+                except Exception as e:
+                  return {'statusCode': 400,'body': json.dumps(str(e))}
+              else:
+                return {'statusCode': 200,'body': json.dumps("Resource already remediated")}
+            elif VerifyAccess:       
+              IsVerified = True 
+              try:
+                CustAccID = json.loads(event['body'])['RemediationAWSAccountId']
+              except:
+                IsVerified = False
+              return IsVerified
+  IAMEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: "zcspm-aws-iam-event-rule"
+      Description: "CloudWatch Event triggered on iam update"
+      EventPattern:
+        source:
+          - "aws.iam"
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - "iam.amazonaws.com"
+          eventName:
+            - "UpdateAccountPasswordPolicy"
+            - "DeleteAccountPasswordPolicy"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "LambdaFunction"
+              - "Arn"
+          Id: "TargetFunctionV1"
+  PermissionForIAMToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "LambdaFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: 
+        Fn::GetAtt: 
+          - "IAMEventRule"
+          - "Arn"

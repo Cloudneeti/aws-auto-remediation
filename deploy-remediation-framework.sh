@@ -14,7 +14,7 @@
     The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-    Version: 2.1
+    Version: 2.2
     # PREREQUISITE
       - Install aws cli
         Link : https://docs.aws.amazon.com/cli/latest/userguide/install-linux-al2017.html
@@ -35,7 +35,7 @@
             Default output format: json  
       - Run this script in any bash shell (linux command prompt)
 .EXAMPLE
-    Command to execute : bash deploy-remediation-framework.sh [-a <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>]
+    Command to execute : bash deploy-remediation-framework.sh [-a <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-g <select auto remediation deployment for global services>]
 
 .INPUTS
     **Mandatory(-a)Account Id: 12-digit AWS account Id of the account where you want the remediation framework to be deployed
@@ -46,15 +46,16 @@
     (-s)Region list: Comma seperated list(with no spaces) of the regions where the auto-remediation is to be enabled(eg: us-east-1,us-east-2)
         **Pass "all" if you want to enable auto-remediation in all other available regions
         **Pass "na" if you do not want to enable auto-remediation in any other region
+    (-g) Global resource support flag: Pass yes if auto-remediation for global services (like IAM) needs to be enabled. [Deployed in N. Virginia us-east-1 region by default]
 .OUTPUTS
     None
 '
 
-usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-g <select auto remediation deployment for global services>]" 1>&2; exit 1; }
 env="dev"
-version="2.1"
+version="2.2"
 secondaryregions=('na')
-while getopts "a:z:p:e:v:s:" o; do
+while getopts "a:z:p:e:v:s:g:" o; do
     case "${o}" in
         a)
             awsaccountid=${OPTARG}
@@ -69,10 +70,13 @@ while getopts "a:z:p:e:v:s:" o; do
             env=${OPTARG}
             ;;
         v)
-            version=${OPTARG}
+            inputversion=${OPTARG}
             ;;
         s) 
             secondaryregions=${OPTARG}
+            ;;
+        g) 
+            globalservices=${OPTARG}
             ;;
         *)
             usage
@@ -80,23 +84,56 @@ while getopts "a:z:p:e:v:s:" o; do
     esac
 done
 shift $((OPTIND-1))
+
+RED='\033[1;31m'
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
 valid_values=( "na" "us-east-1" "us-east-2" "us-west-1" "us-west-2" "ap-south-1" "ap-northeast-2" "ap-southeast-1" "ap-southeast-2" "ap-northeast-1" "ca-central-1" "eu-central-1" "eu-west-1" "eu-west-2" "eu-west-3" "eu-north-1" "sa-east-1" "ap-east-1" )
+
+#validate aws account-id and region
+if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ $primaryregion == "" ]]; then
+    echo -e "${YELLOW}Entered AWS Account Id or the primary deployment region are invalid!!${NC}"
+    usage
+fi
 
 echo "Verifying if pre-requisites are set-up.."
 sleep 5
 if [[ "$(which serverless)" != "" ]] && [[ "$(which aws)" != "" ]];then
-    echo "All pre-requisite packages are installed!!"
+    echo -e "${GREEN}All pre-requisite packages are installed!!${NC}"
 else
-    echo "Package(s)/tool(s) mentioned as pre-requisites have not been correctly installed. Please verify the installation and try re-running the script."
+    echo -e "${RED}Package(s)/tool(s) mentioned as pre-requisites have not been correctly installed. Please verify the installation and try re-running the script.${NC}"
     exit 1
 fi
 
+
 echo "Validating input parameters..."
 
-configure_account="$(aws sts get-caller-identity)"
+# Validate global service integration
+if [[ -z "$globalservices" ]]; then
+    read -p "The AWS Global Services Auto Remediation integration is not selected [i.e. parameter (-g)]. This signifies that the auto remediation will not be enabled for AWS Global Services. Do you still want to continue? (Y/N): " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1
+    globalservices="No"
+fi
+globalservices=${globalservices,,}
 
-if [[ "$configure_account" != *"$awsaccountid"* ]];then
-    echo "AWS CLI configuration AWS account Id and entered AWS account Id does not match. Please try again with correct AWS Account Id."
+echo
+echo "Validating framework version"
+
+if [[ "$inputversion" != "$version" ]]; then
+    echo -e "${RED}Incorrect framework version provided. Current framework version is: $version${NC}"
+    exit 1
+fi
+
+echo "Framework version that will be deployed is: $version"
+
+echo
+echo "Verifying entered AWS Account Id(s) and region(s)..."
+
+configured_account="$(aws sts get-caller-identity | jq '.Account')"
+
+if [[ "$configured_account" != *"$awsaccountid"* ]];then
+    echo -e "${YELLOW}AWS CLI is configured for $configured_account whereas input AWS Account Id entered is $awsaccountid. Please ensure that CLI configuration and the input Account Id is for the same AWS Account.${NC}"
     exit 1
 fi
 
@@ -127,12 +164,6 @@ for valid_val in "${valid_values[@]}"; do
     fi
 done
 
-#validate aws account-id and region
-if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ $primary_deployment == "" ]]; then
-    echo "Entered AWS Account Id or the primary deployment region are invalid!!"
-    usage
-fi
-
 if [[ "$zcspmawsaccountid" == "" ]] || [[ "$zcspmawsaccountid" == "na" ]]; then
     read -p "The ZCSPM Account Id parameter (-z) was not passed as an input. This signifies that the remediation framework cannot be integrated with ZCSPM portal. Do you still want to continue? (Y/N): " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1
     zcspmawsaccountid=$awsaccountid
@@ -143,7 +174,7 @@ else
     fi
 fi
 
-echo "Input validation complete!"
+echo "Account and region validations complete. Entered AWS Account Id(s) and region(s) are in correct format."
 
 #Verify deployment of remediation framework
 cd remediation-functions/
@@ -159,7 +190,7 @@ orches_role=$?
 rem_role_det="$(aws iam get-role --role-name ZCSPM-Auto-Remediation-Role 2>/dev/null)"
 Rem_role=$?
 
-invoker_role_det="$(aws iam get-role --role-name ZCSPM-Auto-Remediation-Invoker 2>/dev/null)"
+invoker_role_det="$(aws iam get-role --role-name ZCSPM-AutoRem-InvokerFunction-Role 2>/dev/null)"
 invoker_role=$?
 
 CT_det="$(aws cloudtrail get-trail-status --name zcspm-remediation-trail --region $primary_deployment 2>/dev/null)"
@@ -182,21 +213,21 @@ if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 
             Lambda_status=$?
 
             if [[ $lambda_status -eq 0 ]]; then
-                echo "Successfully deployed remediation framework with latest updates!!"
+                echo -e "${GREEN}Successfully deployed remediation framework with latest updates!!${NC}"
             else
-                echo "Something went wrong! Please contact ZCSPM support for more details"
+                echo -e "${RED}Something went wrong! Please contact ZCSPM support for more details${NC}"
             fi
         else
-            echo "Remediation components already exist in $primary_location region. Please run deploy-remediation-framework.sh with primary region as $primary_location !"
+            echo -e "${RED}Remediation components already exist in $primary_location region. Please run deploy-remediation-framework.sh with primary region as $primary_location !${NC}"
             exit 1
         fi
     else
-        echo "Remediation components already exist with a different environment prefix. Please run verify-remediation-setup.sh for more details !"
+        echo -e "${RED}Remediation components already exist with a different environment prefix. Please run verify-remediation-setup.sh for more details !${NC}"
         exit 1
     fi
 else
     #Deploy framework from scratch
-    echo "Deploying remediation framework...."
+    echo "Existing remediation setup not found. Deploying new setup for remediation framework...."
     aws cloudformation deploy --template-file deployment-bucket.yml --stack-name zcspm-rem-$env-$acc_sha --parameter-overrides Stack=zcspm-rem-$env-$acc_sha awsaccountid=$awsaccountid region=$primary_deployment --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
     s3_status=$?
     if [[ "$s3_status" -eq 0 ]]; then
@@ -207,9 +238,10 @@ else
         aws cloudformation update-termination-protection --enable-termination-protection --stack-name zcspm-rem-$env-$acc_sha --region $primary_deployment 2>/dev/null
         aws cloudformation update-termination-protection --enable-termination-protection --stack-name "zcspm-rem-functions-$env-$acc_sha" --region $primary_deployment 2>/dev/null
     else
-        echo "Something went wrong! Please contact ZCSPM support for more details"
+        echo -e "${RED}Something went wrong! Please contact ZCSPM support for more details${NC}"
         exit 1
     fi
+    echo -e "${GREEN}Successfully deployed master remediation setup in region $primary_deployment of AWS account: $awsaccountid ${NC}"
 fi
 
 #Regional deployments for framework
@@ -227,17 +259,17 @@ if [[ "$secondary_regions" != "na" ]] && [[ "$s3_status" -eq 0 ]]; then
             Regional_stack_status=$?
             
             if [[ "$Regional_stack_status" -ne 0 ]] && [[ "$Lambda_status" -eq 0 ]]; then
-                echo "Region $region is not configured because of existing resources, please delete them and redeploy framework to configure this region"
+                echo -e "${YELLOW}Region $region is not configured because of existing resources, please delete them and redeploy framework to configure this region${NC}"
             else
-                aws cloudformation deploy --template-file deploy-invoker-function.yml --stack-name zcspm-rem-$env-$region-$acc_sha --parameter-overrides Stack=zcspm-rem-$env-$region-$acc_sha awsaccountid=$awsaccountid region=$region remediationregion=$primary_deployment --region $region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+                aws cloudformation deploy --template-file deploy-invoker-function.yml --stack-name zcspm-rem-$env-$region-$acc_sha  --region $region --parameter-overrides awsaccountid=$awsaccountid remediationregion=$primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
                 Regional_stack="$(aws cloudformation describe-stacks --stack-name zcspm-rem-$env-$region-$acc_sha --region $region 2>/dev/null)"
                 Regional_stack_status=$?
 
                 if [[ "$Regional_stack_status" -eq 0 ]]; then
-                    echo "Successfully configured region $region in remediation framework"
+                    echo -e "${GREEN}Successfully configured region $region in remediation framework${NC}"
                     aws cloudformation update-termination-protection --enable-termination-protection --stack-name "zcspm-rem-$env-$region-$acc_sha" --region $region 2>/dev/null
                 else
-                    echo "Failed to configure region $region in remediation framework"
+                    echo -e "${RED}Failed to configure region $region in remediation framework${NC}"
                 fi
             fi
         fi
@@ -246,8 +278,29 @@ else
     echo "Regional Deployments skipped with input na!.."
 fi
 
-if [[ $lambda_status -eq 0 ]]; then
-    echo "Successfully deployed remediation framework!!"
+echo "Deploying Global Services Auto remediation Template...."
+
+#Global services deployment
+if [[ "$globalservices" == "yes" ]] || [[ "$globalservices" == "y" ]]; then
+    aws cloudformation deploy --template-file deploy-global-services-invoker-function.yml --stack-name zcspm-rem-global-resources-$env-$acc_sha --parameter-overrides awsaccountid=$awsaccountid remediationregion=$primary_deployment --region "us-east-1" --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
+
+    sleep 5
+    # Validate deployment
+    Global_services_stack="$(aws cloudformation describe-stacks --stack-name zcspm-rem-global-resources-$env-$acc_sha --region "us-east-1" 2>/dev/null)"
+    Global_services_stack_status=$?
+    
+    if [[ "$Global_services_stack_status" -eq 0 ]]; then
+        echo -e "${GREEN}Successfully enabled autoremediation for global services${NC}"
+        aws cloudformation update-termination-protection --enable-termination-protection --stack-name "zcspm-rem-global-resources-$env-$acc_sha" --region "us-east-1" 2>/dev/null
+    else
+        echo -e "${RED}Failed to configure auto remediation for global services${NC}"
+    fi
 else
-    echo "Something went wrong! Please contact ZCSPM support for more details"
+    echo -e "${YELLOW}Global Services Autoremediation Support is Not Enabled!..${NC}"
+fi
+
+if [[ $lambda_status -eq 0 ]]; then
+    echo -e "${GREEN}Successfully deployed remediation framework!!${NC}"
+else
+    echo -e "${RED}Something went wrong! Please contact ZCSPM support for more details${NC}"
 fi

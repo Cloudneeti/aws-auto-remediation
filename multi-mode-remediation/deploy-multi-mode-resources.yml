@@ -4,27 +4,23 @@
 #THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 Parameters:
-    Stack:
-        Description: Stack name
-        Type: String
-        Default: dev
-    awsaccountid:
-        Description: AWS Account ID
-        Type: String
-    remaccountid:
-        Description: AWS Account ID
-        Type: String
-    region:
-        Description: Region of deployment
-        Type: String
-        Default: us-east-1
-    remediationversion:
-        Description: Remediation framework region
-        Type: String
-    remediationregion:
-        Description: Region of framework
-        Type: String
-        Default: us-east-1
+  Stack:
+    Description: Stack name
+    Type: String
+    Default: dev
+  awsaccountid:
+    Description: AWS Account ID
+    Type: String
+  remaccountid:
+    Description: AWS Account ID
+    Type: String
+  region:
+    Description: Region of deployment
+    Type: String
+    Default: us-east-1
+  remediationversion:
+    Description: Remediation framework region
+    Type: String
 Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
@@ -182,100 +178,110 @@ Resources:
         - ''
         - - 'arn:aws:iam::'
           - !Ref awsaccountid
-          - ':role/ZCSPM-Auto-Remediation-Invoker'
+          - ':role/ZCSPM-AutoRem-InvokerFunction-Role'
       Runtime: python3.7
       Handler: index.lambda_handler
       Timeout: 900 #seconds
       Environment:
         Variables: 
-          referenceregion : !Ref remediationregion
+          remediationAccountId : !Ref remaccountid
       MemorySize: 3008 #max memory foot print
       Code:
         ZipFile:  |
           import json
           import boto3
-          from botocore.exceptions import ClientError
           import os
 
-          def getCredentials(roleArn, roleSessionName='ZCSPM-RemSession'):
-            sts_client = boto3.client('sts')
-            try:
-                response = sts_client.assume_role(RoleArn=roleArn,RoleSessionName=roleSessionName)
-            except Exception as e:
-                return print("Error when getting AssumeRole "+e)
-            cred = response['Credentials']
-            return cred['AccessKeyId'], cred['SecretAccessKey'], cred['SessionToken']
-
           def lambda_handler(event, context):
-            #multi-event customer account CW event
-            try:
-              runtime_region = os.environ['referenceregion']
-            except:
-              runtime_region = 'us-east-1'
-
             try:
               cw_event_data = event['detail']
             except:
               cw_event_data = ''
 
-            #multi-account verify access
             try:
               VerifyAccess = json.loads(event['body'])['VerifyAccess']
-              print(VerifyAccess)
             except:
               VerifyAccess = '' 
 
-            #trigger by cw logs
             if cw_event_data:
               try:
                 AWSAccId = cw_event_data["userIdentity"]["accountId"]
-                EventName = cw_event_data["eventName"]
                 EventSource = cw_event_data["userIdentity"]["arn"]
-              except ClientError as e:
-                print(e)
               except Exception as e: 
-                print(e)
+                return {'statusCode': 400,'body': json.dumps(str(e))}
 
               if "assumed-role/ZCSPM-Auto-Remediation-Role" not in str(EventSource):
-                try:
-                  iam = boto3.client("iam")
-                  role_det = iam.get_role(RoleName='ZCSPM-Auto-Remediation-Role')['Role']['AssumeRolePolicyDocument']['Statement']
-                  for i in range(len(role_det)):
-                    if AWSAccId not in str(role_det[i]['Principal']):
-                      RemAccDet = role_det[i]['Principal']['AWS']
-                      RemAccId = (RemAccDet.split('arn:aws:iam::')[1]).split(':root')[0]
-                      break
-                except ClientError as e:
-                  return {'statusCode': 400,'body': json.dumps(str(e))}
-                except Exception as e:
-                  return {'statusCode': 400,'body': json.dumps(str(e))}
                         
-                try:  # common code
+                try:
+                  RemAccId = os.environ['remediationAccountId']
                   remdiationfunc_rolearn = 'arn:aws:iam::' + RemAccId + ':role/ZCSPM-Remediation-Invocation-Role'
-                  aws_access_key_id, aws_secret_access_key, aws_session_token = getCredentials(remdiationfunc_rolearn)
-                except ClientError as e:
-                  return {'statusCode': 400,'body': json.dumps(str(e))}
+                  try:
+                    sts_client = boto3.client('sts')
+                    response = sts_client.assume_role(RoleArn=remdiationfunc_rolearn,RoleSessionName='ZCSPM-RemSession')
+
+                    cred = response['Credentials']
+                    aws_access_key_id=cred['AccessKeyId']
+                    aws_secret_access_key=cred['SecretAccessKey']
+                    aws_session_token=cred['SessionToken']
+                  except Exception as e:
+                    return {'statusCode': 400,'body': json.dumps(str(e))}
                 except Exception as e:
                   return {'statusCode': 400,'body': json.dumps(str(e))}
 
                 try:
-                  invokeLambda = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=runtime_region)
-                  response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-orchestrator', InvocationType = 'RequestResponse', Payload = json.dumps(event))
+                  primary_region=os.environ['remfwRegion']
+                except:
+                  primary_region=''
+                  
+                if not primary_region:
+                  regions=[]
+                  enabled_regions = []
+                  session = boto3.session.Session()
+                  
+                  regions = session.get_available_regions('lambda')
+                  
+                  for region in regions:
+                    sts_client = session.client('sts', region_name=region)
+                    try:
+                        sts_client.get_caller_identity()
+                        enabled_regions.append(region)
+                    except:
+                        pass
+                  
+                  for region in enabled_regions:           
+                    lambda_client = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=region)
+                    try:
+                      remfunctiondetail = lambda_client.get_function(FunctionName='zcspm-aws-remediate-orchestrator')
+                      if remfunctiondetail:
+                        primary_region=region
+                        break
+                    except:
+                      pass
+
+                  try:
+                    invoker_client = boto3.client('lambda')
+                    env_variables=invoker_client.get_function_configuration(FunctionName='zcspm-aws-auto-remediate-invoker')['Environment']['Variables']
+                    env_variables['remfwRegion']=primary_region     
+                    invoker_client.update_function_configuration(FunctionName='zcspm-aws-auto-remediate-invoker', Environment={'Variables': env_variables})                
+                  except Exception as e:
+                    return {'statusCode': 400,'body': json.dumps(str(e))}
+
+                try:
+                  lambda_client = boto3.client('lambda',aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,aws_session_token=aws_session_token, region_name=primary_region)
+                  response = lambda_client.invoke(FunctionName = 'zcspm-aws-remediate-orchestrator', InvocationType = 'RequestResponse', Payload = json.dumps(event))
                   t = json.loads(response['Payload'].read())
                   print(t['body'])
                   return {
                       'statusCode': 200,
                       'body': json.dumps(t)
                   }
-                except ClientError as e:
-                  return {'statusCode': 400,'body': json.dumps(str(e))}
                 except Exception as e:
                   return {'statusCode': 400,'body': json.dumps(str(e))}
               else:
                 return {'statusCode': 200,'body': json.dumps("Resource already remediated")}
             elif VerifyAccess:       
               IsVerified = True 
-              try:  # common code 
+              try:
                 CustAccID = json.loads(event['body'])['RemediationAWSAccountId']
               except:
                 IsVerified = False
@@ -337,7 +343,7 @@ Resources:
               - "LambdaFunction"
               - "Arn"
           Id: "TargetFunctionV1"
-  PermissionForCloudtrailEventsToInvokeLambda: 
+  PermissionForCloudformationToInvokeLambda: 
     Type: AWS::Lambda::Permission
     Properties: 
       FunctionName: 
@@ -488,40 +494,6 @@ Resources:
       SourceArn: 
         Fn::GetAtt: 
           - "ELBEventRule"
-          - "Arn"
-  IAMEventRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Name: "zcspm-aws-iam-event-rule"
-      Description: "CloudWatch Event triggered on iam changes"
-      EventPattern:
-        source:
-          - "aws.iam"
-        detail-type:
-          - "AWS API Call via CloudTrail"
-        detail:
-          eventSource:
-            - "iam.amazonaws.com"
-          eventName:
-            - "UpdateAccountPasswordPolicy"
-            - "DeleteAccountPasswordPolicy"
-      Targets: 
-        - 
-          Arn: 
-            Fn::GetAtt: 
-              - "LambdaFunction"
-              - "Arn"
-          Id: "TargetFunctionV1"
-  PermissionForKinesisEventsToInvokeLambda: 
-    Type: AWS::Lambda::Permission
-    Properties: 
-      FunctionName: 
-        Ref: "LambdaFunction"
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn: 
-        Fn::GetAtt: 
-          - "IAMEventRule"
           - "Arn"
   KinesisEventRule:
     Type: AWS::Events::Rule
@@ -765,10 +737,12 @@ Resources:
             Effect: Allow
             Action:              
             - "lambda:InvokeFunction"
+            - "lambda:GetFunction"
             - "autoscaling:UpdateAutoScalingGroup"
             - "cloudformation:UpdateTerminationProtection"
             - "cloudtrail:StartLogging"
             - "cloudtrail:UpdateTrail"
+            - "cloudtrail:GetTrailStatus"
             - "dynamodb:UpdateContinuousBackups"
             - "ec2:MonitorInstances"
             - "ec2:ModifyInstanceAttribute"
@@ -796,7 +770,7 @@ Resources:
   ZCSPMLambdaRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: ZCSPM-Auto-Remediation-Invoker
+      RoleName: ZCSPM-AutoRem-InvokerFunction-Role
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -820,6 +794,8 @@ Resources:
               - "cloudtrail:GetTrailStatus"
               - "iam:Get*"
               - "iam:List*"
+              - "lambda:UpdateFunctionConfiguration"
+              - "lambda:GetFunctionConfiguration"
               Resource: "*"
             - Sid: "AllowAssumeRoleForLambdaPolicy"
               Effect: "Allow"

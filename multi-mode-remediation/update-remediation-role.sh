@@ -13,7 +13,7 @@
     The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-    Version: 2.1
+    Version: 2.2
 
     # PREREQUISITE
       - Install aws cli
@@ -57,6 +57,11 @@ while getopts "r:a:" o; do
 done
 shift $((OPTIND-1))
 
+RED='\033[1;31m'
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
 if [[ "$awsaccountid" == "" ]] || ! [[ "$awsaccountid" =~ ^[0-9]+$ ]] || [[ ${#awsaccountid} != 12 ]] || [[ "$remawsaccountid" == "" ]] || ! [[ "$remawsaccountid" =~ ^[0-9]+$ ]] || [[ ${#remawsaccountid} != 12 ]]; then
     usage
 fi
@@ -64,18 +69,19 @@ fi
 echo "Verifying if pre-requisites are set-up.."
 sleep 5
 if [[ "$(which serverless)" != "" ]] && [[ "$(which aws)" != "" ]] && [[ "$(which jq)" != "" ]];then
-    echo "All pre-requisite packages are installed!!"
+    echo -e "${GREEN}All pre-requisite packages are installed!!${NC}"
 else
-    echo "Package(s)/tool(s) mentioned as pre-requisites have not been correctly installed. Please verify the installation and try re-running the script."
+    echo -e "${RED}Package(s)/tool(s) mentioned as pre-requisites have not been correctly installed. Please verify the installation and try re-running the script.${NC}"
     exit 1
 fi
 
+echo
 echo "Getting existing role details...."
 
 role_detail="$(aws iam get-role --role-name ZCSPM-Remediation-Invocation-Role --output json 2>/dev/null)"
 role_status=$?
 if [[ $role_status -ne 0 ]]; then
-    echo "Remediation role does not exist!! Please verify if the remediation framework is correctly deployed or not."
+    echo -e "${RED}Remediation role does not exist!! Please verify if the remediation framework is correctly deployed or not.${NC}"
     exit 1
 fi
 
@@ -83,16 +89,17 @@ Assume_role_policy="$(aws iam get-role --role-name ZCSPM-Remediation-Invocation-
 role_status=$?
 
 if [[ $role_status -ne 0 ]]; then
-    echo "Unable to get role details. Please contact ZCSPM support!"
+    echo -e "${RED}Unable to get role details. Please contact ZCSPM support!${NC}"
     exit 1
 fi
 
 if [[ $Assume_role_policy =~ "$awsaccountid" ]]
 then
-   echo "Role is already updated for the entered account!! You can proceed to next steps provided in the remediation document!"
+   echo -e "${RED}Role is already updated for the entered account!! You can proceed to next steps provided in the remediation document!${NC}"
    exit 1
 fi
 
+echo
 echo "Updating existing role..."
 
 Updated_Assume_role_policy="$(echo $Assume_role_policy | jq --arg awsaccountid "$awsaccountid" '.Statement[.Statement| length] |= .+{"Effect": "Allow","Principal": {"AWS": "arn:aws:iam::'$awsaccountid':root"},"Action": "sts:AssumeRole"}' 2>/dev/null )"
@@ -104,12 +111,12 @@ if [[ $append_status -eq 0 ]]; then
     aws iam update-assume-role-policy --role-name ZCSPM-Remediation-Invocation-Role --policy-document "$Updated_Assume_role_policy" 2>/dev/null
     update_status=$?
 else
-    echo "Something went wrong! Please contact ZCSPM support!"
+    echo -e "${RED}Something went wrong! Please contact ZCSPM support!${NC}"
     exit 1
 fi
 
 if [[ $update_status -eq 0 ]]; then
-    echo "Successfully updated the remediation framework role!!"
+    echo -e "${GREEN}Successfully updated the remediation framework role!!${NC}"
 else
-    echo "Something went wrong! Please contact ZCSPM support!"
+    echo -e "${RED}Something went wrong! Please contact ZCSPM support!${NC}"
 fi
