@@ -16,6 +16,57 @@ import gzip
 import base64
 import os
 
+def resource_exclusion(excludedResource_hashkey, resourceId ):
+    try:        
+        envPrefix = os.environ['envPrefix']
+    except:
+        envPrefix = ''
+        pass
+    
+    try:
+        rem_bucket = 'zcspm-rem-'+envPrefix              
+        s3Client = boto3.client('s3')
+    except Exception as e:
+        return {
+            'statusCode': 401,
+            'body': json.dumps(str(e))
+        }
+    
+    try:
+        SQL="select * from s3object"
+        data = s3Client.select_object_content(
+        Bucket=rem_bucket,
+        Key=excludedResource_hashkey,
+        ExpressionType='SQL',
+        Expression=SQL,
+        InputSerialization = { 'CompressionType': 'NONE','JSON': {'Type': 'DOCUMENT'}},
+        OutputSerialization = {'JSON': { 'RecordDelimiter': '\n',}}
+        )
+        
+        for event in data['Payload']:
+            if 'Records' in event:
+                resourceData = event['Records']['Payload'].decode('utf-8')
+
+        excludedResourceList = json.loads(resourceData)
+    except:
+        excludedResourceList = ''
+        pass
+
+    try:
+        resourceTypeExclusion = excludedResourceList['all']
+    except:
+        resourceTypeExclusion = False
+
+    try:
+        isExcluded = excludedResourceList[resourceId]
+    except:
+        isExcluded = False
+
+    if resourceTypeExclusion or isExcluded:
+        return True
+    else:
+        return False
+
 def lambda_handler(event, context):
     cloudtrail_list = ["CTMultiRegionTrail", "CTLogFileValidation","CTIsLogging"]
     elb_list = ["ClassicLBConnDraining"]
@@ -67,6 +118,11 @@ def lambda_handler(event, context):
         VerifyAccess = json.loads(event['body'])['VerifyAccess']
     except:
         VerifyAccess = ''
+
+    try:
+        excludedResourceList = json.loads(event['body'])['excludedResourceList']
+    except:
+        excludedResourceList = ''
 
     try:        
         envPrefix = os.environ['envPrefix']
@@ -128,7 +184,53 @@ def lambda_handler(event, context):
                 'statusCode': 401,
                 'body': json.dumps(str(e))
             } 
-    #endregion    
+    #endregion
+
+    #region Resource Exclusion    
+    if excludedResourceList and envPrefix:
+        try:
+            rem_bucket = 'zcspm-rem-'+envPrefix              
+            s3Client = boto3.client('s3')
+            s3Client.get_bucket_versioning(Bucket=rem_bucket)
+        except ClientError as e: 
+            print(e)
+            return {
+                'statusCode': 401,
+                'body': json.dumps(str(e))
+            }
+        except Exception as e:
+            print(e)
+            return {
+                'statusCode': 401,
+                'body': json.dumps(str(e))
+            }  
+       
+        try:
+            AWSAccountId = json.loads(event['body'])["AWSAccountId"]
+
+            hash_object = hashlib.sha256('{AWSAccountId}'.format(AWSAccountId = AWSAccountId).encode())
+            hash_key = hash_object.hexdigest() 
+            hash_key = 'excludedResourceConfig/' + hash_key + '/'  + list(excludedResourceList.keys())[0]
+
+            s3Client.put_object(Bucket=rem_bucket, Key=hash_key, Body=(bytes(json.dumps(excludedResourceList[list(excludedResourceList.keys())[0]], indent=2).encode('UTF-8'))))
+            return {
+                'statusCode': 200,
+                'body': json.dumps("Updated Resource Exclusion data")
+            }
+
+        except ClientError as e: 
+            print(e)
+            return {
+                'statusCode': 401,
+                'body': json.dumps(str(e))
+            } 
+        except Exception as e:
+            print(e)
+            return {
+                'statusCode': 401,
+                'body': json.dumps(str(e))
+            } 
+    #endregion  
 
     #region Auto-remediation
     elif cw_event_data and envPrefix:
@@ -154,13 +256,7 @@ def lambda_handler(event, context):
             try:
                 hash_object = hashlib.sha256('{AWSAccId}'.format(AWSAccId = AWSAccId).encode())
                 hash_key = hash_object.hexdigest()
-                hash_key = 'policy_config/' + hash_key
-            except ClientError as e:
-                print(e)
-                return {
-                    'statusCode': 401,
-                    'body': json.dumps(str(e))
-                }
+                policyconfig_hashkey = 'policy_config/' + hash_key
             except Exception as e:
                 print(e)
                 return {
@@ -176,7 +272,7 @@ def lambda_handler(event, context):
                 SQL="select s.RemediationPolicies from s3object s"
                 data = s3Client.select_object_content(
                 Bucket=rem_bucket,
-                Key=hash_key,
+                Key=policyconfig_hashkey,
                 ExpressionType='SQL',
                 Expression=SQL,
                 InputSerialization = { 'CompressionType': 'NONE','JSON': {'Type': 'DOCUMENT'}},
@@ -224,20 +320,30 @@ def lambda_handler(event, context):
                             Trail = TrailARN.split('/')[1]
                         else:
                             Trail = cw_event_data["responseElements"]["name"]
-                        Region = cw_event_data["awsRegion"]
-                        remediationObj = {
-                            "accountId": AWSAccId,
-                            "Trail": Trail,
-                            "Region" : Region,
-                            "policies": records
-                        }
-                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-cloudtrail', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                        response = json.loads(response['Payload'].read())
-                        print(response)
-                        return {
-                            'statusCode': 200,
-                            'body': json.dumps(response)
-                        }
+
+                        try:                            
+                            excludedResource_hashkey = 'excludedResourceConfig/' + hash_key + '/AWS::CloudTrail::Trail'
+                            isExcluded = resource_exclusion(excludedResource_hashkey, Trail)
+                        except:
+                            isExcluded = ''
+
+                        if isExcluded:
+                            print('Resource: ' + str(Trail) + ' is excluded from auto-remediation.')
+                        else:
+                            Region = cw_event_data["awsRegion"]
+                            remediationObj = {
+                                "accountId": AWSAccId,
+                                "Trail": Trail,
+                                "Region" : Region,
+                                "policies": records
+                            }
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-cloudtrail', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
                     except ClientError as e:
                         print('Error during remediation, error:' + str(e))
                     except Exception as e:
@@ -257,7 +363,7 @@ def lambda_handler(event, context):
                             lb_type='elb'
                     else:
                         try:
-                            lb_attributes=cw_event_data["requestParameters"]["attributes"]
+                            cw_event_data["requestParameters"]["attributes"]
                             lb_type='elbv2'
                         except:
                             lb_type='elb'
@@ -268,22 +374,31 @@ def lambda_handler(event, context):
                                 LoadBalancerArn = cw_event_data["responseElements"]["loadBalancers"][0]["loadBalancerArn"]
                             else:
                                 LoadBalancerArn = cw_event_data["requestParameters"]["loadBalancerArn"]
-                                
+
                             Region = cw_event_data["awsRegion"]
 
-                            remediationObj = {
-                                "accountId": AWSAccId,
-                                "LoadBalancerArn": LoadBalancerArn,
-                                "Region" : Region,
-                                "policies": records
-                            }
-                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-elbv2', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                            response = json.loads(response['Payload'].read())
-                            print(response)
-                            return {
-                                'statusCode': 200,
-                                'body': json.dumps(response)
-                            }
+                            try:                            
+                                excludedResource_hashkey = 'excludedResourceConfig/' + hash_key + '/AWS::ElasticLoadBalancingV2::LoadBalancer'
+                                isExcluded = resource_exclusion(excludedResource_hashkey, LoadBalancerArn)
+                            except:
+                                isExcluded = ''
+
+                            if isExcluded:
+                                print('Resource: ' + str(LoadBalancerArn) + ' is excluded from auto-remediation.')
+                            else:
+                                remediationObj = {
+                                    "accountId": AWSAccId,
+                                    "LoadBalancerArn": LoadBalancerArn,
+                                    "Region" : Region,
+                                    "policies": records
+                                }
+                                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-elbv2', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                                response = json.loads(response['Payload'].read())
+                                print(response)
+                                return {
+                                    'statusCode': 200,
+                                    'body': json.dumps(response)
+                                }
                         except ClientError as e:
                             print('Error during remediation, error:' + str(e))
                         except Exception as e:
@@ -294,19 +409,28 @@ def lambda_handler(event, context):
                             LoadBalancerName = cw_event_data["requestParameters"]["loadBalancerName"]
                             Region = cw_event_data["awsRegion"]
 
-                            remediationObj = {
-                                "accountId": AWSAccId,
-                                "LoadBalancerName": LoadBalancerName,
-                                "Region" : Region,
-                                "policies": records
-                            }
-                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-elb', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                            response = json.loads(response['Payload'].read())
-                            print(response)
-                            return {
-                                'statusCode': 200,
-                                'body': json.dumps(response)
-                            }
+                            try:                            
+                                excludedResource_hashkey = 'excludedResourceConfig/' + hash_key + '/AWS::ElasticLoadBalancing::LoadBalancer'
+                                isExcluded = resource_exclusion(excludedResource_hashkey, LoadBalancerName)
+                            except:
+                                isExcluded = ''
+
+                            if isExcluded:
+                                print('Resource: ' + str(LoadBalancerName) + ' is excluded from auto-remediation.')
+                            else:
+                                remediationObj = {
+                                    "accountId": AWSAccId,
+                                    "LoadBalancerName": LoadBalancerName,
+                                    "Region" : Region,
+                                    "policies": records
+                                }
+                                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-elb', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                                response = json.loads(response['Payload'].read())
+                                print(response)
+                                return {
+                                    'statusCode': 200,
+                                    'body': json.dumps(response)
+                                }
                         except ClientError as e:
                             print('Error during remediation, error:' + str(e))
                         except Exception as e:
@@ -339,20 +463,30 @@ def lambda_handler(event, context):
                     try:
                         kinesis_stream = cw_event_data["requestParameters"]["streamName"]
                         Region = cw_event_data["awsRegion"]
-                        remediationObj = {
-                            "accountId": AWSAccId,
-                            "kinesis_stream": kinesis_stream,
-                            "Region" : Region,
-                            "policies": records
-                        }
+
+                        try:                            
+                            excludedResource_hashkey = 'excludedResourceConfig/' + hash_key + '/AWS::Kinesis::Stream'
+                            isExcluded = resource_exclusion(excludedResource_hashkey, kinesis_stream)
+                        except:
+                            isExcluded = ''
+
+                        if isExcluded:
+                            print('Resource: ' + str(kinesis_stream) + ' is excluded from auto-remediation.')
+                        else:
+                            remediationObj = {
+                                "accountId": AWSAccId,
+                                "kinesis_stream": kinesis_stream,
+                                "Region" : Region,
+                                "policies": records
+                            }
                         
-                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-kinesis', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                        response = json.loads(response['Payload'].read())
-                        print(response)
-                        return {
-                            'statusCode': 200,
-                            'body': json.dumps(response)
-                        }
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-kinesis', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
                     except ClientError as e:
                         print('Error during remediation, error:' + str(e))
                     except Exception as e:
@@ -368,25 +502,34 @@ def lambda_handler(event, context):
                         KeyId = cw_event_data["requestParameters"]["keyId"]
                         Region = cw_event_data["awsRegion"]
 
-                    try: 
-                        remediationObj = {
-                            "accountId": AWSAccId,
-                            "KeyId": KeyId,
-                            "Region" : Region,
-                            "policies": records
-                        }
+                    try:                            
+                        excludedResource_hashkey = 'excludedResourceConfig/' + hash_key + '/AWS::KMS::Key'
+                        isExcluded = resource_exclusion(excludedResource_hashkey, KeyId)
+                    except:
+                        isExcluded = ''
+
+                    if isExcluded:
+                        print('Resource: ' + str(KeyId) + ' is excluded from auto-remediation.')
+                    else:
+                        try:
+                            remediationObj = {
+                                "accountId": AWSAccId,
+                                "KeyId": KeyId,
+                                "Region" : Region,
+                                "policies": records
+                            }
                         
-                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-kms', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                        response = json.loads(response['Payload'].read())
-                        print(response)
-                        return {
-                            'statusCode': 200,
-                            'body': json.dumps(response)
-                        }
-                    except ClientError as e:
-                        print('Error during remediation, error:' + str(e))
-                    except Exception as e:
-                        print('Error during remediation, error:' + str(e))
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-kms', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
+                        except ClientError as e:
+                            print('Error during remediation, error:' + str(e))
+                        except Exception as e:
+                            print('Error during remediation, error:' + str(e))
                 #endregion
 
                 #region redshift sub-orchestrator call
@@ -394,20 +537,30 @@ def lambda_handler(event, context):
                     try:
                         redshift = cw_event_data["requestParameters"]["clusterIdentifier"]
                         Region = cw_event_data["awsRegion"]
-                        remediationObj = {
-                            "accountId": AWSAccId,
-                            "redshift": redshift,
-                            "Region" : Region,
-                            "policies": records
-                        }
+
+                        try:                            
+                            excludedResource_hashkey = 'excludedResourceConfig/' + hash_key + '/AWS::Redshift::Cluster'
+                            isExcluded = resource_exclusion(excludedResource_hashkey, redshift)
+                        except:
+                            isExcluded = ''
+
+                        if isExcluded:
+                            print('Resource: ' + str(redshift) + ' is excluded from auto-remediation.')
+                        else:
+                            remediationObj = {
+                                "accountId": AWSAccId,
+                                "redshift": redshift,
+                                "Region" : Region,
+                                "policies": records
+                            }
                         
-                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-redshift', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                        response = json.loads(response['Payload'].read())
-                        print(response)
-                        return {
-                            'statusCode': 200,
-                            'body': json.dumps(response)
-                        }
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-redshift', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
                     except ClientError as e:
                         print('Error during remediation, error:' + str(e))
                     except Exception as e:
@@ -418,21 +571,31 @@ def lambda_handler(event, context):
                 if EventName in ["CreateBucket", "PutBucketAcl", "DeleteBucketEncryption", "PutBucketVersioning", "PutBucketPublicAccessBlock", "PutAccelerateConfiguration","PutBucketLogging"]:
                     try:
                         bucket = cw_event_data["requestParameters"]["bucketName"]
-                        Region = cw_event_data["awsRegion"]
-                        remediationObj = {
-                            "accountId": AWSAccId,
-                            "bucket": bucket,
-                            "Region" : Region,
-                            "policies": records
-                        }
+
+                        try:                            
+                            excludedResource_hashkey = 'excludedResourceConfig/' + hash_key + '/AWS::S3::Bucket'
+                            isExcluded = resource_exclusion(excludedResource_hashkey, bucket)
+                        except:
+                            isExcluded = ''
+
+                        if isExcluded:
+                            print('Resource: ' + str(bucket) + ' is excluded from auto-remediation.')
+                        else:
+                            Region = cw_event_data["awsRegion"]
+                            remediationObj = {
+                                "accountId": AWSAccId,
+                                "bucket": bucket,
+                                "Region" : Region,
+                                "policies": records
+                            }
                         
-                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-s3-bucket', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                        response = json.loads(response['Payload'].read())
-                        print(response)
-                        return {
-                            'statusCode': 200,
-                            'body': json.dumps(response)
-                        }
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-s3-bucket', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
                     except ClientError as e:
                         print('Error during remediation, error:' + str(e))
                     except Exception as e:
@@ -451,20 +614,29 @@ def lambda_handler(event, context):
                             NeptuneClusterName = cw_event_data["responseElements"]["dBClusterIdentifier"]
                             Region = cw_event_data["awsRegion"]
 
-                            remediationObj = {
-                                "accountId": AWSAccId,
-                                "NeptuneClusterName": NeptuneClusterName,
-                                "Region" : Region,
-                                "policies": records
-                            }
+                            try:                            
+                                excludedResource_hashkey = 'excludedResourceConfig/' + hash_key + '/AWS::Neptune::DBCluster'
+                                isExcluded = resource_exclusion(excludedResource_hashkey, NeptuneClusterName)
+                            except:
+                                isExcluded = ''
+
+                            if isExcluded:
+                                print('Resource: ' + str(NeptuneClusterName) + ' is excluded from auto-remediation.')
+                            else:
+                                remediationObj = {
+                                    "accountId": AWSAccId,
+                                    "NeptuneClusterName": NeptuneClusterName,
+                                    "Region" : Region,
+                                    "policies": records
+                                }
                             
-                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-neptune-cluster', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                            response = json.loads(response['Payload'].read())
-                            print(response)
-                            return {
-                                'statusCode': 200,
-                                'body': json.dumps(response)
-                            }
+                                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-neptune-cluster', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                                response = json.loads(response['Payload'].read())
+                                print(response)
+                                return {
+                                    'statusCode': 200,
+                                    'body': json.dumps(response)
+                                }
                         except ClientError as e:
                             print('Error during remediation, error:' + str(e))
                         except Exception as e:
@@ -483,20 +655,29 @@ def lambda_handler(event, context):
                             NeptuneInstanceName = cw_event_data["responseElements"]["dBInstanceIdentifier"]
                             Region = cw_event_data["awsRegion"]
 
-                            remediationObj = {
-                                "accountId": AWSAccId,
-                                "NeptuneInstanceName": NeptuneInstanceName,
-                                "Region" : Region,
-                                "policies": records
-                            }
+                            try:                            
+                                excludedResource_hashkey = 'excludedResourceConfig/' + hash_key + '/AWS::Neptune::DBInstance'
+                                isExcluded = resource_exclusion(excludedResource_hashkey, NeptuneInstanceName)
+                            except:
+                                isExcluded = ''
+
+                            if isExcluded:
+                                print('Resource: ' + str(NeptuneInstanceName) + ' is excluded from auto-remediation.')
+                            else:
+                                remediationObj = {
+                                    "accountId": AWSAccId,
+                                    "NeptuneInstanceName": NeptuneInstanceName,
+                                    "Region" : Region,
+                                    "policies": records
+                                }
                             
-                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-neptune-instance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                            response = json.loads(response['Payload'].read())
-                            print(response)
-                            return {
-                                'statusCode': 200,
-                                'body': json.dumps(response)
-                            }
+                                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-neptune-instance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                                response = json.loads(response['Payload'].read())
+                                print(response)
+                                return {
+                                    'statusCode': 200,
+                                    'body': json.dumps(response)
+                                }
                         except ClientError as e:
                             print('Error during remediation, error:' + str(e))
                         except Exception as e:
@@ -509,20 +690,29 @@ def lambda_handler(event, context):
                         DynamodbTableName = cw_event_data["requestParameters"]["tableName"]
                         Region = cw_event_data["awsRegion"]
 
-                        remediationObj = {
-                            "accountId": AWSAccId,
-                            "DynamodbTableName": DynamodbTableName,
-                            "Region" : Region,
-                            "policies": records
-                        }
+                        try:                            
+                            excludedResource_hashkey = 'excludedResourceConfig/' + hash_key + '/AWS::DynamoDB::Table'
+                            isExcluded = resource_exclusion(excludedResource_hashkey, DynamodbTableName)
+                        except:
+                            isExcluded = ''
+
+                        if isExcluded:
+                            print('Resource: ' + str(DynamodbTableName) + ' is excluded from auto-remediation.')
+                        else:
+                            remediationObj = {
+                                "accountId": AWSAccId,
+                                "DynamodbTableName": DynamodbTableName,
+                                "Region" : Region,
+                                "policies": records
+                            }
                         
-                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-dynamodb', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                        response = json.loads(response['Payload'].read())
-                        print(response)
-                        return {
-                            'statusCode': 200,
-                            'body': json.dumps(response)
-                        }
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-dynamodb', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
                     except ClientError as e:
                         print('Error during remediation, error:' + str(e))
                     except Exception as e:
@@ -535,20 +725,29 @@ def lambda_handler(event, context):
                         AutoScalingGroupName = cw_event_data["requestParameters"]["autoScalingGroupName"]
                         Region = cw_event_data["awsRegion"]
 
-                        remediationObj = {
-                            "accountId": AWSAccId,
-                            "AutoScalingGroupName": AutoScalingGroupName,
-                            "Region" : Region,
-                            "policies": records
-                        }
+                        try:                            
+                            excludedResource_hashkey = 'excludedResourceConfig/' + hash_key + '/AWS::AutoScaling::AutoScalingGroup'
+                            isExcluded = resource_exclusion(excludedResource_hashkey, AutoScalingGroupName)
+                        except:
+                            isExcluded = ''
+
+                        if isExcluded:
+                            print('Resource: ' + str(AutoScalingGroupName) + ' is excluded from auto-remediation.')
+                        else:
+                            remediationObj = {
+                                "accountId": AWSAccId,
+                                "AutoScalingGroupName": AutoScalingGroupName,
+                                "Region" : Region,
+                                "policies": records
+                            }
                         
-                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-asg', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                        response = json.loads(response['Payload'].read())
-                        print(response)
-                        return {
-                            'statusCode': 200,
-                            'body': json.dumps(response)
-                        }
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-asg', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
                     except ClientError as e:
                         print('Error during remediation, error:' + str(e))
                     except Exception as e:
@@ -564,20 +763,29 @@ def lambda_handler(event, context):
                             StackName = ''
                         Region = cw_event_data["awsRegion"]
 
-                        remediationObj = {
-                            "accountId": AWSAccId,
-                            "StackName": StackName,
-                            "Region" : Region,
-                            "policies": records
-                        }
+                        try:                            
+                            excludedResource_hashkey = 'excludedResourceConfig/' + hash_key + '/AWS::CloudFormation::Stack'
+                            isExcluded = resource_exclusion(excludedResource_hashkey, StackName)
+                        except:
+                            isExcluded = ''
+
+                        if isExcluded:
+                            print('Resource: ' + str(StackName) + ' is excluded from auto-remediation.')
+                        else:
+                            remediationObj = {
+                                "accountId": AWSAccId,
+                                "StackName": StackName,
+                                "Region" : Region,
+                                "policies": records
+                            }
                         
-                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-cloudformation', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                        response = json.loads(response['Payload'].read())
-                        print(response)
-                        return {
-                            'statusCode': 200,
-                            'body': json.dumps(response)
-                        }
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-cloudformation', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
                     except ClientError as e:
                         print('Error during remediation, error:' + str(e))
                     except Exception as e:
@@ -593,23 +801,36 @@ def lambda_handler(event, context):
                             else:
                                 InstanceID = cw_event_data["responseElements"]["instancesSet"]["items"][0]["instanceId"]
                         except:
-                            print("EC2 Event "+EventName+" Not Supported due to lack of data")
+                            return {
+                                'statusCode': 400,
+                                'body': json.dumps("EC2 Event: "+EventName+" not supported due to lack of data")
+                            }
+
                         Region = cw_event_data["awsRegion"]
 
-                        remediationObj = {
-                            "accountId": AWSAccId,
-                            "InstanceID": InstanceID,
-                            "Region" : Region,
-                            "policies": records
-                        }
+                        try:                            
+                            excludedResource_hashkey = 'excludedResourceConfig/' + hash_key + '/AWS::EC2::Instance'
+                            isExcluded = resource_exclusion(excludedResource_hashkey, InstanceID)
+                        except:
+                            isExcluded = ''
+
+                        if isExcluded:
+                            print('Resource: ' + str(InstanceID) + ' is excluded from auto-remediation.')
+                        else:
+                            remediationObj = {
+                                "accountId": AWSAccId,
+                                "InstanceID": InstanceID,
+                                "Region" : Region,
+                                "policies": records
+                            }
                         
-                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-ec2-instance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                        response = json.loads(response['Payload'].read())
-                        print(response)
-                        return {
-                            'statusCode': 200,
-                            'body': json.dumps(response)
-                        }
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-ec2-instance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
                     except ClientError as e:
                         print('Error during remediation, error:' + str(e))
                     except Exception as e:
@@ -619,11 +840,21 @@ def lambda_handler(event, context):
                 #sqs sub-orchestrator call
                 if EventName in ["CreateQueue", "SetQueueAttributes"]:
                     try:
-                        try:
-                            Queue_Url = cw_event_data["requestParameters"]["queueUrl"]
-                        except:
-                            Queue_Url = cw_event_data["responseElements"]["queueUrl"]
-                        Region = cw_event_data["awsRegion"]
+                        Queue_Url = cw_event_data["requestParameters"]["queueUrl"]
+                    except:
+                        Queue_Url = cw_event_data["responseElements"]["queueUrl"]
+                    
+                    Region = cw_event_data["awsRegion"]
+
+                    try:                            
+                        excludedResource_hashkey = 'excludedResourceConfig/' + hash_key + '/AWS::SQS::Queue'
+                        isExcluded = resource_exclusion(excludedResource_hashkey, Queue_Url)
+                    except:
+                        isExcluded = ''
+
+                    if isExcluded:
+                        print('Resource: ' + str(Queue_Url) + ' is excluded from auto-remediation.')
+                    else:
                         remediationObj = {
                             "accountId": AWSAccId,
                             "QueueUrl": Queue_Url,
@@ -631,17 +862,18 @@ def lambda_handler(event, context):
                             "policies": records
                         }
                         
-                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-sqs', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                        response = json.loads(response['Payload'].read())
-                        print(response)
-                        return {
-                            'statusCode': 200,
-                            'body': json.dumps(response)
-                        }
-                    except ClientError as e:
-                        print('Error during remediation, error:' + str(e))
-                    except Exception as e:
-                        print('Error during remediation, error:' + str(e))
+                        try:
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-sqs', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
+                        except ClientError as e:
+                            print('Error during remediation, error:' + str(e))
+                        except Exception as e:
+                            print('Error during remediation, error:' + str(e))
                 #endregion
 
                 #rds-snapshot sub-orchestrator call
@@ -653,20 +885,29 @@ def lambda_handler(event, context):
                             RDSSnapshotName = cw_event_data["responseElements"]["dBSnapshotIdentifier"]
                         Region = cw_event_data["awsRegion"]
 
-                        remediationObj = {
-                            "accountId": AWSAccId,
-                            "RDSSnapshotName": RDSSnapshotName,
-                            "Region" : Region,
-                            "policies": records
-                        }
+                        try:                            
+                            excludedResource_hashkey = 'excludedResourceConfig/' + hash_key + '/AWS::RDS::Snapshot'
+                            isExcluded = resource_exclusion(excludedResource_hashkey, RDSSnapshotName)
+                        except:
+                            isExcluded = ''
+
+                        if isExcluded:
+                            print('Resource: ' + str(RDSSnapshotName) + ' is excluded from auto-remediation.')
+                        else:
+                            remediationObj = {
+                                "accountId": AWSAccId,
+                                "RDSSnapshotName": RDSSnapshotName,
+                                "Region" : Region,
+                                "policies": records
+                            }
                         
-                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-rdssnapshot', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                        response = json.loads(response['Payload'].read())
-                        print(response)
-                        return {
-                            'statusCode': 200,
-                            'body': json.dumps(response)
-                        }
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-rdssnapshot', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
                     except ClientError as e:
                         print('Error during remediation, error:' + str(e))
                     except Exception as e:
@@ -758,23 +999,32 @@ def lambda_handler(event, context):
 
                     if 'aurora' in str(DBEngine):
                         try:
-                            print("started rds cluster lambda invocation")
                             RDSClusterName = cw_event_data["responseElements"]["dBClusterIdentifier"]
                             Region = cw_event_data["awsRegion"]
-                            remediationObj = {
-                                "accountId": AWSAccId,
-                                "RDSClusterName": RDSClusterName,
-                                "Region" : Region,
-                                "policies": records
-                            }
+
+                            try:                            
+                                excludedResource_hashkey = 'excludedResourceConfig/' + hash_key + '/AWS::RDS::DBCluster::Aurora'
+                                isExcluded = resource_exclusion(excludedResource_hashkey, RDSClusterName)
+                            except:
+                                isExcluded = ''
+
+                            if isExcluded:
+                                print('Resource: ' + str(RDSClusterName) + ' is excluded from auto-remediation.')
+                            else:
+                                remediationObj = {
+                                    "accountId": AWSAccId,
+                                    "RDSClusterName": RDSClusterName,
+                                    "Region" : Region,
+                                    "policies": records
+                                }
                             
-                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-rdscluster', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                            response = json.loads(response['Payload'].read())
-                            print(response)
-                            return {
-                                'statusCode': 200,
-                                'body': json.dumps(response)
-                            }
+                                response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-rdscluster', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                                response = json.loads(response['Payload'].read())
+                                print(response)
+                                return {
+                                    'statusCode': 200,
+                                    'body': json.dumps(response)
+                                }
                         except ClientError as e:
                             print('Error during remediation, error:' + str(e))
                         except Exception as e:
@@ -787,20 +1037,30 @@ def lambda_handler(event, context):
                         print("started rds instance lambda invocation")
                         RDSInstanceName = cw_event_data["responseElements"]["dBInstanceIdentifier"]
                         Region = cw_event_data["awsRegion"]
-                        remediationObj = {
-                            "accountId": AWSAccId,
-                            "RDSInstanceName": RDSInstanceName,
-                            "Region" : Region,
-                            "policies": records
-                        }
+
+                        try:                            
+                            excludedResource_hashkey = 'excludedResourceConfig/' + hash_key + '/AWS::RDS::DBInstance'
+                            isExcluded = resource_exclusion(excludedResource_hashkey, RDSInstanceName)
+                        except:
+                            isExcluded = ''
+
+                        if isExcluded:
+                            print('Resource: ' + str(RDSInstanceName) + ' is excluded from auto-remediation.')
+                        else:
+                            remediationObj = {
+                                "accountId": AWSAccId,
+                                "RDSInstanceName": RDSInstanceName,
+                                "Region" : Region,
+                                "policies": records
+                            }
                         
-                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-rdsinstance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                        response = json.loads(response['Payload'].read())
-                        print(response)
-                        return {
-                            'statusCode': 200,
-                            'body': json.dumps(response)
-                        }
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-rdsinstance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
                     except ClientError as e:
                         print('Error during remediation, error:' + str(e))
                     except Exception as e:
@@ -813,20 +1073,29 @@ def lambda_handler(event, context):
                         FilesystemID = cw_event_data["requestParameters"]["fileSystemId"]
                         Region = cw_event_data["awsRegion"]
 
-                        remediationObj = {
-                            "accountId": AWSAccId,
-                            "FilesystemID": FilesystemID,
-                            "Region" : Region,
-                            "policies": records
-                        }
+                        try:                            
+                            excludedResource_hashkey = 'excludedResourceConfig/' + hash_key + '/AWS::FSx::FileSystem'
+                            isExcluded = resource_exclusion(excludedResource_hashkey, FilesystemID)
+                        except:
+                            isExcluded = ''
+
+                        if isExcluded:
+                            print('Resource: ' + str(FilesystemID) + ' is excluded from auto-remediation.')
+                        else:
+                            remediationObj = {
+                                "accountId": AWSAccId,
+                                "FilesystemID": FilesystemID,
+                                "Region" : Region,
+                                "policies": records
+                            }
                         
-                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-fsx-windows', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                        response = json.loads(response['Payload'].read())
-                        print(response)
-                        return {
-                            'statusCode': 200,
-                            'body': json.dumps(response)
-                        }
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-fsx-windows', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
                     except ClientError as e:
                         print('Error during remediation, error:' + str(e))
                     except Exception as e:
@@ -839,20 +1108,29 @@ def lambda_handler(event, context):
                         StreamName = cw_event_data["requestParameters"]["deliveryStreamName"]
                         Region = cw_event_data["awsRegion"]
 
-                        remediationObj = {
-                            "accountId": AWSAccId,
-                            "StreamName": StreamName,
-                            "Region" : Region,
-                            "policies": records
-                        }
+                        try:                            
+                            excludedResource_hashkey = 'excludedResourceConfig/' + hash_key + '/AWS::KinesisFirehose::DeliveryStream'
+                            isExcluded = resource_exclusion(excludedResource_hashkey, StreamName)
+                        except:
+                            isExcluded = ''
+
+                        if isExcluded:
+                            print('Resource: ' + str(StreamName) + ' is excluded from auto-remediation.')
+                        else:
+                            remediationObj = {
+                                "accountId": AWSAccId,
+                                "StreamName": StreamName,
+                                "Region" : Region,
+                                "policies": records
+                            }
                         
-                        response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-kinesis-firehose', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
-                        response = json.loads(response['Payload'].read())
-                        print(response)
-                        return {
-                            'statusCode': 200,
-                            'body': json.dumps(response)
-                        }
+                            response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-kinesis-firehose', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))
+                            response = json.loads(response['Payload'].read())
+                            print(response)
+                            return {
+                                'statusCode': 200,
+                                'body': json.dumps(response)
+                            }
                     except ClientError as e:
                         print('Error during remediation, error:' + str(e))
                     except Exception as e:
