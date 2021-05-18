@@ -180,7 +180,7 @@ if [[ $org_detail ]]; then
     for awsaccountid in "${valid_memberaccounts[@]}"; do
 
         if [[ "$awsaccountid" -ne "$remawsaccountid" ]]; then
-            if [[ "$awsaccountid" -ne "$configured_account" ]]; then
+            if ! [[ $configured_account =~ "$awsaccountid" ]]; then
                 echo
                 echo "Decommissioning framework from member account: $awsaccountid"
                 roleArn='arn:aws:iam::'$awsaccountid':role/'$roleName
