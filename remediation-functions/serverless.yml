@@ -10,7 +10,7 @@ provider:
   runtime: python3.7
   stage: ${opt:accounthash}
   region: ${opt:region, 'us-east-1'}
-  remediationversion: ${opt:remediationversion, '2.2'}
+  remediationversion: ${opt:remediationversion, '2.3'}
   memorySize: 10240
   versionFunctions: false
   deploymentBucket:
@@ -23,7 +23,7 @@ functions:
     timeout: 900
     role: ZCSPMLambdaRole
     environment:
-      Version: ${opt:remediationversion, '2.2'}
+      Version: ${opt:remediationversion, '2.3'}
       envPrefix: ${opt:accounthash}
     events:
       - cloudwatchEvent:
@@ -333,7 +333,7 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '2.2'}
+      Version: ${opt:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'zcspm-remediation'}
 
@@ -344,7 +344,7 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '2.2'}
+      Version: ${opt:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'zcspm-remediation'}
 
@@ -355,7 +355,7 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '2.2'}
+      Version: ${opt:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'zcspm-remediation'}
   
@@ -366,7 +366,7 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '2.2'}
+      Version: ${opt:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'zcspm-remediation'}
   
@@ -377,7 +377,7 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '2.2'}
+      Version: ${opt:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'zcspm-remediation'}
   
@@ -388,7 +388,7 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '2.2'}
+      Version: ${opt:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'zcspm-remediation'}
   
@@ -399,7 +399,7 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '2.2'}
+      Version: ${opt:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'zcspm-remediation'}
   
@@ -410,53 +410,53 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '2.2'}
+      Version: ${opt:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
       Environment: ${opt:env, 'zcspm-remediation'}
   
-  docdb_instance:
-    handler: docdb_instance/docdbinstance_suborchestrator.lambda_handler
-    name: zcspm-aws-remediate-documentdb-instance
-    timeout: 900
-    role: ZCSPMLambdaRole
-    tags:
-      ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '2.2'}
-      Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+  # docdb_instance:
+  #   handler: docdb_instance/docdbinstance_suborchestrator.lambda_handler
+  #   name: zcspm-aws-remediate-documentdb-instance
+  #   timeout: 900
+  #   role: ZCSPMLambdaRole
+  #   tags:
+  #     ServiceName: auto-remediation-lambda
+  #     Version: ${opt:remediationversion}
+  #     Description: ZCSPM automatic remediation solution for making cloud resource compliant
+  #     Environment: ${opt:env, 'zcspm-remediation'}
   
-  docdb_cluster:
-    handler: docdb_cluster/docdbcluster_suborchestrator.lambda_handler
-    name: zcspm-aws-remediate-documentdb-cluster
-    timeout: 900
-    role: ZCSPMLambdaRole
-    tags:
-      ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '2.2'}
-      Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+  # docdb_cluster:
+  #   handler: docdb_cluster/docdbcluster_suborchestrator.lambda_handler
+  #   name: zcspm-aws-remediate-documentdb-cluster
+  #   timeout: 900
+  #   role: ZCSPMLambdaRole
+  #   tags:
+  #     ServiceName: auto-remediation-lambda
+  #     Version: ${opt:remediationversion}
+  #     Description: ZCSPM automatic remediation solution for making cloud resource compliant
+  #     Environment: ${opt:env, 'zcspm-remediation'}
 
-  fsx_windows:
-    handler: fsx_windows/fsx_windows_suborchestrator.lambda_handler
-    name: zcspm-aws-remediate-fsx-windows
-    timeout: 900
-    role: ZCSPMLambdaRole
-    tags:
-      ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '2.2'}
-      Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+  # fsx_windows:
+  #   handler: fsx_windows/fsx_windows_suborchestrator.lambda_handler
+  #   name: zcspm-aws-remediate-fsx-windows
+  #   timeout: 900
+  #   role: ZCSPMLambdaRole
+  #   tags:
+  #     ServiceName: auto-remediation-lambda
+  #     Version: ${opt:remediationversion}
+  #     Description: ZCSPM automatic remediation solution for making cloud resource compliant
+  #     Environment: ${opt:env, 'zcspm-remediation'}
   
-  kinesis_firehose:
-    handler: kinesis_firehose/kinesis_firehose_suborchestrator.lambda_handler
-    name: zcspm-aws-remediate-kinesis-firehose
-    timeout: 900
-    role: ZCSPMLambdaRole
-    tags:
-      ServiceName: auto-remediation-lambda
-      Version: ${opt:version, '2.2'}
-      Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+  # kinesis_firehose:
+  #   handler: kinesis_firehose/kinesis_firehose_suborchestrator.lambda_handler
+  #   name: zcspm-aws-remediate-kinesis-firehose
+  #   timeout: 900
+  #   role: ZCSPMLambdaRole
+  #   tags:
+  #     ServiceName: auto-remediation-lambda
+  #     Version: ${opt:remediationversion}
+  #     Description: ZCSPM automatic remediation solution for making cloud resource compliant
+  #     Environment: ${opt:env, 'zcspm-remediation'}
     
 resources:
   Resources:

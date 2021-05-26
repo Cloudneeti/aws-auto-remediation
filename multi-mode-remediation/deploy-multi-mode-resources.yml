@@ -35,11 +35,17 @@ Resources:
                     SSEAlgorithm: AES256
         LifecycleConfiguration:
             Rules:
-            - Id: Delete-ct-logs
+            - Id: deleteCTLogs
               Prefix: zcspm-ctlogs/
               Status: Enabled
               ExpirationInDays: 1
               NoncurrentVersionExpirationInDays: 1
+            - Id: deleteCTLogMarkers
+              Prefix: zcspm-ctlogs/
+              Status: Enabled
+              ExpiredObjectDeleteMarker: True
+              AbortIncompleteMultipartUpload:
+                DaysAfterInitiation: 1
         VersioningConfiguration:
             Status: Enabled
         PublicAccessBlockConfiguration:
