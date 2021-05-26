@@ -14,7 +14,7 @@
     The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-    Version: 2.2
+    Version: 2.3
     # PREREQUISITE
       - Install aws cli
         Link : https://docs.aws.amazon.com/cli/latest/userguide/install-linux-al2017.html
@@ -53,7 +53,7 @@
 
 usage() { echo "Usage: $0 [-a <12-digit-account-id>] [-z <12-digit-zcspm-account-id>] [-p <primary-deployment-region>] [-e <environment-prefix>] [-v version] [-s <list of regions where auto-remediation is to enabled>] [-g <select auto remediation deployment for global services>]" 1>&2; exit 1; }
 env="dev"
-version="2.2"
+version="2.3"
 secondaryregions=('na')
 while getopts "a:z:p:e:v:s:g:" o; do
     case "${o}" in
@@ -278,10 +278,9 @@ else
     echo "Regional Deployments skipped with input na!.."
 fi
 
-echo "Deploying Global Services Auto remediation Template...."
-
 #Global services deployment
 if [[ "$globalservices" == "yes" ]] || [[ "$globalservices" == "y" ]]; then
+    echo "Deploying Global Services Auto remediation Template...."
     aws cloudformation deploy --template-file deploy-global-services-invoker-function.yml --stack-name zcspm-rem-global-resources-$env-$acc_sha --parameter-overrides awsaccountid=$awsaccountid remediationregion=$primary_deployment --region "us-east-1" --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
 
     sleep 5

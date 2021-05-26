@@ -39,7 +39,7 @@ Following dependencies should be present on the machine before proceeding to onb
 
 	Execute the below command to install a serverless module,
 
-	`# npm install –g serverless`
+	`# npm install serverless -g`
 
 - JQ for bash terminal
 
@@ -96,7 +96,7 @@ Perform below steps to deploy remediation framework on configured AWS account
 
 ### Configure Multi-Account Remediation
 
-In case you want to use same remediation framework for remediation of multiple AWS accounts then perform the below steps to configure multi-account remediation setup,
+If you want to use same remediation framework for remediation of multiple AWS accounts then perform the below steps to configure multi-account remediation setup,
 
 1. Deploy remediation framework as given in above steps
 2. Update role on AWS account where remediation framework is present
@@ -118,6 +118,7 @@ In case you want to use same remediation framework for remediation of multiple A
 4. Switch to `multi-mode-remediation` directory
 
 	`# cd multi-mode-remediation`
+
 5. Configure multi-account remediation using below commands to deploy in specific or all regions:
 
 	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <list of regions where auto-remediation is to enabled>  -g <select auto remediation deployment for global services>`
@@ -127,7 +128,8 @@ In case you want to use same remediation framework for remediation of multiple A
 	`# bash configure-multi-mode-remediation.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -v <version> -s <all>  -g <select auto remediation deployment for global services>`
 
    - If the user opts-in for global services [using -g parameter], remediation framework components will be deployed in US East (N. Virginia) region by default.
-   - This command creates the required resources like Cloudtrail, Cloudwatch event rules, Remediation functions and roles required to perform cross-account remediation 
+   - This command creates the required resources like Cloudtrail, Cloudwatch event rules, Remediation functions and roles required to perform cross-account remediation
+
 6. Verify multi-account remediation setup
 
 	`# bash verify-multi-mode-remediation-setup.sh -a <12-digit-account-id> -r <12-digit-account-id> -p <primary-deployment-region> -e <environment-prefix> -s <list of regions where auto-remediation is to be verified>`
@@ -138,7 +140,7 @@ In case you want to use same remediation framework for remediation of multiple A
 
 ### Configure Multi-Account Remediation for AWS Organization based setup
 
-In case you want to use same remediation framework for remediation of multiple AWS accounts based in a single AWS organization setup, then perform the below steps to configure organization based multi-account remediation setup
+If you want to use same remediation framework for remediation of multiple AWS accounts based in a single AWS organization setup, then perform the below steps to configure organization based multi-account remediation setup
 
 For the Organization based setup to work, the user should have:	
 - AWS Accounts under an Organization
@@ -160,9 +162,10 @@ For the Organization based setup to work, the user should have:
 
    - If the user opts-in for global services [using -g parameter], remediation framework components will be deployed in US East (N. Virginia) region by default.
    - This command creates the required resources like Cloudtrail, Cloudwatch event rules, Remediation functions and roles required to perform cross-account remediation across the member accounts in the organization.
-## Configure remediation on ZCSPM Account
 
-On ZCSPM you need to have AWS account on-boarded. 
+## Configure remediation on ZCSPM
+
+On ZCSPM you need to have an AWS account on-boarded. 
 
 ### Configure Account Remediation
 1. Login to ZCSPM portal
@@ -171,16 +174,16 @@ On ZCSPM you need to have AWS account on-boarded.
 
    ![configure-zcspm-remediation.png](images/configure-zcspm-remediation.png)
 
-### Enable Remediation Policies
+### Configure Policies for remediation
 After configuring remediation settings, enable the remediation policies on ZCSPM portal.
 
 ![configure-remediation-policies.png](images/configure-remediation-policies.png)
 
-Refer, [ZCSPM docs](https://docs.cloudneeti.com) to perform remediation of existing resources. 
+Refer [ZCSPM docs](https://docs.cloudneeti.com) to perform remediation of existing resources. 
 
 
 
-## Remediation Policies Supported
+## Policies supported for Auto-Remediation
 Refer [here](remediation-policies.md) for available remediation policies.
 
 ## FAQ

@@ -28,16 +28,47 @@ Resources:
                     SSEAlgorithm: AES256
         LifecycleConfiguration:
             Rules:
-            - Id: Delete-ct-logs
+            - Id: deleteCTLogs
               Prefix: zcspm-ctlogs/
               Status: Enabled
-              ExpirationInDays: 2
+              ExpirationInDays: 1
               NoncurrentVersionExpirationInDays: 1
-            - Id: Transition-policyconfig
+            - Id: deleteCTLogMarkers
+              Prefix: zcspm-ctlogs/
+              Status: Enabled
+              ExpiredObjectDeleteMarker: True
+              AbortIncompleteMultipartUpload:
+                DaysAfterInitiation: 1
+            - Id: transitionPolicyConfig
               Prefix: policy_config/
               Status: Enabled
-              ExpirationInDays: 365
-              NoncurrentVersionExpirationInDays: 60
+              NoncurrentVersionExpirationInDays: 1
+            - Id: deletePolicyConfigMarkers
+              Prefix: policy_config/
+              Status: Enabled
+              ExpiredObjectDeleteMarker: True
+              AbortIncompleteMultipartUpload:
+                DaysAfterInitiation: 1
+            - Id: transitionResourceConfig
+              Prefix: excludedResourceConfig/
+              Status: Enabled
+              NoncurrentVersionExpirationInDays: 1
+            - Id: deleteResourceConfigMarkers
+              Prefix: excludedResourceConfig/
+              Status: Enabled
+              ExpiredObjectDeleteMarker: True
+              AbortIncompleteMultipartUpload:
+                DaysAfterInitiation: 1
+            - Id: transitionCodeStack
+              Prefix: serverless/
+              Status: Enabled
+              NoncurrentVersionExpirationInDays: 1
+            - Id: deleteCodeStackMarkers
+              Prefix: serverless/
+              Status: Enabled
+              ExpiredObjectDeleteMarker: True
+              AbortIncompleteMultipartUpload:
+                DaysAfterInitiation: 1
         VersioningConfiguration:
             Status: Enabled
         PublicAccessBlockConfiguration:
