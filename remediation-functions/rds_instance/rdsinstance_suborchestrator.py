@@ -55,6 +55,7 @@ def lambda_handler(event, context):
             RDSInstanceName = event["RDSInstanceName"]
             records_json = json.loads(event["policies"])
             records = records_json["RemediationPolicies"]
+            Engine = event["Engine"]
         except:
             Region = ""
 
@@ -73,7 +74,7 @@ def lambda_handler(event, context):
                 'body': str(e)
             }
 
-        if set(backup_retention).intersection(set(records)):
+        if set(backup_retention).intersection(set(records)) and 'aurora' not in str(Engine):
             try:
                 rdsinstance_backupretention.run_remediation(rds,RDSInstanceName)
             except ClientError as e:
@@ -89,7 +90,7 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }                
 
-        if set(copytagstosnapshot).intersection(set(records)):
+        if set(copytagstosnapshot).intersection(set(records)) and 'aurora' not in str(Engine):
             try:
                 rdsinstance_copytagstosnapshot.run_remediation(rds,RDSInstanceName)
             except ClientError as e:
@@ -105,7 +106,7 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
         
-        if set(deletion_protection).intersection(set(records)):
+        if set(deletion_protection).intersection(set(records)) and 'aurora' not in str(Engine):
             try:
                 rdsinstance_deletion_protection.run_remediation(rds,RDSInstanceName)
             except ClientError as e:
@@ -169,7 +170,7 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
         
-        if set(instance_logexport).intersection(set(records)):
+        if set(instance_logexport).intersection(set(records)) and 'aurora' not in str(Engine):
             try:
                 rdsinstance_logsenabled.run_remediation(rds,RDSInstanceName)
             except ClientError as e:
@@ -185,7 +186,7 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
         
-        if set(instance_iam_auth).intersection(set(records)):
+        if set(instance_iam_auth).intersection(set(records)) and 'aurora' not in str(Engine):
             try:
                 rdsinstance_iam_auth.run_remediation(rds,RDSInstanceName)
             except ClientError as e:
@@ -201,7 +202,7 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
         
-        if set(db_parameters).intersection(set(records)):
+        if set(db_parameters).intersection(set(records)) and 'aurora' not in str(Engine):
             try:
                 rdsinstance_updateparameters.run_remediation(rds,RDSInstanceName)
             except ClientError as e:
@@ -217,7 +218,7 @@ def lambda_handler(event, context):
                     'body': str(e)
                 }
         
-        if set(multiaz).intersection(set(records)):
+        if set(multiaz).intersection(set(records)) and 'aurora' not in str(Engine):
             try:
                 rdsinstance_multizone.run_remediation(rds,RDSInstanceName)
             except ClientError as e:

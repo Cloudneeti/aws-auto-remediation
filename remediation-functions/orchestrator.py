@@ -991,7 +991,7 @@ def lambda_handler(event, context):
                 #endregion
                 
                 #region rds cluster suborchestrator call
-                if EventName in ["CreateDBCluster", "ModifyDBCluster", "CreateDBInstance"]:
+                if EventName in ["CreateDBCluster", "ModifyDBCluster"]:
                     try:
                         DBEngine=cw_event_data["responseElements"]["engine"]
                     except:
@@ -1038,6 +1038,11 @@ def lambda_handler(event, context):
                         RDSInstanceName = cw_event_data["responseElements"]["dBInstanceIdentifier"]
                         Region = cw_event_data["awsRegion"]
 
+                        try:
+                            DBEngine=cw_event_data["responseElements"]["engine"]
+                        except:
+                            DBEngine=''
+
                         try:                            
                             excludedResource_hashkey = 'excludedResourceConfig/' + hash_key + '/AWS::RDS::DBInstance'
                             isExcluded = resource_exclusion(excludedResource_hashkey, RDSInstanceName)
@@ -1051,7 +1056,8 @@ def lambda_handler(event, context):
                                 "accountId": AWSAccId,
                                 "RDSInstanceName": RDSInstanceName,
                                 "Region" : Region,
-                                "policies": records
+                                "policies": records,
+                                "Engine":DBEngine
                             }
                         
                             response = invokeLambda.invoke(FunctionName = 'zcspm-aws-remediate-rdsinstance', InvocationType = 'RequestResponse', Payload = json.dumps(remediationObj))

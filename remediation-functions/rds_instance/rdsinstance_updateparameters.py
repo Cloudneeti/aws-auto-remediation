@@ -14,6 +14,7 @@ def run_remediation(rds, RDSInstanceName):
     print("Executing RDS Instance remediation")  
     ssl_fips = 1
     enable_aes_latest = 1
+    default_group = 0
     parametergroups = []
     db_engine_flag = 0
     db_version_flag = 0
@@ -40,6 +41,7 @@ def run_remediation(rds, RDSInstanceName):
         for parameter in RDSParameterGroup:
             if parameter['DBParameterGroupName'] and str(parameter['DBParameterGroupName']).find('default') == -1:
                 parametergroups.append(parameter['DBParameterGroupName'])
+                default_group = 1
         for parameter in parametergroups:
             Parameter_Det = rds.describe_db_parameters(DBParameterGroupName = parameter, Source = 'user')['Parameters']
             for protocol in Parameter_Det:
@@ -58,7 +60,7 @@ def run_remediation(rds, RDSInstanceName):
         responseCode = 400
         output = "Unexpected error: " + str(e)
     
-    if db_engine_flag and db_version_flag:
+    if db_engine_flag and db_version_flag and default_group:
         #Update db parameter ssl_fips_mode     
         if ssl_fips == 1:
             try:
