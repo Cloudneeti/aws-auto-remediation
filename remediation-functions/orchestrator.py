@@ -12,8 +12,6 @@ import boto3
 import common
 import hashlib
 from botocore.exceptions import ClientError
-import gzip
-import base64
 import os
 
 def resource_exclusion(excludedResource_hashkey, resourceId ):
@@ -75,7 +73,7 @@ def lambda_handler(event, context):
     kinesis_list = ["KinesisEnhancedMonitoring", "KinesisSSE"]
     kms_list = ["KMSKeyRotation"]
     rds_cluster_list = ["AuroraDeleteProtection", "AuroraServerlessDeleteProtection", "AuroraPostgresServerlessDeleteProtection", "AuroraBackup", "AuroraBackupTerm", "AuroraServerlessBackupTerm", "AuroraPostgresServerlessBackupTerm", "AuroraCopyTagsToSnapshot", "AuroraServerlessCopyTagsToSnapshot", "AuroraPostgresServerlessCopyTagsToSnapshot", "AuroraServerlessScalingAutoPause", "AuroraPostgresServerlessScalingAutoPause","AuroralogExport","CloudwatchLogsExports", "AuroraIAMAuthEnabled"]
-    rds_instance_list = ["SQLBackup","SQLBackupTerm","MariadbBackup","MariadbBackupTerm","OracleBackup","OracleBackupTerm","SQLServerBackup","SQLServerBackupTerm","SQLCopyTagsToSnapshot","MariadbCopyTagsToSnapshot","OracleCopyTagsToSnapshot","SQLServerCopyTagsToSnapshot","SQLDeletionProtection", "MariadbDeletionProtection", "OracleDeletionProtection", "SQLServerDeletionProtection", "SQLPrivateInstance","MariadbPrivateInstance","OraclePrivateInstance","SQLServerPrivateInstance","AuroraInstancePrivateInstance","SQLVersionUpgrade","MariadbVersionUpgrade","OracleVersionUpgrade","SQLServerVersionUpgrade","AuroraInstanceVersionUpgrade", "SQLMultiAZEnabled","MariadbMultiAZEnabled","OracleMultiAZEnabled","SQLServerMultiAZEnabled","SQLPerformanceInsights","MariadbPerformanceInsights","OraclePerformanceInsights","SQLServerPerformanceInsights","AuroraInstancePerformanceInsights","MySQLVersionUpgrade","MySQLBackup","MySQLBackupTerm","MySQLCopyTagsToSnapshot","MySQLDeletionProtection","MySQLPerformanceInsights","MySQLPrivateInstance","MySQLMultiAZEnabled","MySQLlogExport","MariadblogExport","OraclelogExport", "SQLIAMAuthEnabled", "MySQLIAMAuthEnabled","MySQLBlockEncryption","MySQLEnableFIPS"]
+    rds_instance_list = ["SQLBackup","SQLBackupTerm","MariadbBackup","MariadbBackupTerm","OracleBackup","OracleBackupTerm","SQLServerBackup","SQLServerBackupTerm","SQLCopyTagsToSnapshot","MariadbCopyTagsToSnapshot","OracleCopyTagsToSnapshot","SQLServerCopyTagsToSnapshot","SQLDeletionProtection", "MariadbDeletionProtection", "OracleDeletionProtection", "SQLServerDeletionProtection", "SQLPrivateInstance","MariadbPrivateInstance","OraclePrivateInstance","SQLServerPrivateInstance","AuroraInstancePrivateInstance","SQLVersionUpgrade","MariadbVersionUpgrade","OracleVersionUpgrade","SQLServerVersionUpgrade","AuroraInstanceVersionUpgrade", "SQLMultiAZEnabled","MariadbMultiAZEnabled","OracleMultiAZEnabled","SQLServerMultiAZEnabled","SQLPerformanceInsights","MariadbPerformanceInsights","OraclePerformanceInsights","SQLServerPerformanceInsights","AuroraInstancePerformanceInsights","MySQLVersionUpgrade","MySQLBackup","MySQLBackupTerm","MySQLCopyTagsToSnapshot","MySQLDeletionProtection","MySQLPerformanceInsights","MySQLPrivateInstance","MySQLMultiAZEnabled","MySQLlogExport","MariadblogExport","OraclelogExport", "SQLIAMAuthEnabled", "MySQLIAMAuthEnabled","MySQLBlockEncryption"]
     redshift_list = ["RedShiftNotPublic", "RedShiftVersionUpgrade", "RedShiftAutomatedSnapshot"]
     neptune_instance_list = ["NeptuneAutoMinorVersionUpgrade","NeptuneCpoyTagsToSnapshots","NeptunePrivateAccess"]
     neptune_cluster_list = ["NeptuneBackupRetention","NeptuneClusterCloudWatchLogsEnabled","NeptuneIAMDbAuthEnabled"]

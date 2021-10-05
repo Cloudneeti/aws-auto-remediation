@@ -24,7 +24,7 @@ def lambda_handler(event, context):
     performance_insights = ["SQLPerformanceInsights","MariadbPerformanceInsights","OraclePerformanceInsights","SQLServerPerformanceInsights","AuroraInstancePerformanceInsights","MySQLPerformanceInsights"]
     instance_logexport = ["MySQLlogExport","MariadblogExport","OraclelogExport"]
     instance_iam_auth = ["SQLIAMAuthEnabled", "MySQLIAMAuthEnabled"]
-    db_parameters = ["MySQLBlockEncryption","MySQLEnableFIPS"]
+    db_parameters = ["MySQLBlockEncryption"]
     
     try:
         PolicyId = json.loads(event["body"])["PolicyId"]
