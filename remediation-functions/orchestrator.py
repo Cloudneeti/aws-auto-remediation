@@ -1243,7 +1243,7 @@ def lambda_handler(event, context):
         try:
             frameworkVersion = os.environ['Version']
         except:
-            frameworkVersion = '2.3'
+            frameworkVersion = '2.4'
 
         try:
             StackName = 'zcspm-rem-functions-' + envPrefix
