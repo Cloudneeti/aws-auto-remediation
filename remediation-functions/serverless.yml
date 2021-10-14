@@ -10,7 +10,7 @@ provider:
   runtime: python3.7
   stage: ${opt:accounthash}
   region: ${opt:region, 'us-east-1'}
-  remediationversion: ${opt:remediationversion, '2.3'}
+  remediationversion: ${opt:remediationversion, '2.4'}
   memorySize: 10240
   versionFunctions: false
   deploymentBucket:
@@ -23,7 +23,7 @@ functions:
     timeout: 900
     role: ZCSPMLambdaRole
     environment:
-      Version: ${opt:remediationversion, '2.3'}
+      Version: ${opt:remediationversion, '2.4'}
       envPrefix: ${opt:accounthash}
     events:
       - cloudwatchEvent:

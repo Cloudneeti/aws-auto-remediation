@@ -94,17 +94,16 @@
 |92		|RDS Instance	|MySQLBackupTerm	|Ensure that sufficient backup retention period is applied to RDS MySQL Instances|
 |93		|RDS Instance	|SQLIAMAuthEnabled	|Ensure IAM Database Authentication feature is enabled for RDS PostgreSQL Instances|
 |94		|RDS Instance	|MySQLIAMAuthEnabled	|Ensure IAM Database Authentication feature is enabled for RDS MySQL Instances|
-|95		|RDS Instance	|MySQLEnableFIPS	|Ensure to enable FIPS standards on the server side for RDS MySQL Instance|
-|96		|RDS Instance	|MySQLBlockEncryption	|Ensure that latest block encryption algorithms is used for RDS MySQL Instance|
-|97		|RDS Snapshot	|RDSSnapshotNoPublicAccess	|Ensure that Amazon RDS database snapshots are not accessible to all AWS accounts|
-|98		|Neptune Cluster	|NeptuneBackupRetention 	|Ensure AWS Neptune clusters have a sufficient backup retention period set for compliance purposes|
-|99		|Neptune Cluster	|NeptuneIAMDbAuthEnabled	|Ensure IAM Database Authentication feature is enabled for Amazon Neptune clusters|
-|100		|Neptune Instance	|NeptuneAutoMinorVersionUpgrade 	|Ensure Amazon Neptune instances have Auto Minor Version Upgrade feature enabled|
-|101		|EC2 Instance	|EC2MonitoringState 	|Ensure that detailed monitoring is enabled for the AWS EC2 instances that you need to monitor closely|
-|102		|EC2 Instance	|EC2TerminationProtection	|Ensure Termination Protection feature is enabled for EC2 instances that are not part of ASGs|
-|103		|ASG	|ASGCooldown	|Ensure Amazon Auto Scaling Groups are utilizing cooldown periods|
-|104	|DynamoDB	|DynamoDbContinuousBackup	|Ensure Amazon DynamoDB tables have continuous backups enabled|
-|105	|SQS	|SQSSSEEnabled	|Ensure that Server-Side Encryption is enabled for Amazon SQS queues|
-|106	|CloudFormation 	|StackTermination	|Ensure that Termination Protection feature is enabled for AWS CloudFormation stacks|
-|107	|CloudTrail 	|CTIsLogging	|Ensure that CloudTrail trail have logging enabled|
-|108	|Kinesis	|KinesisSSE	|Ensure Amazon Kinesis streams enforce Server-Side Encryption (SSE)|
+|95		|RDS Instance	|MySQLBlockEncryption	|Ensure that latest block encryption algorithms is used for RDS MySQL Instance|
+|96		|RDS Snapshot	|RDSSnapshotNoPublicAccess	|Ensure that Amazon RDS database snapshots are not accessible to all AWS accounts|
+|97		|Neptune Cluster	|NeptuneBackupRetention 	|Ensure AWS Neptune clusters have a sufficient backup retention period set for compliance purposes|
+|98		|Neptune Cluster	|NeptuneIAMDbAuthEnabled	|Ensure IAM Database Authentication feature is enabled for Amazon Neptune clusters|
+|99		|Neptune Instance	|NeptuneAutoMinorVersionUpgrade 	|Ensure Amazon Neptune instances have Auto Minor Version Upgrade feature enabled|
+|100		|EC2 Instance	|EC2MonitoringState 	|Ensure that detailed monitoring is enabled for the AWS EC2 instances that you need to monitor closely|
+|101		|EC2 Instance	|EC2TerminationProtection	|Ensure Termination Protection feature is enabled for EC2 instances that are not part of ASGs|
+|102		|ASG	|ASGCooldown	|Ensure Amazon Auto Scaling Groups are utilizing cooldown periods|
+|103	|DynamoDB	|DynamoDbContinuousBackup	|Ensure Amazon DynamoDB tables have continuous backups enabled|
+|104	|SQS	|SQSSSEEnabled	|Ensure that Server-Side Encryption is enabled for Amazon SQS queues|
+|105	|CloudFormation 	|StackTermination	|Ensure that Termination Protection feature is enabled for AWS CloudFormation stacks|
+|106	|CloudTrail 	|CTIsLogging	|Ensure that CloudTrail trail have logging enabled|
+|107	|Kinesis	|KinesisSSE	|Ensure Amazon Kinesis streams enforce Server-Side Encryption (SSE)|

@@ -26,7 +26,7 @@ def run_remediation(rds, RDSInstanceName):
         responseCode = 400
         output = "Unexpected error: " + str(e)
 
-    if not multiaz:
+    if not multiaz and response[0]['Engine'] != 'sqlserver-ex':
         #verify instance state  
         while response[0]['DBInstanceStatus'] not in ['available', 'stopped']:
             try:
