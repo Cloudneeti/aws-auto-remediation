@@ -8,13 +8,14 @@ service: zcspm-rem-functions
 provider:
   name: aws
   runtime: python3.7
-  stage: ${opt:accounthash}
   region: ${opt:region, 'us-east-1'}
-  remediationversion: ${opt:remediationversion, '2.3'}
+  environment:
+    remediationversion: ${param:remediationversion, '2.3'}
+    env: ${param:env}
   memorySize: 10240
   versionFunctions: false
   deploymentBucket:
-    name: zcspm-rem-${self:provider.stage}
+    name: zcspm-rem-${opt:stage}
 
 functions:   
   orchestrator:
@@ -23,8 +24,8 @@ functions:
     timeout: 900
     role: ZCSPMLambdaRole
     environment:
-      Version: ${opt:remediationversion, '2.3'}
-      envPrefix: ${opt:accounthash}
+      Version: ${param:remediationversion, '2.3'}
+      envPrefix: ${opt:stage}
     events:
       - cloudwatchEvent:
           name: 'zcspm-aws-asg-event-rule'
@@ -212,9 +213,9 @@ functions:
                 - SetQueueAttributes
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:remediationversion}
+      Version: ${param:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+      Environment: ${param:env, 'zcspm-remediation'}
 
   cloudtrail:
     handler: cloudtrail/cloudtrail_suborchestrator.lambda_handler
@@ -223,9 +224,9 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:remediationversion}
+      Version: ${param:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+      Environment: ${param:env, 'zcspm-remediation'}
 
   elb:
     handler: elb/elb_suborchestrator.lambda_handler
@@ -234,9 +235,9 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:remediationversion}
+      Version: ${param:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+      Environment: ${param:env, 'zcspm-remediation'}
 
   elbv2:
     handler: elbv2/elbv2_suborchestrator.lambda_handler
@@ -245,9 +246,9 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:remediationversion}
+      Version: ${param:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+      Environment: ${param:env, 'zcspm-remediation'}
 
   iam:
     handler: iam/iam_suborchestrator.lambda_handler
@@ -256,9 +257,9 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:remediationversion}
+      Version: ${param:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+      Environment: ${param:env, 'zcspm-remediation'}
 
   kinesis:
     handler: kinesis/kinesis_suborchestrator.lambda_handler
@@ -267,9 +268,9 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:remediationversion}
+      Version: ${param:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+      Environment: ${param:env, 'zcspm-remediation'}
 
   kms:
     handler: kms/kms_suborchestrator.lambda_handler
@@ -278,9 +279,9 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:remediationversion}
+      Version: ${param:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+      Environment: ${param:env, 'zcspm-remediation'}
 
   rds_cluster:
     handler: rds_cluster/rdscluster_suborchestrator.lambda_handler
@@ -289,9 +290,9 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:remediationversion}
+      Version: ${param:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+      Environment: ${param:env, 'zcspm-remediation'}
 
   rds_instance:
     handler: rds_instance/rdsinstance_suborchestrator.lambda_handler
@@ -300,9 +301,9 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:remediationversion}
+      Version: ${param:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+      Environment: ${param:env, 'zcspm-remediation'}
 
   redshift:
     handler: redshift/redshift_suborchestrator.lambda_handler
@@ -311,9 +312,9 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:remediationversion}
+      Version: ${param:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+      Environment: ${param:env, 'zcspm-remediation'}
 
   s3:
     handler: s3/s3_suborchestrator.lambda_handler
@@ -322,9 +323,9 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:remediationversion}
+      Version: ${param:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+      Environment: ${param:env, 'zcspm-remediation'}
 
   neptune_cluster:
     handler: neptune_cluster/neptunecluster_suborchestrator.lambda_handler
@@ -333,9 +334,9 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:remediationversion}
+      Version: ${param:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+      Environment: ${param:env, 'zcspm-remediation'}
 
   neptune_instance:
     handler: neptune_instance/neptuneinstance_suborchestrator.lambda_handler
@@ -344,9 +345,9 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:remediationversion}
+      Version: ${param:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+      Environment: ${param:env, 'zcspm-remediation'}
 
   ec2:
     handler: ec2/ec2instance_suborchestrator.lambda_handler
@@ -355,9 +356,9 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:remediationversion}
+      Version: ${param:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+      Environment: ${param:env, 'zcspm-remediation'}
   
   dynamodb:
     handler: dynamodb/dynamodb_suborchestrator.lambda_handler
@@ -366,9 +367,9 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:remediationversion}
+      Version: ${param:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+      Environment: ${param:env, 'zcspm-remediation'}
   
   asg:
     handler: asg/asg_suborchestrator.lambda_handler
@@ -377,9 +378,9 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:remediationversion}
+      Version: ${param:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+      Environment: ${param:env, 'zcspm-remediation'}
   
   cloudformation:
     handler: cloudformation/cloudformation_suborchestrator.lambda_handler
@@ -388,9 +389,9 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:remediationversion}
+      Version: ${param:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+      Environment: ${param:env, 'zcspm-remediation'}
   
   sqs:
     handler: sqs/sqs_suborchestrator.lambda_handler
@@ -399,9 +400,9 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:remediationversion}
+      Version: ${param:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+      Environment: ${param:env, 'zcspm-remediation'}
   
   rds_snapshots:
     handler: rds_snapshots/rdssnapshot_suborchestrator.lambda_handler
@@ -410,9 +411,9 @@ functions:
     role: ZCSPMLambdaRole
     tags:
       ServiceName: auto-remediation-lambda
-      Version: ${opt:remediationversion}
+      Version: ${param:remediationversion}
       Description: ZCSPM automatic remediation solution for making cloud resource compliant
-      Environment: ${opt:env, 'zcspm-remediation'}
+      Environment: ${param:env, 'zcspm-remediation'}
   
   # docdb_instance:
   #   handler: docdb_instance/docdbinstance_suborchestrator.lambda_handler
@@ -421,9 +422,9 @@ functions:
   #   role: ZCSPMLambdaRole
   #   tags:
   #     ServiceName: auto-remediation-lambda
-  #     Version: ${opt:remediationversion}
+  #     Version: ${param:remediationversion}
   #     Description: ZCSPM automatic remediation solution for making cloud resource compliant
-  #     Environment: ${opt:env, 'zcspm-remediation'}
+  #     Environment: ${param:env, 'zcspm-remediation'}
   
   # docdb_cluster:
   #   handler: docdb_cluster/docdbcluster_suborchestrator.lambda_handler
@@ -432,9 +433,9 @@ functions:
   #   role: ZCSPMLambdaRole
   #   tags:
   #     ServiceName: auto-remediation-lambda
-  #     Version: ${opt:remediationversion}
+  #     Version: ${param:remediationversion}
   #     Description: ZCSPM automatic remediation solution for making cloud resource compliant
-  #     Environment: ${opt:env, 'zcspm-remediation'}
+  #     Environment: ${param:env, 'zcspm-remediation'}
 
   # fsx_windows:
   #   handler: fsx_windows/fsx_windows_suborchestrator.lambda_handler
@@ -443,9 +444,9 @@ functions:
   #   role: ZCSPMLambdaRole
   #   tags:
   #     ServiceName: auto-remediation-lambda
-  #     Version: ${opt:remediationversion}
+  #     Version: ${param:remediationversion}
   #     Description: ZCSPM automatic remediation solution for making cloud resource compliant
-  #     Environment: ${opt:env, 'zcspm-remediation'}
+  #     Environment: ${param:env, 'zcspm-remediation'}
   
   # kinesis_firehose:
   #   handler: kinesis_firehose/kinesis_firehose_suborchestrator.lambda_handler
@@ -454,21 +455,21 @@ functions:
   #   role: ZCSPMLambdaRole
   #   tags:
   #     ServiceName: auto-remediation-lambda
-  #     Version: ${opt:remediationversion}
+  #     Version: ${param:remediationversion}
   #     Description: ZCSPM automatic remediation solution for making cloud resource compliant
-  #     Environment: ${opt:env, 'zcspm-remediation'}
+  #     Environment: ${param:env, 'zcspm-remediation'}
     
 resources:
   Resources:
     ZCSPMCloudTrail:
       Type: AWS::CloudTrail::Trail
       Properties: 
-        CloudWatchLogsLogGroupArn: "arn:aws:logs:${self:provider.region}:${opt:aws-account-id}:log-group:zcspm-log-group:*"
-        CloudWatchLogsRoleArn: "arn:aws:iam::${opt:aws-account-id}:role/ZCSPM-CloudwatchRole"
+        CloudWatchLogsLogGroupArn: "arn:aws:logs:${self:provider.region}:${param:aws-account-id}:log-group:zcspm-log-group:*"
+        CloudWatchLogsRoleArn: "arn:aws:iam::${param:aws-account-id}:role/ZCSPM-CloudwatchRole"
         IncludeGlobalServiceEvents: true
         IsLogging: true
         IsMultiRegionTrail: true
-        S3BucketName: zcspm-rem-${self:provider.stage}
+        S3BucketName: zcspm-rem-${opt:stage}
         S3KeyPrefix: zcspm-ctlogs
         TrailName: zcspm-remediation-trail
         Tags: 
@@ -477,13 +478,13 @@ resources:
             Value: "auto-remediation-trail"
           -
             Key: "Version"
-            Value: "${opt:remediationversion}"
+            Value: "${param:remediationversion}"
           -
             Key: "Description"
             Value: "ZCSPM automatic remediation solution for making cloud resource compliant"
           -
             Key: "Environment"
-            Value: "${opt:env, 'zcspm-remediation'}"
+            Value: "${param:env, 'zcspm-remediation'}"
     ZCSPMRole:
       Type: AWS::IAM::Role
       Properties:
@@ -494,7 +495,7 @@ resources:
             - Effect: Allow
               Principal:
                 AWS:
-                  - "arn:aws:iam::${opt:aws-account-id}:root" 
+                  - "arn:aws:iam::${param:aws-account-id}:root" 
               Action: sts:AssumeRole
         ManagedPolicyArns:
           - "arn:aws:iam::aws:policy/SecurityAudit"
@@ -545,8 +546,8 @@ resources:
             - Effect: Allow
               Principal:
                 AWS:
-                  - "arn:aws:iam::${opt:zcspm-aws-account-id}:root"  # Add the ZCSPM AWS Account ID
-                  - "arn:aws:iam::${opt:aws-account-id}:role/ZCSPM-AutoRem-InvokerFunction-Role"
+                  - "arn:aws:iam::${param:zcspm-aws-account-id}:root"  # Add the ZCSPM AWS Account ID
+                  - "arn:aws:iam::${param:aws-account-id}:role/ZCSPM-AutoRem-InvokerFunction-Role"
               Action: sts:AssumeRole
         Policies:
           - PolicyName: zcspm-lambda-policy
@@ -562,7 +563,7 @@ resources:
     ZCSPMLambdaRole:
       Type: AWS::IAM::Role
       Properties:
-        RoleName: ZCSPM-OrchesLambdaRole-${opt:env, 'zcspm-remediation'}
+        RoleName: ZCSPM-OrchesLambdaRole-${param:env, 'zcspm-remediation'}
         AssumeRolePolicyDocument:
           Version: '2012-10-17'
           Statement:
