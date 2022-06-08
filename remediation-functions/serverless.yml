@@ -12,10 +12,11 @@ provider:
   environment:
     remediationversion: ${param:remediationversion, '2.3'}
     env: ${param:env}
+    stage: ${param:stage}
   memorySize: 10240
   versionFunctions: false
   deploymentBucket:
-    name: zcspm-rem-${opt:stage}
+    name: zcspm-rem-${param:stage}
 
 functions:   
   orchestrator:
@@ -25,7 +26,7 @@ functions:
     role: ZCSPMLambdaRole
     environment:
       Version: ${param:remediationversion, '2.3'}
-      envPrefix: ${opt:stage}
+      envPrefix: ${param:stage}
     events:
       - cloudwatchEvent:
           name: 'zcspm-aws-asg-event-rule'
@@ -469,7 +470,7 @@ resources:
         IncludeGlobalServiceEvents: true
         IsLogging: true
         IsMultiRegionTrail: true
-        S3BucketName: zcspm-rem-${opt:stage}
+        S3BucketName: zcspm-rem-${param:stage}
         S3KeyPrefix: zcspm-ctlogs
         TrailName: zcspm-remediation-trail
         Tags: 
@@ -600,3 +601,4 @@ resources:
                 - sts:AssumeRole
                 Resource: 
                 - "arn:aws:iam::*:role/ZCSPM-Auto-Remediation-Role"
+                
