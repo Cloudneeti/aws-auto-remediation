@@ -295,9 +295,9 @@ if [[ "$orches_role" -eq 0 ]] || [[ "$Rem_role" -eq 0 ]] || [[ "$CT_status" -eq 
     if [[ "$s3_status" -eq 0 ]]; then
         if [[ $primary_location == $primary_deployment ]]; then
             echo "Redeploying framework....."
-            serverless deploy --param="env=$env" --stage $env-$acc_sha --param="aws-account-id=$remawsaccountid" --param="zcspm-aws-account-id=$zcspmawsaccountid" --region $primary_deployment --param="remediationversion=$version"
+            serverless deploy --param="env=$env" --param="stage=$env-$acc_sha" --param="aws-account-id=$remawsaccountid" --param="zcspm-aws-account-id=$zcspmawsaccountid" --region $primary_deployment --param="remediationversion=$version"
             Lambda_det="$(aws lambda get-function --function-name zcspm-aws-remediate-orchestrator --region $primary_deployment 2>/dev/null)"
-            Lambda_status=$?
+            lambda_status=$?
 
             if [[ $lambda_status -eq 0 ]]; then
                 echo -e "${GREEN}Successfully deployed remediation framework with latest updates!!${NC}"
@@ -322,7 +322,7 @@ else
     s3_status=$?
     if [[ "$s3_status" -eq 0 ]]; then
         #serverless deploy --env $env --accounthash $env-$acc_sha --aws-account-id $remawsaccountid --zcspm-aws-account-id $zcspmawsaccountid --region $primary_deployment --remediationversion $version
-        serverless deploy --param="env=$env" --stage $env-$acc_sha --param="aws-account-id=$remawsaccountid" --param="zcspm-aws-account-id=$zcspmawsaccountid" --region $primary_deployment --param="remediationversion=$version"
+        serverless deploy --param="env=$env" --param="stage=$env-$acc_sha" --param="aws-account-id=$remawsaccountid" --param="zcspm-aws-account-id=$zcspmawsaccountid" --region $primary_deployment --param="remediationversion=$version"
         lambda_status=$?
 
         #Enabling termination protection for stack(s)
@@ -347,12 +347,12 @@ if [[ "$secondary_regions" != "na" ]] && [[ "$s3_status" -eq 0 ]]; then
     for region in "${secondary_regions[@]}"; do
         if [[ "$region" != "$primary_deployment" ]]; then
             Lambda_det="$(aws lambda get-function --function-name zcspm-aws-auto-remediate-invoker --region $region 2>/dev/null)"
-            Lambda_status=$?
+            regional_lambda_status=$?
 
             Regional_stack="$(aws cloudformation describe-stacks --stack-name zcspm-rem-$env-$region-$acc_sha --region $region 2>/dev/null)"
             Regional_stack_status=$?
             
-            if [[ "$Regional_stack_status" -ne 0 ]] && [[ "$Lambda_status" -eq 0 ]]; then
+            if [[ "$Regional_stack_status" -ne 0 ]] && [[ "$regional_lambda_status" -eq 0 ]]; then
                 echo -e "${YELLOW}Region $region is not configured because of existing resources, please delete them and redeploy framework to configure this region${NC}"
             else
                 aws cloudformation deploy --template-file deploy-invoker-function.yml --stack-name zcspm-rem-$env-$region-$acc_sha  --region $region --parameter-overrides awsaccountid=$remawsaccountid remediationregion=$primary_deployment --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
@@ -505,9 +505,9 @@ if [[ $org_detail ]]; then
                         echo "Redeploying framework....."
                         aws cloudformation deploy --template-file deploy-multi-mode-resources.yml --stack-name zcspm-multirem-$env-$acc_sha --parameter-overrides Stack=zcspm-multirem-$env-$acc_sha awsaccountid=$awsaccountid remaccountid=$remawsaccountid region=$primary_deployment remediationversion=$version --region $primary_deployment --capabilities CAPABILITY_NAMED_IAM
                         Lambda_det="$(aws lambda get-function --function-name zcspm-aws-auto-remediate-invoker --region $primary_deployment 2>/dev/null)"
-                        Lambda_status=$?
+                        lambda_status=$?
                         
-                        if [[ $Lambda_status -eq 0 ]]; then
+                        if [[ $lambda_status -eq 0 ]]; then
                             echo -e "${GREEN}Successfully deployed remediation framework with latest updates for account: $awsaccountid!!${NC}"
                             deployment_status+=("      $awsaccountid      |       successful       ")
                         else
@@ -558,12 +558,12 @@ if [[ $org_detail ]]; then
                 for region in "${secondary_regions[@]}"; do
                     if [[ "$region" != "$primary_deployment" ]]; then
                         Lambda_det="$(aws lambda get-function --function-name zcspm-aws-auto-remediate-invoker --region $region 2>/dev/null)"
-                        Lambda_status=$?
+                        regional_lambda_status=$?
 
                         Regional_stack="$(aws cloudformation describe-stacks --stack-name zcspm-multirem-$env-$region-$acc_sha --region $region 2>/dev/null)"
                         Regional_stack_status=$?
                         
-                        if [[ "$Regional_stack_status" -ne 0 ]] && [[ "$Lambda_status" -eq 0 ]]; then
+                        if [[ "$Regional_stack_status" -ne 0 ]] && [[ "$regional_lambda_status" -eq 0 ]]; then
                             echo "Region $region is not configured because of existing resources, please delete them and redeploy framework to configure this region"
                         else
                             aws cloudformation deploy --template-file deploy-invoker-multi-mode.yml --stack-name zcspm-multirem-$env-$region-$acc_sha --parameter-overrides awsaccountid=$awsaccountid remaccountid=$remawsaccountid --region $region --capabilities CAPABILITY_NAMED_IAM 2>/dev/null
